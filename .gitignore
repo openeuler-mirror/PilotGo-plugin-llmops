@@ -1,0 +1,11 @@
+# 环境变量文件
+.env*
+# 构建产物
+*/dist/
+*/build/
+*/bin/
+*/out/
+# IDE 配置
+.vscode/
+# 日志
+*.log
