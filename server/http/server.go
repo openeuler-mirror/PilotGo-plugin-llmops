@@ -33,7 +33,7 @@ func RunServer() error {
 		Addr:    addr,
 		Handler: combineHandler(httpHandler, mcpHandler),
 	}
-	logger.Info("HTTP server is running on: " + "http://" + addr)
+	logger.Info("http server is running on: " + "http://" + addr)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return err
 	}
@@ -54,7 +54,7 @@ func StopServer() error {
 	if srv == nil {
 		return nil
 	}
-	logger.Info("Shutting down HTTP server...")
+	logger.Info("shutting down HTTP server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	err := srv.Shutdown(ctx)
