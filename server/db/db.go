@@ -61,7 +61,6 @@ func InitDB() error {
 		return fmt.Errorf("failed to ping database: %v", err)
 	}
 
-	log.Println("Database connected successfully with GORM")
 	return nil
 }
 
