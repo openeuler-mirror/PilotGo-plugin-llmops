@@ -9,6 +9,7 @@ import {
   ArrowLeft
 } from '@element-plus/icons-vue'
 import Topology from '../components/project/Topology.vue'
+import Knowledge from '../components/project/Knowledge.vue'
 
 // 接收路由参数
 const props = defineProps<{
@@ -41,7 +42,7 @@ const projectInfo = computed(() => {
 const menuItems = [
   {
     id: 'topology',
-    title: '业务Topo',
+    title: '业务拓扑',
     icon: Share,
     description: '业务拓扑结构和依赖关系'
   },
@@ -84,7 +85,7 @@ const goBack = () => {
         <el-button type="text" :icon="ArrowLeft" @click="goBack" class="mr-4">
           返回
         </el-button>
-        <h2 class="text-black text-2xl font-bold">{{ projectInfo.name }} - 项目详情</h2>
+        <h2 class="text-black text-2xl font-bold">{{ projectInfo.name }}</h2>
         <el-tag :type="projectInfo.status === '正常' ? 'success' : projectInfo.status === '警告' ? 'warning' : 'danger'"
           size="small" class="ml-2 self-end">
           {{ projectInfo.status }}
@@ -100,7 +101,6 @@ const goBack = () => {
       <!-- 左侧边栏 -->
       <div class="w-64 bg-white shadow-md overflow-y-auto">
         <div class="p-4">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">功能模块</h2>
           <el-menu :default-active="activeMenu" class="border-none" @select="handleMenuClick">
             <el-menu-item v-for="item in menuItems" :key="item.id" :index="item.id" class="mb-2 rounded-md">
               <el-icon class="mr-3">
@@ -115,28 +115,28 @@ const goBack = () => {
       <!-- 右侧内容区域 -->
       <div class="flex-1 bg-gray-50 overflow-y-auto p-3 pb-0">
         <!-- 知识库内容 -->
-        <div v-if="activeMenu === 'knowledge'" class="bg-white rounded-lg shadow-sm p-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">知识库</h2>
-          <p class="text-gray-600 mb-6">这里是项目相关的文档和知识管理内容。</p>
-          <el-empty description="知识库内容正在开发中" />
+        <div v-if="activeMenu === 'knowledge'" class="bg-white rounded-lg shadow-sm p-6 h-full">
+          <div class="h-full w-full rounded">
+            <Knowledge :projectId="props.id" />
+          </div>
         </div>
 
         <!-- 业务Topo内容 -->
         <div v-else-if="activeMenu === 'topology'" class="bg-white rounded-lg shadow-sm p-6 h-full">
-          <div class="h-full w-full border border-gray-200 rounded">
+          <div class="h-full w-full rounded">
             <Topology :projectId="props.id" />
           </div>
         </div>
 
         <!-- 集群事件内容 -->
-        <div v-else-if="activeMenu === 'events'" class="bg-white rounded-lg shadow-sm p-6">
+        <div v-else-if="activeMenu === 'events'" class="bg-white rounded-lg shadow-sm p-6 h-full">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">集群事件</h2>
           <p class="text-gray-600 mb-6">这里是集群事件和告警信息展示。</p>
           <el-empty description="集群事件内容正在开发中" />
         </div>
 
         <!-- 集群监控内容 -->
-        <div v-else-if="activeMenu === 'monitoring'" class="bg-white rounded-lg shadow-sm p-6">
+        <div v-else-if="activeMenu === 'monitoring'" class="bg-white rounded-lg shadow-sm p-6 h-full">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">集群监控</h2>
           <p class="text-gray-600 mb-6">这里是集群性能和资源监控展示。</p>
           <el-empty description="集群监控内容正在开发中" />
