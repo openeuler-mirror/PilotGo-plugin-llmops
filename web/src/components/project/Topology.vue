@@ -1,5 +1,6 @@
 <template>
   <div class="topology-container">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">业务集群拓扑图</h2>
     <div ref="graphContainer" class="graph-container"></div>
   </div>
 </template>
