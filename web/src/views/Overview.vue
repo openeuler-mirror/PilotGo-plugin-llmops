@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
 import ProjectCard from '@/components/ProjectCard.vue'
+
+const router = useRouter()
 
 // 模拟项目数据
 const projects = ref([
@@ -58,21 +61,22 @@ const projects = ref([
 // 处理查看项目详情
 const handleViewProjectDetails = (projectId: number) => {
   console.log('查看项目详情:', projectId)
-  // 这里可以添加导航到项目详情页的逻辑
+  // 导航到项目详情页，携带项目ID参数
+  router.push(`/project/${projectId}`)
 }
 </script>
 
 <template>
-  <div class="h-full bg-gray-50 max-w-7xl flex flex-col">
+  <div class="h-full bg-gray-50 flex flex-col">
     <!-- 页面标题 - 固定高度 -->
-    <div class="flex justify-between items-center py-6 flex-shrink-0">
+    <div class="flex justify-between items-center py-6 shrink-0">
       <div class="flex-1"></div>
       <div class="text-center">
         <h1 class="text-4xl font-bold text-gray-900 mb-2">项目概览</h1>
         <p class="text-gray-600">管理和监控您的所有项目</p>
       </div>
       <div class="flex-1 flex justify-end">
-        <el-button type="primary" size="large" class="create-project-btn">
+        <el-button type="primary" size="large" class="mr-3">
           <el-icon class="mr-2">
             <Plus />
           </el-icon>
