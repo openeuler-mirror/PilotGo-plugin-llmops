@@ -39,7 +39,7 @@ const handleViewDetails = () => {
 </script>
 
 <template>
-  <el-card :body-style="{ padding: '30px 20px', height: '350px', display: 'flex', flexDirection: 'column' }">
+  <el-card :body-style="{ padding: '20px 20px', height: '350px', display: 'flex', flexDirection: 'column' }">
     <!-- 项目标题 -->
     <div class="mb-3">
       <h3 class="text-lg font-semibold text-gray-900 mb-1 line-clamp-1">
@@ -68,8 +68,8 @@ const handleViewDetails = () => {
     </div>
 
     <!-- 操作按钮 -->
-    <div class="mt-4 pt-3 mt-2">
-      <el-button type="primary" size="small" class="w-full" plain @click="handleViewDetails">
+    <div class="pt-3 mt-2">
+      <el-button type="primary" size="middle" class="w-full" plain @click="handleViewDetails">
         查看详情
       </el-button>
     </div>
