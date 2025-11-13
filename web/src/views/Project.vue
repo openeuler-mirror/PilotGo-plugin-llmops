@@ -8,6 +8,7 @@ import {
   Monitor,
   ArrowLeft
 } from '@element-plus/icons-vue'
+import Topology from '../components/project/Topology.vue'
 
 // 接收路由参数
 const props = defineProps<{
@@ -17,7 +18,7 @@ const props = defineProps<{
 const router = useRouter()
 
 // 当前选中的菜单项
-const activeMenu = ref('knowledge')
+const activeMenu = ref('topology')
 
 // 根据ID获取项目信息
 const projectInfo = computed(() => {
@@ -39,16 +40,16 @@ const projectInfo = computed(() => {
 // 菜单项配置
 const menuItems = [
   {
-    id: 'knowledge',
-    title: '知识库',
-    icon: Document,
-    description: '项目相关文档和知识管理'
-  },
-  {
     id: 'topology',
     title: '业务Topo',
     icon: Share,
     description: '业务拓扑结构和依赖关系'
+  },
+  {
+    id: 'monitoring',
+    title: '集群监控',
+    icon: Monitor,
+    description: '集群性能和资源监控'
   },
   {
     id: 'events',
@@ -57,10 +58,10 @@ const menuItems = [
     description: '集群事件和告警信息'
   },
   {
-    id: 'monitoring',
-    title: '集群监控',
-    icon: Monitor,
-    description: '集群性能和资源监控'
+    id: 'knowledge',
+    title: '知识库',
+    icon: Document,
+    description: '项目相关文档和知识管理'
   }
 ]
 
@@ -84,12 +85,12 @@ const goBack = () => {
           返回
         </el-button>
         <h2 class="text-black text-2xl font-bold">{{ projectInfo.name }} - 项目详情</h2>
-      </div>
-      <div class="flex items-center space-x-4">
         <el-tag :type="projectInfo.status === '正常' ? 'success' : projectInfo.status === '警告' ? 'warning' : 'danger'"
-          size="large">
+          size="small" class="ml-2 self-end">
           {{ projectInfo.status }}
         </el-tag>
+      </div>
+      <div class="flex items-center space-x-4">
         <el-button type="primary">编辑项目</el-button>
       </div>
     </div>
@@ -112,28 +113,25 @@ const goBack = () => {
       </div>
 
       <!-- 右侧内容区域 -->
-      <div class="flex-1 bg-gray-50 overflow-y-auto p-3">
+      <div class="flex-1 bg-gray-50 overflow-y-auto p-3 pb-0">
         <!-- 知识库内容 -->
         <div v-if="activeMenu === 'knowledge'" class="bg-white rounded-lg shadow-sm p-6">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">知识库</h2>
           <p class="text-gray-600 mb-6">这里是项目相关的文档和知识管理内容。</p>
-
           <el-empty description="知识库内容正在开发中" />
         </div>
 
         <!-- 业务Topo内容 -->
-        <div v-else-if="activeMenu === 'topology'" class="bg-white rounded-lg shadow-sm p-6">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">业务Topo</h2>
-          <p class="text-gray-600 mb-6">这里是业务拓扑结构和依赖关系展示。</p>
-
-          <el-empty description="业务拓扑内容正在开发中" />
+        <div v-else-if="activeMenu === 'topology'" class="bg-white rounded-lg shadow-sm p-6 h-full">
+          <div class="h-full w-full border border-gray-200 rounded">
+            <Topology :projectId="props.id" />
+          </div>
         </div>
 
         <!-- 集群事件内容 -->
         <div v-else-if="activeMenu === 'events'" class="bg-white rounded-lg shadow-sm p-6">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">集群事件</h2>
           <p class="text-gray-600 mb-6">这里是集群事件和告警信息展示。</p>
-
           <el-empty description="集群事件内容正在开发中" />
         </div>
 
@@ -141,7 +139,6 @@ const goBack = () => {
         <div v-else-if="activeMenu === 'monitoring'" class="bg-white rounded-lg shadow-sm p-6">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">集群监控</h2>
           <p class="text-gray-600 mb-6">这里是集群性能和资源监控展示。</p>
-
           <el-empty description="集群监控内容正在开发中" />
         </div>
       </div>
@@ -154,6 +151,7 @@ const goBack = () => {
   background-color: #f0f9ff;
   color: #1890ff;
 }
+
 /* .project-title {
   color: #dc2626;
 } */
