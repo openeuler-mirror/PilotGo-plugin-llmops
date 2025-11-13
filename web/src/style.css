@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* Global styles for html and body */
 html, body {
   width: 100%;
@@ -5,7 +7,3 @@ html, body {
   margin: 0;
   padding: 0;
 }
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
