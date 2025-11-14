@@ -13,6 +13,7 @@ import {
 import Topology from '../components/project/Topology.vue'
 import Knowledge from '../components/project/Knowledge.vue'
 import Event from '../components/project/Event.vue'
+import ClusterMonitor from '../components/project/Monitor.vue'
 
 // 接收路由参数
 const props = defineProps<{
@@ -149,10 +150,8 @@ const goBack = () => {
         </div>
 
         <!-- 集群监控内容 -->
-        <div v-else-if="activeMenu === 'monitoring'" class="bg-white rounded-lg shadow-sm p-6 h-full">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">集群监控</h2>
-          <p class="text-gray-600 mb-6">这里是集群性能和资源监控展示。</p>
-          <el-empty description="集群监控内容正在开发中" />
+        <div v-else-if="activeMenu === 'monitoring'" class="bg-white rounded-lg shadow-sm p-6 ">
+          <ClusterMonitor :projectId="props.id" />
         </div>
 
         <!-- 集群运维内容 -->
