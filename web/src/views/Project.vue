@@ -2,14 +2,17 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Document,
+  Checked,
   Share,
   Warning,
   Monitor,
-  ArrowLeft
+  ArrowLeft,
+  DocumentCopy,
+  Operation
 } from '@element-plus/icons-vue'
 import Topology from '../components/project/Topology.vue'
 import Knowledge from '../components/project/Knowledge.vue'
+import Event from '../components/project/Event.vue'
 
 // 接收路由参数
 const props = defineProps<{
@@ -59,11 +62,23 @@ const menuItems = [
     description: '集群事件和告警信息'
   },
   {
+    id: 'operation',
+    title: '集群运维',
+    icon: Operation,
+    description: '集群运维'
+  },
+  {
     id: 'knowledge',
     title: '知识库',
-    icon: Document,
+    icon: DocumentCopy,
     description: '项目相关文档和知识管理'
-  }
+  },
+  {
+    id: 'audit',
+    title: '集群审计',
+    icon: Checked,
+    description: '集群操作审计记录'
+  },
 ]
 
 // 处理菜单点击
@@ -82,7 +97,7 @@ const goBack = () => {
     <!-- 页面标题栏 -->
     <div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
       <div class="flex items-center">
-        <el-button type="text" :icon="ArrowLeft" @click="goBack" class="mr-4">
+        <el-button :icon="ArrowLeft" @click="goBack" class="mr-4 text-xl! font-bold text-black!" text>
           返回
         </el-button>
         <h2 class="text-black text-2xl font-bold">{{ projectInfo.name }}</h2>
@@ -130,9 +145,7 @@ const goBack = () => {
 
         <!-- 集群事件内容 -->
         <div v-else-if="activeMenu === 'events'" class="bg-white rounded-lg shadow-sm p-6 h-full">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">集群事件</h2>
-          <p class="text-gray-600 mb-6">这里是集群事件和告警信息展示。</p>
-          <el-empty description="集群事件内容正在开发中" />
+          <Event :projectId="props.id" />
         </div>
 
         <!-- 集群监控内容 -->
@@ -140,6 +153,20 @@ const goBack = () => {
           <h2 class="text-xl font-semibold text-gray-800 mb-4">集群监控</h2>
           <p class="text-gray-600 mb-6">这里是集群性能和资源监控展示。</p>
           <el-empty description="集群监控内容正在开发中" />
+        </div>
+
+        <!-- 集群运维内容 -->
+        <div v-else-if="activeMenu === 'operation'" class="bg-white rounded-lg shadow-sm p-6 h-full">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">集群运维</h2>
+          <p class="text-gray-600 mb-6">这里是集群运维展示。</p>
+          <el-empty description="集群运维内容正在开发中" />
+        </div>
+
+        <!-- 集群审计内容 -->
+        <div v-else-if="activeMenu === 'audit'" class="bg-white rounded-lg shadow-sm p-6 h-full">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">集群审计</h2>
+          <p class="text-gray-600 mb-6">这里是集群操作审计记录展示。</p>
+          <el-empty description="集群审计内容正在开发中" />
         </div>
       </div>
     </div>
@@ -151,8 +178,4 @@ const goBack = () => {
   background-color: #f0f9ff;
   color: #1890ff;
 }
-
-/* .project-title {
-  color: #dc2626;
-} */
 </style>

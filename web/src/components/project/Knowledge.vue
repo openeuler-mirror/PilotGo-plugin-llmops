@@ -59,8 +59,9 @@ const handlePageChange = (page: number) => {
 </script>
 
 <template>
-  <div class="h-full">
-    <MTable :data="files" :currentPage="currentPage" :totalPages="totalPages" @page-change="handlePageChange">
+  <div class="h-full flex flex-col">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">集群知识库</h2>
+    <MTable :data="files" :currentPage="currentPage" :totalPages="totalPages" @page-change="handlePageChange" class="flex-1">
       <template #columns>
         <el-table-column prop="filename" label="文件名" min-width="220" />
         <el-table-column prop="fileType" label="文件类型" min-width="80" />
