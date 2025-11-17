@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Checked,
@@ -16,6 +16,7 @@ import Event from '../components/project/Event.vue'
 import ClusterMonitor from '../components/project/Monitor.vue'
 import ClusterOperation from '../components/project/Operation.vue'
 import Audit from '../components/project/Audit.vue'
+import { getProject, type Project as ApiProject } from '@/apis/project'
 
 // 接收路由参数
 const props = defineProps<{
@@ -27,21 +28,13 @@ const router = useRouter()
 // 当前选中的菜单项
 const activeMenu = ref('topology')
 
-// 根据ID获取项目信息
+const project = ref<ApiProject | null>(null)
+
 const projectInfo = computed(() => {
-  const projectData = {
-    1: { name: 'Nginx集群', status: '正常', team: '基础设施团队' },
-    2: { name: 'Kafka集群', status: '警告', team: '基础设施团队' },
-    3: { name: '业务1', status: '正常', team: '业务团队-1' },
-    4: { name: 'Kubernetes集群', status: '错误', team: '基础设施团队' },
-    5: { name: '业务2', status: '正常', team: '业务团队-2' },
-    6: { name: '移动端应用', status: '警告', team: '移动端团队' }
+  if (project.value) {
+    return { name: project.value.name, status: '正常', team: '未设置' }
   }
-  const idNum = Number(props.id)
-  const validKeys: (keyof typeof projectData)[] = [1, 2, 3, 4, 5, 6]
-  return validKeys.includes(idNum as keyof typeof projectData)
-    ? projectData[idNum as keyof typeof projectData]
-    : { name: '未知项目', status: '未知', team: '未知团队' }
+  return { name: '未知项目', status: '未知', team: '未知团队' }
 })
 
 // 菜单项配置
@@ -93,6 +86,21 @@ const handleMenuClick = (index: string) => {
 const goBack = () => {
   router.push('/')
 }
+
+const loadProject = async () => {
+  try {
+    const p = await getProject(Number(props.id))
+    project.value = p
+  } catch {}
+}
+
+onMounted(() => {
+  loadProject()
+})
+
+watch(() => props.id, () => {
+  loadProject()
+})
 </script>
 
 <template>
