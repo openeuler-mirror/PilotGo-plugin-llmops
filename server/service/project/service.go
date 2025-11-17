@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/db"
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
@@ -55,8 +56,10 @@ func (s *ProjectService) AddProject(name, desc string) error {
 
 	// 创建项目模型
 	project := &dao.Project{
-		Name: name,
-		Desc: desc,
+		Name:      name,
+		Desc:      desc,
+		CreatedAt: time.Now().Format("2006-01-02 15:04:05"),
+		UpdatedAt: time.Now().Format("2006-01-02 15:04:05"),
 	}
 
 	// 调用dao层添加项目
@@ -67,6 +70,24 @@ func (s *ProjectService) AddProject(name, desc string) error {
 	}
 
 	return nil
+}
+
+// UpdateProject 更新项目
+func (s *ProjectService) UpdateProject(id int, name, desc string) error {
+	if id <= 0 {
+		return errors.New("invalid project id")
+	}
+
+	// 创建项目模型
+	project := &dao.Project{
+		ID:        id,
+		Name:      name,
+		Desc:      desc,
+		UpdatedAt: time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	// 调用dao层更新项目
+	return s.projectDao.Update(project)
 }
 
 // DeleteProject 删除项目

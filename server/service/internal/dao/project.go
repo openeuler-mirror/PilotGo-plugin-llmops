@@ -41,6 +41,14 @@ func (d *ProjectDao) Create(project *Project) error {
 	return d.db.Create(project).Error
 }
 
+// Update 更新项目
+func (d *ProjectDao) Update(project *Project) error {
+	if d.db == nil {
+		return errors.New("database not initialized")
+	}
+	return d.db.Save(project).Error
+}
+
 // Delete 删除项目
 func (d *ProjectDao) Delete(id int) error {
 	if d.db == nil {

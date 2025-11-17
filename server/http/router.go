@@ -18,6 +18,7 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 			projectGroup.DELETE("/:id", handler.DeleteProject)
 			projectGroup.GET("", handler.ListProjects)
 			projectGroup.GET("/:id", handler.GetProject)
+			projectGroup.PUT("/:id", handler.UpdateProject)
 		}
 	}
 	return router
