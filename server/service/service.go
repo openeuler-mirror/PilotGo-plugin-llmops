@@ -34,7 +34,7 @@ func registerService(s Service) {
 }
 
 func registerServices() {
-	registerService(project.NewProjectService())
+	registerService(project.GetProjectService())
 }
 
 func StartServices() error {

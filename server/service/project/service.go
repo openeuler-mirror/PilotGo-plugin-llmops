@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/db"
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
@@ -14,11 +15,17 @@ type ProjectService struct {
 	projectDao *dao.ProjectDao
 }
 
-// NewProjectService 创建项目服务实例
-func NewProjectService() *ProjectService {
-	return &ProjectService{
-		projectDao: dao.NewProjectDao(),
-	}
+var (
+	globalProjectService *ProjectService
+	once                 sync.Once
+)
+
+// GetProjectService 创建项目服务实例
+func GetProjectService() *ProjectService {
+	once.Do(func() {
+		globalProjectService = &ProjectService{}
+	})
+	return globalProjectService
 }
 
 func (s *ProjectService) Name() string {
@@ -26,6 +33,7 @@ func (s *ProjectService) Name() string {
 }
 
 func (s *ProjectService) Run(ctx context.Context) error {
+	s.projectDao = dao.NewProjectDao()
 	// 在服务启动时执行数据库迁移
 	if err := db.AutoMigrate(&dao.Project{}); err != nil {
 		return errors.New("failed to migrate project database: " + err.Error())
