@@ -51,7 +51,7 @@ const handleViewDetails = () => {
     </div>
 
     <!-- 项目描述 -->
-    <p class="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+    <p class="text-gray-600 text-sm mb-4 line-clamp-3 grow">
       {{ description }}
     </p>
 

@@ -9,6 +9,14 @@ import (
 
 func registerRouter(router *gin.Engine) *gin.Engine {
 	router.GET("/ping", handler.Ping)
+
+	projectGroup := router.Group("/projects")
+	{
+		projectGroup.POST("", handler.CreateProject)
+		projectGroup.DELETE("/:id", handler.DeleteProject)
+		projectGroup.GET("", handler.ListProjects)
+		projectGroup.GET("/:id", handler.GetProject)
+	}
 	return router
 }
 

@@ -86,8 +86,8 @@ func (s *ProjectService) GetProjectsList() ([]*Project, error) {
 			ID:        p.ID,
 			Name:      p.Name,
 			Desc:      p.Desc,
-			CreatedAt: p.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt: p.UpdatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt: p.CreatedAt,
+			UpdatedAt: p.UpdatedAt,
 		}
 	}
 
@@ -111,7 +111,7 @@ func (s *ProjectService) GetProjectByID(id int) (*Project, error) {
 		ID:        project.ID,
 		Name:      project.Name,
 		Desc:      project.Desc,
-		CreatedAt: project.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdatedAt: project.UpdatedAt.Format("2006-01-02 15:04:05"),
+		CreatedAt: project.CreatedAt,
+		UpdatedAt: project.UpdatedAt,
 	}, nil
 }
