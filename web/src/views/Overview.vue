@@ -30,6 +30,11 @@ const handleViewProjectDetails = (projectId: number) => {
   router.push(`/project/${projectId}`)
 }
 
+// 处理删除项目
+const handleDeletedProject = async (projectId: number) => {
+  await loadProjects()
+}
+
 onMounted(() => {
   loadProjects()
 })
@@ -90,11 +95,11 @@ const cancelCreate = () => {
       <el-row :gutter="24">
         <el-col v-for="project in projects" :key="project.id" :xs="24" :sm="12" :md="8" :lg="6"
           style="padding-bottom: 20px;">
-          <ProjectCard v-bind="project" @view-details="handleViewProjectDetails" />
+          <ProjectCard v-bind="project" @view-details="handleViewProjectDetails" @deleted="handleDeletedProject" />
         </el-col>
       </el-row>
     </div>
-    <el-dialog v-model="createDialogVisible" title="创建项目" width="500px">
+    <el-dialog v-model="createDialogVisible" title="创建项目" width="500px" :lock-scroll="false">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="项目名称" prop="name">
           <el-input v-model="form.name" maxlength="255" show-word-limit />

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { deleteProject } from '@/apis/project'
 
 // 定义组件属性
 interface Props {
@@ -30,11 +32,22 @@ const statusStyle = computed(() => {
 // 定义事件
 const emit = defineEmits<{
   viewDetails: [id: number]
+  deleted: [id: number]
 }>()
 
 // 处理查看详情按钮点击
 const handleViewDetails = () => {
   emit('viewDetails', props.id)
+}
+
+const handleDelete = async () => {
+  try {
+    await ElMessageBox.confirm('确认删除该项目？', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', lockScroll: false })
+    await ElMessageBox.confirm('该操作不可恢复，是否继续？', '再次确认', { type: 'error', confirmButtonText: '继续删除', cancelButtonText: '取消', lockScroll: false })
+    const msg = await deleteProject(props.id)
+    ElMessage.success(msg || '删除成功')
+    emit('deleted', props.id)
+  } catch {}
 }
 </script>
 
@@ -68,9 +81,12 @@ const handleViewDetails = () => {
     </div>
 
     <!-- 操作按钮 -->
-    <div class="pt-3 mt-2">
+    <div class="pt-3 mt-2 flex">
       <el-button type="primary" size="middle" class="w-full" plain @click="handleViewDetails">
         查看详情
+      </el-button>
+      <el-button type="danger" size="middle" class="w-16" plain @click="handleDelete">
+        删除
       </el-button>
     </div>
   </el-card>
