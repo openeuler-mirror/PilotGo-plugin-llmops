@@ -15,6 +15,7 @@ import Knowledge from '../components/project/Knowledge.vue'
 import Event from '../components/project/Event.vue'
 import ClusterMonitor from '../components/project/Monitor.vue'
 import ClusterOperation from '../components/project/Operation.vue'
+import Audit from '../components/project/Audit.vue'
 
 // 接收路由参数
 const props = defineProps<{
@@ -162,9 +163,7 @@ const goBack = () => {
 
         <!-- 集群审计内容 -->
         <div v-else-if="activeMenu === 'audit'" class="bg-white rounded-lg shadow-sm p-6 h-full">
-          <h2 class="text-xl font-semibold text-gray-800 mb-4">集群审计</h2>
-          <p class="text-gray-600 mb-6">这里是集群操作审计记录展示。</p>
-          <el-empty description="集群审计内容正在开发中" />
+          <Audit :projectId="props.id" />
         </div>
       </div>
     </div>

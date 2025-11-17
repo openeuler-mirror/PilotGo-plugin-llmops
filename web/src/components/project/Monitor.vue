@@ -188,6 +188,7 @@ watch(() => props.projectId, () => {
 
 <template>
   <div class="h-full w-full">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">集群监控</h2>
     <el-row :gutter="16">
       <el-col :xs="24" :md="12">
         <el-card class="mb-4">
