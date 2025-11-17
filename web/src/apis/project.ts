@@ -30,3 +30,8 @@ export async function getProject(id: number): Promise<Project> {
   }
   return res.data
 }
+
+export async function updateProject(id: number, payload: { name: string; desc?: string }): Promise<string> {
+  const res = await httpClient.put<void>(`/api/projects/${id}`, payload)
+  return res.message
+}

@@ -29,19 +29,25 @@ func CreateProject(c *gin.Context) {
 }
 
 type updateProjectReq struct {
-	ID   int    `json:"id"`
 	Name string `json:"name"`
 	Desc string `json:"desc"`
 }
 
 func UpdateProject(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
 	var req updateProjectReq
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	if err := projectSrv.UpdateProject(req.ID, req.Name, req.Desc); err != nil {
+	if err := projectSrv.UpdateProject(id, req.Name, req.Desc); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}

@@ -16,7 +16,9 @@ import Event from '../components/project/Event.vue'
 import ClusterMonitor from '../components/project/Monitor.vue'
 import ClusterOperation from '../components/project/Operation.vue'
 import Audit from '../components/project/Audit.vue'
-import { getProject, type Project as ApiProject } from '@/apis/project'
+import { getProject, updateProject, type Project as ApiProject } from '@/apis/project'
+import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 
 // 接收路由参数
 const props = defineProps<{
@@ -101,6 +103,37 @@ onMounted(() => {
 watch(() => props.id, () => {
   loadProject()
 })
+
+const editDialogVisible = ref(false)
+const editLoading = ref(false)
+const editFormRef = ref<FormInstance>()
+const editForm = ref<{ name: string; desc: string }>({ name: '', desc: '' })
+const editRules: FormRules = {
+  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+}
+const openEditDialog = () => {
+  editForm.value = { name: project.value?.name || '', desc: project.value?.desc || '' }
+  editDialogVisible.value = true
+}
+const submitEdit = async () => {
+  if (!editFormRef.value) return
+  const valid = await editFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  editLoading.value = true
+  try {
+    const msg = await updateProject(Number(props.id), { name: editForm.value.name, desc: editForm.value.desc })
+    ElMessage.success(msg || '更新成功')
+    editDialogVisible.value = false
+    await loadProject()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '更新失败')
+  } finally {
+    editLoading.value = false
+  }
+}
+const cancelEdit = () => {
+  editDialogVisible.value = false
+}
 </script>
 
 <template>
@@ -118,7 +151,7 @@ watch(() => props.id, () => {
         </el-tag>
       </div>
       <div class="flex items-center space-x-4">
-        <el-button type="primary">编辑项目</el-button>
+        <el-button type="primary" @click="openEditDialog">编辑项目</el-button>
       </div>
     </div>
 
@@ -175,6 +208,20 @@ watch(() => props.id, () => {
         </div>
       </div>
     </div>
+    <el-dialog v-model="editDialogVisible" title="编辑项目" width="500px" :lock-scroll="false">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="100px">
+        <el-form-item label="项目名称" prop="name">
+          <el-input v-model="editForm.name" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="项目描述" prop="desc">
+          <el-input v-model="editForm.desc" type="textarea" rows="4" maxlength="1000" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="cancelEdit">取消</el-button>
+        <el-button type="primary" :loading="editLoading" @click="submitEdit">更新</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
