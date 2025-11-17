@@ -1,68 +1,68 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus } from '@element-plus/icons-vue'
 import ProjectCard from '@/components/ProjectCard.vue'
+import { listProjects, createProject, type Project as ApiProject } from '@/apis/project'
+import { ElMessage } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
 
-// 模拟项目数据
-const projects = ref([
-  {
-    id: 1,
-    name: 'Nginx集群',
-    description: 'Nginx集群部署，提供高可用的反向代理服务',
+const projects = ref<Array<{ id: number; name: string; description: string; status: string; lastUpdate: string; team: string }>>([])
+
+const loadProjects = async () => {
+  const list = await listProjects()
+  projects.value = list.map((p: ApiProject) => ({
+    id: p.id,
+    name: p.name,
+    description: p.desc ?? '',
     status: '正常',
-    lastUpdate: '2024-01-15',
-    team: '基础设施团队'
-  },
-  {
-    id: 2,
-    name: 'Kafka集群',
-    description: 'Kafka集群部署，提供高可用的消息队列服务',
-    status: '警告',
-    lastUpdate: '2024-01-14',
-    team: '基础设施团队'
-  },
-  {
-    id: 3,
-    name: '业务1',
-    description: '业务1的相关项目',
-    status: '正常',
-    lastUpdate: '2024-01-10',
-    team: '业务团队-1'
-  },
-  {
-    id: 4,
-    name: 'Kubernetes集群',
-    description: 'Kubernetes集群部署，提供容器化应用的编排和管理',
-    status: '错误',
-    lastUpdate: '2024-01-12',
-    team: '基础设施团队'
-  },
-  {
-    id: 5,
-    name: '业务2',
-    description: '业务2的相关项目',
-    status: '正常',
-    lastUpdate: '2024-01-13',
-    team: '业务团队-2'
-  },
-  {
-    id: 6,
-    name: '移动端应用',
-    description: 'iOS和Android原生移动应用',
-    status: '警告',
-    lastUpdate: '2024-01-11',
-    team: '移动端团队'
-  }
-])
+    lastUpdate: p.updated_at || p.created_at || '-',
+    team: '未设置'
+  }))
+}
 
 // 处理查看项目详情
 const handleViewProjectDetails = (projectId: number) => {
   console.log('查看项目详情:', projectId)
   // 导航到项目详情页，携带项目ID参数
   router.push(`/project/${projectId}`)
+}
+
+onMounted(() => {
+  loadProjects()
+})
+
+const createDialogVisible = ref(false)
+const createLoading = ref(false)
+const formRef = ref<FormInstance>()
+const form = ref<{ name: string; desc: string }>({ name: '', desc: '' })
+const rules: FormRules = {
+  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+}
+const openCreateDialog = () => {
+  form.value = { name: '', desc: '' }
+  createDialogVisible.value = true
+}
+const submitCreate = async () => {
+  if (!formRef.value) return
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+  createLoading.value = true
+  try {
+    const msg = await createProject({ name: form.value.name, desc: form.value.desc })
+    ElMessage.success(msg || '创建成功')
+    createDialogVisible.value = false
+    await loadProjects()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '创建失败')
+  } finally {
+    createLoading.value = false
+  }
+}
+const cancelCreate = () => {
+  createDialogVisible.value = false
 }
 </script>
 
@@ -76,7 +76,7 @@ const handleViewProjectDetails = (projectId: number) => {
         <p class="text-gray-600">管理和监控您的所有项目</p>
       </div>
       <div class="flex-1 flex justify-end">
-        <el-button type="primary" size="large" class="mr-3">
+        <el-button type="primary" size="large" class="mr-3" @click="openCreateDialog">
           <el-icon class="mr-2">
             <Plus />
           </el-icon>
@@ -94,5 +94,19 @@ const handleViewProjectDetails = (projectId: number) => {
         </el-col>
       </el-row>
     </div>
+    <el-dialog v-model="createDialogVisible" title="创建项目" width="500px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <el-form-item label="项目名称" prop="name">
+          <el-input v-model="form.name" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="项目描述" prop="desc">
+          <el-input v-model="form.desc" type="textarea" rows="4" maxlength="1000" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="cancelCreate">取消</el-button>
+        <el-button type="primary" :loading="createLoading" @click="submitCreate">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>

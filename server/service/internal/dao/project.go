@@ -12,8 +12,8 @@ type Project struct {
 	ID        int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name      string `json:"name" gorm:"size:255;not null"`
 	Desc      string `json:"desc" gorm:"size:1000"`
-	CreatedAt string `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt string `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt string `json:"created_at" gorm:"varchar(255)"`
+	UpdatedAt string `json:"updated_at" gorm:"varchar(255)"`
 }
 
 // TableName 指定表名

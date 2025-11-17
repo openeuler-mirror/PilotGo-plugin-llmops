@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var projectSrv = project.NewProjectService()
+var projectSrv = project.GetProjectService()
 
 type createProjectReq struct {
 	Name string `json:"name"`
