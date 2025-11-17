@@ -2,7 +2,6 @@ package dao
 
 import (
 	"errors"
-	"time"
 
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/db"
 	"gorm.io/gorm"
@@ -10,11 +9,11 @@ import (
 
 // Project 项目模型
 type Project struct {
-	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	Name      string    `json:"name" gorm:"size:255;not null"`
-	Desc      string    `json:"desc" gorm:"size:1000"`
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID        int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	Name      string `json:"name" gorm:"size:255;not null"`
+	Desc      string `json:"desc" gorm:"size:1000"`
+	CreatedAt string `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt string `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName 指定表名
