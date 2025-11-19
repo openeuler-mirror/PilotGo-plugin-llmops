@@ -10,18 +10,25 @@ import (
 )
 
 type Config struct {
-	Server struct {
-		Host string `yaml:"host"`
-		Port int    `yaml:"port"`
-	} `yaml:"server"`
-	DB struct {
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		Database string `yaml:"database"`
-	} `yaml:"db"`
-	Log logger.LoggerConfig `yaml:"log"`
+    Server struct {
+        Host string `yaml:"host"`
+        Port int    `yaml:"port"`
+    } `yaml:"server"`
+    DB struct {
+        Host     string `yaml:"host"`
+        Port     int    `yaml:"port"`
+        User     string `yaml:"user"`
+        Password string `yaml:"password"`
+        Database string `yaml:"database"`
+    } `yaml:"db"`
+    Log logger.LoggerConfig `yaml:"log"`
+    Minio struct {
+        Endpoint  string `yaml:"endpoint"`
+        AccessKey string `yaml:"access_key"`
+        SecretKey string `yaml:"secret_key"`
+        Bucket    string `yaml:"bucket"`
+        UseSSL    bool   `yaml:"use_ssl"`
+    } `yaml:"minio"`
 }
 
 var globalConfig *Config

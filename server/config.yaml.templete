@@ -9,3 +9,9 @@ db:
   database: "pilotgo-plugin-llmops"
 log:
   level: info
+minio:
+  endpoint: "127.0.0.1:9000"
+  access_key: ""
+  secret_key: ""
+  bucket: "knowledge"
+  use_ssl: false
