@@ -20,6 +20,13 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 			projectGroup.GET("/:id", handler.GetProject)
 			projectGroup.PUT("/:id", handler.UpdateProject)
 		}
+
+		knowledgeGroup := apiGroup.Group("/knowledge")
+		{
+			knowledgeGroup.POST("/upload", handler.UploadKnowledge)
+			knowledgeGroup.GET("/download", handler.DownloadKnowledge)
+			knowledgeGroup.GET("/link", handler.PresignKnowledge)
+		}
 	}
 	return router
 }
