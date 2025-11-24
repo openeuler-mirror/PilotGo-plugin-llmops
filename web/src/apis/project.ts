@@ -10,12 +10,12 @@ export interface Project {
 
 export async function createProject(payload: { name: string; desc?: string }): Promise<string> {
   const res = await httpClient.post<void>('/api/project', payload)
-  return res.message
+  return res.message ?? ''
 }
 
 export async function deleteProject(id: number): Promise<string> {
   const res = await httpClient.delete<void>(`/api/project/${id}`)
-  return res.message
+  return res.message ?? ''
 }
 
 export async function listProjects(): Promise<Project[]> {
@@ -33,5 +33,5 @@ export async function getProject(id: number): Promise<Project> {
 
 export async function updateProject(id: number, payload: { name: string; desc?: string }): Promise<string> {
   const res = await httpClient.put<void>(`/api/project/${id}`, payload)
-  return res.message
+  return res.message ?? ''
 }

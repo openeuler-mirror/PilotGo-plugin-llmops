@@ -24,10 +24,8 @@ export async function uploadKnowledge(params: {
   if (params.uploader) fd.append('uploader', params.uploader)
   if (params.desc) fd.append('desc', params.desc)
   fd.append('file', params.file)
-  const res = await fetch('/api/knowledge/upload', { method: 'POST', body: fd })
-  if (!res.ok) throw new Error(String(res.status))
-  const json = await res.json()
-  return (json && json.data && json.data.object) ? json.data.object : ''
+  const res = await httpClient.postForm<{ object: string }>('/api/knowledge/upload', fd)
+  return res.data?.object ?? ''
 }
 
 export async function presignKnowledge(object: string, expiry?: number): Promise<string> {
@@ -35,20 +33,16 @@ export async function presignKnowledge(object: string, expiry?: number): Promise
     '/api/knowledge/link',
     { object, expiry }
   )
-  const data = res.data as any
-  if (!data) return ''
-  return (data as any).url ?? ''
+  return res.data?.url ?? ''
 }
 
 export async function deleteKnowledge(id: number): Promise<string> {
   const res = await httpClient.delete<void>(`/api/knowledge/${id}`)
-  return res.message
+  return res.message ?? ''
 }
 
 export async function downloadKnowledge(object: string): Promise<Blob> {
-  const res = await fetch(`/api/knowledge/download?object=${encodeURIComponent(object)}`)
-  if (!res.ok) throw new Error(String(res.status))
-  return await res.blob()
+  return await httpClient.getBlob(`/api/knowledge/download?object=${encodeURIComponent(object)}`)
 }
 
 export async function listKnowledgeFiles(projectId: number | string, page?: number): Promise<any> {

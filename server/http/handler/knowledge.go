@@ -22,17 +22,17 @@ func UploadKnowledge(c *gin.Context) {
 		if n, err := strconv.Atoi(projectIDStr); err == nil && n > 0 {
 			projectID = n
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			ResponseError(c, http.StatusBadRequest, "invalid project_id")
 			return
 		}
 	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing project_id"})
+		ResponseError(c, http.StatusBadRequest, "missing project_id")
 		return
 	}
 
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid file"})
+		ResponseError(c, http.StatusBadRequest, "invalid file")
 		return
 	}
 	defer file.Close()
@@ -40,7 +40,7 @@ func UploadKnowledge(c *gin.Context) {
 		object = header.Filename
 	}
 	if strings.Contains(object, "..") || strings.HasPrefix(object, "/") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid object name"})
+		ResponseError(c, http.StatusBadRequest, "invalid object name")
 		return
 	}
 	ct := header.Header.Get("Content-Type")
@@ -56,21 +56,21 @@ func UploadKnowledge(c *gin.Context) {
 	}
 	_, err = knowledge.GetKnowledgeService().UploadKnowledgeFile(c.Request.Context(), req, file, header.Size, ct)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": gin.H{"object": object}})
+	Response(c, gin.H{"object": object})
 }
 
 func DownloadKnowledge(c *gin.Context) {
 	object := c.Query("object")
 	if object == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing object"})
+		ResponseError(c, http.StatusBadRequest, "missing object")
 		return
 	}
 	rc, size, ct, err := knowledge.GetKnowledgeService().DownloadKnowledgeFile(c.Request.Context(), object)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusNotFound, err.Error())
 		return
 	}
 	defer rc.Close()
@@ -84,7 +84,7 @@ func DownloadKnowledge(c *gin.Context) {
 func PresignKnowledge(c *gin.Context) {
 	object := c.Query("object")
 	if object == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing object"})
+		ResponseError(c, http.StatusBadRequest, "missing object")
 		return
 	}
 	expiryStr := c.Query("expiry")
@@ -96,22 +96,22 @@ func PresignKnowledge(c *gin.Context) {
 	}
 	url, err := knowledge.GetKnowledgeService().PresignedDownloadURL(c.Request.Context(), object, time.Duration(expiry)*time.Second)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": gin.H{"url": url}})
+	Response(c, gin.H{"url": url})
 }
 
 func DeleteKnowledge(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		ResponseError(c, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := knowledge.GetKnowledgeService().DeleteKnowledge(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+	ResponseOK(c, "deleted")
 }
