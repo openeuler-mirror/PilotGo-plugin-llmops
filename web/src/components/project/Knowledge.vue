@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import MTable from '../common/MTable.vue'
-import { uploadKnowledge, listKnowledgeFiles } from '../../apis/knowledge'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { uploadKnowledge, listKnowledgeFiles, deleteKnowledge as deleteKnowledgeApi } from '../../apis/knowledge'
 
 interface KnowledgeFile {
+  id?: number
   filename: string
   fileType: string
   uploadedAt: string
@@ -96,6 +98,20 @@ const doUpload = async () => {
     uploading.value = false
   }
 }
+
+const deleteKnowledge = async (row: any) => {
+  try {
+    await ElMessageBox.confirm('确认删除该文件？', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', lockScroll: false })
+    const id = Number(row?.id)
+    if (!id || isNaN(id)) {
+      ElMessage.error('无法删除：缺少ID')
+      return
+    }
+    const msg = await deleteKnowledgeApi(id)
+    ElMessage.success(msg || '删除成功')
+    loadFiles()
+  } catch (e) {}
+}
 </script>
 
 <template>
@@ -112,6 +128,11 @@ const doUpload = async () => {
         <el-table-column prop="uploadedAt" label="上传时间" width="180" />
         <el-table-column prop="uploader" label="上传人" width="140" />
         <el-table-column prop="description" label="文件描述" min-width="300" show-overflow-tooltip />
+        <el-table-column label="操作" width="80">
+          <template #default="scope">
+            <el-button type="danger" size="mini" @click="deleteKnowledge(scope.row)">删除</el-button>
+          </template>
+        </el-table-column>
       </template>
     </MTable>
     <el-dialog v-model="uploadVisible" title="上传文件" width="520px">
