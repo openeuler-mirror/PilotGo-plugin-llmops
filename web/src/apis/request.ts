@@ -1,19 +1,18 @@
 const config = {
-  // API基础URL
   apiBaseUrl: '',
 }
 
 // HTTP请求工具类
 export interface ApiResponse<T = any> {
-  code: number
-  message: string
+  message?: string
   data?: T
+  error?: string
 }
 
 export interface PaginationResponse<T = any> {
   total: number
   page: number
-  page_size: number
+  perpage: number
   data: T[]
 }
 
@@ -29,24 +28,23 @@ class HttpClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const fullUrl = `${this.baseURL}${url}`
-
-    const defaultOptions: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
+    const isForm = !!(options as any).body && (options as any).body instanceof FormData
+    const headers: Record<string, string> = {
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.headers as any),
     }
+    const defaultOptions: RequestInit = { ...options, headers }
 
     try {
       const response = await fetch(fullUrl, defaultOptions)
-
+      const contentType = response.headers.get('Content-Type') || ''
+      const isJson = contentType.includes('application/json')
+      const payload = isJson ? await response.json() : undefined
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const msg = payload && (payload.error || payload.message) ? (payload.error || payload.message) : `HTTP ${response.status}`
+        throw new Error(msg)
       }
-
-      const result = await response.json() as ApiResponse<T>
-      return result
+      return (payload ?? {}) as ApiResponse<T>
     } catch (error) {
       throw error
     }
@@ -90,6 +88,30 @@ class HttpClient {
     return this.request<T>(url, {
       method: 'DELETE',
     })
+  }
+
+  async postForm<T>(url: string, form: FormData): Promise<ApiResponse<T>> {
+    return this.request<T>(url, {
+      method: 'POST',
+      body: form,
+    })
+  }
+
+  async getBlob(url: string): Promise<Blob> {
+    const fullUrl = `${this.baseURL}${url}`
+    const res = await fetch(fullUrl, { method: 'GET' })
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`
+      try {
+        const ct = res.headers.get('Content-Type') || ''
+        if (ct.includes('application/json')) {
+          const json = await res.json()
+          if (json && (json.error || json.message)) msg = json.error || json.message
+        }
+      } catch {}
+      throw new Error(msg)
+    }
+    return await res.blob()
   }
 }
 

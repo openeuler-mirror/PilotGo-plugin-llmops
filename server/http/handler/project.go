@@ -18,14 +18,14 @@ type createProjectReq struct {
 func CreateProject(c *gin.Context) {
 	var req createProjectReq
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		ResponseError(c, http.StatusBadRequest, "invalid request")
 		return
 	}
 	if err := projectSrv.AddProject(req.Name, req.Desc); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "created"})
+	ResponseOK(c, "created")
 }
 
 type updateProjectReq struct {
@@ -37,57 +37,57 @@ func UpdateProject(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		ResponseError(c, http.StatusBadRequest, "invalid id")
 		return
 	}
 
 	var req updateProjectReq
 	if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		ResponseError(c, http.StatusBadRequest, "invalid request")
 		return
 	}
 
 	if err := projectSrv.UpdateProject(id, req.Name, req.Desc); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusNotFound, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+	ResponseOK(c, "updated")
 }
 
 func DeleteProject(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		ResponseError(c, http.StatusBadRequest, "invalid id")
 		return
 	}
 	if err := projectSrv.DeleteProject(id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusNotFound, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+	ResponseOK(c, "deleted")
 }
 
 func ListProjects(c *gin.Context) {
 	projects, err := projectSrv.GetProjectsList()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": projects})
+	Response(c, projects)
 }
 
 func GetProject(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		ResponseError(c, http.StatusBadRequest, "invalid id")
 		return
 	}
 	p, err := projectSrv.GetProjectByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusNotFound, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": p})
+	Response(c, p)
 }

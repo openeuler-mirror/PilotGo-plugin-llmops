@@ -14,12 +14,12 @@ func ListAuditByProjectID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		ResponseError(c, http.StatusBadRequest, "invalid id")
 		return
 	}
 	items, err := auditSrv.ListAuditsByProjectID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	res := make([]gin.H, len(items))
@@ -32,7 +32,7 @@ func ListAuditByProjectID(c *gin.Context) {
 			"description": a.Action,
 		}
 	}
-	c.JSON(http.StatusOK, res)
+	Response(c, res)
 }
 
 type listAuditQueryReq struct {
@@ -45,7 +45,7 @@ type listAuditQueryReq struct {
 func ListAuditByFilters(c *gin.Context) {
 	var req listAuditQueryReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid query"})
+		ResponseError(c, http.StatusBadRequest, "invalid query")
 		return
 	}
 	var pid *int
@@ -53,7 +53,7 @@ func ListAuditByFilters(c *gin.Context) {
 		if n, err := strconv.Atoi(req.ProjectID); err == nil && n > 0 {
 			pid = &n
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			ResponseError(c, http.StatusBadRequest, "invalid project_id")
 			return
 		}
 	}
@@ -64,8 +64,8 @@ func ListAuditByFilters(c *gin.Context) {
 		Target:     req.Target,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": items})
+	Response(c, items)
 }
