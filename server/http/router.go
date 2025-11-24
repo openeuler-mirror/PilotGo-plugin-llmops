@@ -26,6 +26,7 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 			knowledgeGroup.POST("/upload", handler.UploadKnowledge)
 			knowledgeGroup.GET("/download", handler.DownloadKnowledge)
 			knowledgeGroup.GET("/link", handler.PresignKnowledge)
+			knowledgeGroup.DELETE("/:id", handler.DeleteKnowledge)
 		}
 	}
 	return router

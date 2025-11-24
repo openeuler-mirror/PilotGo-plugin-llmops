@@ -5,12 +5,18 @@ import (
 	"errors"
 
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/config"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/db"
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/internal/dao"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-type KnowledgeService struct{}
+type KnowledgeService struct {
+	kd     *dao.KnowledgeDao
+	mc     *minio.Client
+	bucket string
+}
 
 var (
 	globalKnowledgeService *KnowledgeService
@@ -32,25 +38,32 @@ func (s *KnowledgeService) Run(ctx context.Context) error {
 	if cfg == nil {
 		return errors.New("config not initialized")
 	}
+
+	// init dao and migrate table
+	s.kd = dao.NewKnowledgeDao()
+	if err := db.AutoMigrate(&dao.Knowledge{}); err != nil {
+		return errors.New("failed to migrate knowledge database: " + err.Error())
+	}
+
 	endpoint := cfg.Minio.Endpoint
 	accessKey := cfg.Minio.AccessKey
 	secretKey := cfg.Minio.SecretKey
-	bucket = cfg.Minio.Bucket
+	s.bucket = cfg.Minio.Bucket
 	secure := cfg.Minio.UseSSL
-	if endpoint == "" || accessKey == "" || secretKey == "" || bucket == "" {
+	if endpoint == "" || accessKey == "" || secretKey == "" || s.bucket == "" {
 		return errors.New("minio config missing")
 	}
 	c, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(accessKey, secretKey, ""), Secure: secure})
 	if err != nil {
 		return err
 	}
-	mc = c
-	exists, err := mc.BucketExists(ctx, bucket)
+	s.mc = c
+	exists, err := s.mc.BucketExists(ctx, s.bucket)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		if err := mc.MakeBucket(ctx, bucket, minio.MakeBucketOptions{}); err != nil {
+		if err := s.mc.MakeBucket(ctx, s.bucket, minio.MakeBucketOptions{}); err != nil {
 			return err
 		}
 	}
