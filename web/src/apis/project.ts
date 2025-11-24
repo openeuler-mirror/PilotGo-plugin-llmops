@@ -9,22 +9,22 @@ export interface Project {
 }
 
 export async function createProject(payload: { name: string; desc?: string }): Promise<string> {
-  const res = await httpClient.post<void>('/api/projects', payload)
+  const res = await httpClient.post<void>('/api/project', payload)
   return res.message
 }
 
 export async function deleteProject(id: number): Promise<string> {
-  const res = await httpClient.delete<void>(`/api/projects/${id}`)
+  const res = await httpClient.delete<void>(`/api/project/${id}`)
   return res.message
 }
 
 export async function listProjects(): Promise<Project[]> {
-  const res = await httpClient.get<Project[]>('/api/projects')
+  const res = await httpClient.get<Project[]>('/api/project')
   return res.data ?? []
 }
 
 export async function getProject(id: number): Promise<Project> {
-  const res = await httpClient.get<Project>(`/api/projects/${id}`)
+  const res = await httpClient.get<Project>(`/api/project/${id}`)
   if (!res.data) {
     throw new Error('empty data')
   }
@@ -32,6 +32,6 @@ export async function getProject(id: number): Promise<Project> {
 }
 
 export async function updateProject(id: number, payload: { name: string; desc?: string }): Promise<string> {
-  const res = await httpClient.put<void>(`/api/projects/${id}`, payload)
+  const res = await httpClient.put<void>(`/api/project/${id}`, payload)
   return res.message
 }
