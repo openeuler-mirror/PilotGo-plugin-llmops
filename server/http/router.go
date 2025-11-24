@@ -12,13 +12,14 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 
 	apiGroup := router.Group("/api")
 	{
-		projectGroup := apiGroup.Group("/projects")
+		projectGroup := apiGroup.Group("/project")
 		{
 			projectGroup.POST("", handler.CreateProject)
 			projectGroup.DELETE("/:id", handler.DeleteProject)
 			projectGroup.GET("", handler.ListProjects)
 			projectGroup.GET("/:id", handler.GetProject)
 			projectGroup.PUT("/:id", handler.UpdateProject)
+			projectGroup.GET("/:id/audit/logs", handler.ListAuditByProjectID)
 		}
 
 		knowledgeGroup := apiGroup.Group("/knowledge")
@@ -27,6 +28,11 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 			knowledgeGroup.GET("/download", handler.DownloadKnowledge)
 			knowledgeGroup.GET("/link", handler.PresignKnowledge)
 			knowledgeGroup.DELETE("/:id", handler.DeleteKnowledge)
+		}
+
+		auditGroup := apiGroup.Group("/audit")
+		{
+			auditGroup.GET("/logs", handler.ListAuditByFilters)
 		}
 	}
 	return router
