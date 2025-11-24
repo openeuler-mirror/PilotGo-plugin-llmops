@@ -1,13 +1,19 @@
 <template>
   <div class="topology-container flex flex-col">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">业务集群拓扑图</h2>
+    <div class="flex justify-between items-center">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">业务集群拓扑图</h2>
+      <el-button type="primary" @click="openConfig">配置集群</el-button>
+    </div>
     <div ref="graphContainer" class="graph-container flex-1"></div>
+    <TopologyConfig v-model:visible="configVisible" :projectId="props.projectId" @submit="onConfigSubmit" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { Graph } from '@antv/g6'
+import TopologyConfig from './TopologyConfig.vue'
+import { ElMessage } from 'element-plus'
 
 interface Props {
   projectId: string | number
@@ -17,6 +23,7 @@ const props = defineProps<Props>()
 
 const graphContainer = ref<HTMLDivElement | null>(null)
 let graph: Graph | null = null
+const configVisible = ref(false)
 
 // 默认数据
 const defaultData = {
@@ -150,6 +157,15 @@ onBeforeUnmount(() => {
     resizeObserver.unobserve(graphContainer.value)
   }
 })
+
+const openConfig = () => {
+  configVisible.value = true
+}
+
+const onConfigSubmit = (payload: Array<{ hostId: string | number; processes: string[] }>) => {
+  configVisible.value = false
+  ElMessage.success('已更新配置')
+}
 
 // 暴露方法给父组件
 defineExpose({
