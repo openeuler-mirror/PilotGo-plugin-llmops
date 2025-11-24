@@ -6,34 +6,58 @@ import (
 	"io"
 	"time"
 
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/internal/dao"
 	"github.com/minio/minio-go/v7"
 )
 
-var (
-	mc     *minio.Client
-	bucket string
-)
+type UploadKnowledgeReq struct {
+	ProjectID int    `json:"project_id"`
+	Object    string `json:"object"`
+	FileName  string `json:"file_name"`
+	Uploader  string `json:"uploader"`
+	Desc      string `json:"desc"`
+}
 
-func UploadKnowledgeFile(ctx context.Context, objectName string, r io.Reader, size int64, contentType string) (string, error) {
-	if mc == nil || bucket == "" {
+func (s *KnowledgeService) UploadKnowledgeFile(ctx context.Context, req UploadKnowledgeReq, r io.Reader, size int64, contentType string) (string, error) {
+	if s.mc == nil || s.bucket == "" || s.kd == nil {
 		return "", errors.New("knowledge service not initialized")
 	}
-	_, err := mc.PutObject(ctx, bucket, objectName, r, size, minio.PutObjectOptions{ContentType: contentType})
+	obj := req.Object
+	if obj == "" {
+		obj = req.FileName
+	}
+	if obj == "" {
+		return "", errors.New("invalid object name")
+	}
+	_, err := s.mc.PutObject(ctx, s.bucket, obj, r, size, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		return "", err
 	}
-	return objectName, nil
+	now := time.Now().Format("2006-01-02 15:04:05")
+	k := &dao.Knowledge{
+		ProjectID: req.ProjectID,
+		Object:    obj,
+		FileName:  req.FileName,
+		Uploader:  req.Uploader,
+		Desc:      req.Desc,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if err := s.kd.Create(k); err != nil {
+		return "", err
+	}
+	return obj, nil
 }
 
-func DownloadKnowledgeFile(ctx context.Context, objectName string) (io.ReadCloser, int64, string, error) {
-	if mc == nil || bucket == "" {
+func (s *KnowledgeService) DownloadKnowledgeFile(ctx context.Context, objectName string) (io.ReadCloser, int64, string, error) {
+	if s.mc == nil || s.bucket == "" {
 		return nil, 0, "", errors.New("knowledge service not initialized")
 	}
-	obj, err := mc.GetObject(ctx, bucket, objectName, minio.GetObjectOptions{})
+	obj, err := s.mc.GetObject(ctx, s.bucket, objectName, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, 0, "", err
 	}
-	info, err := mc.StatObject(ctx, bucket, objectName, minio.StatObjectOptions{})
+	info, err := s.mc.StatObject(ctx, s.bucket, objectName, minio.StatObjectOptions{})
 	if err != nil {
 		obj.Close()
 		return nil, 0, "", err
@@ -41,13 +65,27 @@ func DownloadKnowledgeFile(ctx context.Context, objectName string) (io.ReadClose
 	return obj, info.Size, info.ContentType, nil
 }
 
-func PresignedDownloadURL(ctx context.Context, objectName string, expiry time.Duration) (string, error) {
-	if mc == nil || bucket == "" {
+func (s *KnowledgeService) PresignedDownloadURL(ctx context.Context, objectName string, expiry time.Duration) (string, error) {
+	if s.mc == nil || s.bucket == "" {
 		return "", errors.New("knowledge service not initialized")
 	}
-	u, err := mc.PresignedGetObject(ctx, bucket, objectName, expiry, nil)
+	u, err := s.mc.PresignedGetObject(ctx, s.bucket, objectName, expiry, nil)
 	if err != nil {
 		return "", err
 	}
 	return u.String(), nil
+}
+
+func (s *KnowledgeService) DeleteKnowledge(ctx context.Context, id int64) error {
+	if s.mc == nil || s.bucket == "" || s.kd == nil {
+		return errors.New("knowledge service not initialized")
+	}
+	k, err := s.kd.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if err := s.mc.RemoveObject(ctx, s.bucket, k.Object, minio.RemoveObjectOptions{}); err != nil {
+		return err
+	}
+	return s.kd.Delete(id)
 }
