@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/audit"
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/knowledge"
 	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/project"
 	"github.com/sourcegraph/conc"
@@ -37,6 +38,7 @@ func registerService(s Service) {
 func registerServices() {
 	registerService(project.GetProjectService())
 	registerService(knowledge.GetKnowledgeService())
+	registerService(audit.GetAuditService())
 }
 
 func StartServices() error {
