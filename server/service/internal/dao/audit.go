@@ -17,7 +17,6 @@ type Audit struct {
 	Action     string `json:"action" gorm:"size:255"`
 	Result     string `json:"result" gorm:"size:255"`
 	CreatedAt  string `json:"created_at" gorm:"type:varchar(32)"`
-	UpdatedAt  string `json:"updated_at" gorm:"type:varchar(32)"`
 }
 
 func (Audit) TableName() string {
@@ -40,16 +39,7 @@ func (d *AuditDao) Create(a *Audit) error {
 	if a.CreatedAt == "" {
 		a.CreatedAt = now
 	}
-	a.UpdatedAt = now
 	return d.db.Create(a).Error
-}
-
-func (d *AuditDao) Update(a *Audit) error {
-	if d.db == nil {
-		return errors.New("database not initialized")
-	}
-	a.UpdatedAt = time.Now().Format("2006-01-02 15:04:05")
-	return d.db.Save(a).Error
 }
 
 func (d *AuditDao) GetByID(id int64) (*Audit, error) {
@@ -74,10 +64,10 @@ func (d *AuditDao) List() ([]*Audit, error) {
 }
 
 type AuditQuery struct {
-	ProjectID *int
-	Actor     string
-	Action    string
-	Target    string
+	ProjectID  *int
+	Actor      string
+	ActionType string
+	Target     string
 }
 
 func (d *AuditDao) ListByQuery(q *AuditQuery) ([]*Audit, error) {
@@ -93,8 +83,8 @@ func (d *AuditDao) ListByQuery(q *AuditQuery) ([]*Audit, error) {
 		if q.Actor != "" {
 			tx = tx.Where("actor = ?", q.Actor)
 		}
-		if q.Action != "" {
-			tx = tx.Where("action = ?", q.Action)
+		if q.ActionType != "" {
+			tx = tx.Where("action_type = ?", q.ActionType)
 		}
 		if q.Target != "" {
 			tx = tx.Where("target = ?", q.Target)
