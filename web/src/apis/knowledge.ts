@@ -52,6 +52,6 @@ export async function downloadKnowledge(object: string): Promise<Blob> {
 }
 
 export async function listKnowledgeFiles(projectId: number | string, page?: number): Promise<any> {
-  const res = await httpClient.get<any>(`/api/projects/${projectId}/knowledge/files`, { page })
+  const res = await httpClient.get<any>(`/api/project/${projectId}/knowledge/files`, { page })
   return res.data
 }

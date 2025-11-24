@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import MTable from '../common/MTable.vue'
-
-interface AuditItem {
-  id: number | string
-  time: string
-  operator: string
-  component: string
-  description: string
-}
+import { listProjectAuditLogs, type AuditItem } from '@/apis/audit'
 
 const props = defineProps<{ projectId: string | number }>()
 
@@ -18,21 +11,10 @@ const totalPages = ref(1)
 
 const loadLogs = async () => {
   try {
-    const res = await fetch(`/api/projects/${props.projectId}/audit/logs?page=${currentPage.value}`)
-    if (res.ok) {
-      const data = await res.json()
-      if (Array.isArray(data)) {
-        logs.value = data as AuditItem[]
-        totalPages.value = 1
-      } else if (data && Array.isArray(data.items)) {
-        logs.value = data.items as AuditItem[]
-        totalPages.value = Number((data.totalPages ?? data.total_pages) || 1)
-      } else {
-        logs.value = []
-        totalPages.value = 1
-      }
-    }
-  } catch (e) {}
+    const items = await listProjectAuditLogs(props.projectId, currentPage.value)
+    logs.value = items
+    totalPages.value = 1
+  } catch {}
 }
 
 onMounted(() => {
