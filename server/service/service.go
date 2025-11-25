@@ -1,13 +1,14 @@
 package service
 
 import (
-	"context"
+    "context"
 
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/audit"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/knowledge"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/project"
-	"github.com/sourcegraph/conc"
+    "gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
+    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/audit"
+    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/knowledge"
+    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/project"
+    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/topology"
+    "github.com/sourcegraph/conc"
 )
 
 type Service interface {
@@ -36,9 +37,10 @@ func registerService(s Service) {
 }
 
 func registerServices() {
-	registerService(project.GetProjectService())
-	registerService(knowledge.GetKnowledgeService())
-	registerService(audit.GetAuditService())
+    registerService(project.GetProjectService())
+    registerService(knowledge.GetKnowledgeService())
+    registerService(audit.GetAuditService())
+    registerService(topology.GetTopologyService())
 }
 
 func StartServices() error {
