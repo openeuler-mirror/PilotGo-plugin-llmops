@@ -1,0 +1,4 @@
+llm:
+  id: "" # llm name
+  base_url: ""
+  api_key: ""  # llm api key

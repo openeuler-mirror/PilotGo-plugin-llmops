@@ -12,3 +12,14 @@ def create_agent(llm, prompt: Optional[str] = None) -> Agent:
         model=llm,
         instructions=(prompt),
     )
+
+def create_schema_agent(llm, schema: Optional[BaseModel] = None, prompt: Optional[str] = None) -> Agent:
+    """
+    Passing Output Schema to the agent
+    """
+    return Agent(
+        name="Schema Agent",
+        model=llm,
+        output_schema=schema,
+        instructions=(prompt),
+    )
