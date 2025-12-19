@@ -1,7 +1,7 @@
 from typing import Iterator
 from agno.agent import Agent
 from agno.team import Team
-from agno.workflow import Workflow
+from agno.workflow import Workflow, StepInput, StepOutput, Step
 from agno.utils.pprint import pprint_run_response
 from agno.run.workflow import WorkflowRunEvent, WorkflowRunOutputEvent
 from  agno.models.openai import OpenAILike
@@ -49,11 +49,22 @@ research_team = Team(
     instructions="多个成员共同对主题进行分析、提炼与总结。",
 )
 
+def pre_outpus(step_input : StepInput) -> StepOutput:
+    return StepOutput(
+        content=f"Pre-outputs: {step_input.previous_step_outputs}"
+    )
+
+end_step = Step(
+    name="End Step",
+    executor=pre_outpus,
+    description="查看先前步骤的输出结果"
+)
+
 # === 定义工作流 ===
 workflow = Workflow(
     name="Simple Content Planning Workflow",
     description="本地可运行的内容研究 → 总结 → 内容规划流程",
-    steps=[research_team, content_planner],
+    steps=[research_team, content_planner, end_step],
     debug_mode=True,
 )
 
