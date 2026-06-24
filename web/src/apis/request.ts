@@ -1,5 +1,8 @@
 const config = {
-  apiBaseUrl: '',
+  // Read from the VITE_API_BASE_URL env var; defaults to an empty string so the
+  // client issues same-origin relative requests (e.g. "/api"), which the Vite
+  // dev proxy forwards to the backend. Set an absolute URL to target a remote API.
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
 }
 
 // HTTP请求工具类
