@@ -5,20 +5,42 @@ const config = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
 }
 
-// HTTP请求工具类
-export interface ApiResponse<T = any> {
-  message?: string
+/**
+ * Unified API response envelope shared by all api modules (project / knowledge /
+ * audit / ...).
+ *
+ * Mirrors the server response helpers in `server/http/handler/common.go`. A
+ * single response only ever carries one of these fields, so all are optional:
+ *   - Response(data)      -> { data }      success carrying a payload
+ *   - ResponseOK(msg)     -> { message }   success carrying only a message
+ *   - ResponseError(code) -> { error }     failure (sent with a non-2xx status)
+ *
+ * `T` is the type of the `data` payload.
+ */
+export interface ApiResponse<T = unknown> {
   data?: T
+  message?: string
   error?: string
 }
 
-export interface PaginationResponse<T = any> {
-  total: number
+/**
+ * Paginated API response envelope.
+ *
+ * Mirrors `ResponsePage(page, perPage, total, data)` in
+ * `server/http/handler/common.go`, which returns the pagination metadata at the
+ * top level alongside the `data` array:
+ *   { page, perpage, total, data }
+ *
+ * `T` is the element type of the `data` array.
+ */
+export interface PaginationResponse<T = unknown> {
   page: number
   perpage: number
+  total: number
   data: T[]
 }
 
+// HTTP请求工具类
 class HttpClient {
   private baseURL: string
 
