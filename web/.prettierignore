@@ -1,0 +1,11 @@
+# Build output
+dist
+dist-ssr
+coverage
+
+# Dependencies
+node_modules
+
+# Lockfiles and generated/local files
+yarn.lock
+*.local
