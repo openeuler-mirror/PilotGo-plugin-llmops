@@ -9,3 +9,5 @@
 .vscode/
 # 日志
 *.log
+# 本地运行时目录（Go/MinIO 二进制、数据、日志）
+.runtime/
