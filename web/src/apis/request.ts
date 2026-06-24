@@ -1,3 +1,5 @@
+import { ElMessage } from 'element-plus'
+
 const config = {
   // Read from the VITE_API_BASE_URL env var; defaults to an empty string so the
   // client issues same-origin relative requests (e.g. "/api"), which the Vite
@@ -26,6 +28,28 @@ class HttpClient {
     this.baseURL = baseURL
   }
 
+  /**
+   * Centralized error reporter: surfaces a single toast for any failed request
+   * (network error, non-2xx response, or a backend `{ error }` envelope).
+   *
+   * The thrown Error already carries the backend-provided message (extracted
+   * from the response's `error` / `message` field), so it is preferred here.
+   * Network-level failures and unknown errors fall back to a generic message.
+   */
+  private handleError(error: unknown): void {
+    let message: string
+    if (error instanceof TypeError) {
+      // fetch() rejects with a TypeError on network-level failures
+      // (offline, DNS failure, connection refused, CORS, ...).
+      message = '网络异常，请检查网络连接后重试'
+    } else if (error instanceof Error && error.message) {
+      message = error.message
+    } else {
+      message = '请求失败，请稍后重试'
+    }
+    ElMessage.error(message)
+  }
+
   private async request<T>(
     url: string,
     options: RequestInit = {}
@@ -49,6 +73,7 @@ class HttpClient {
       }
       return (payload ?? {}) as ApiResponse<T>
     } catch (error) {
+      this.handleError(error)
       throw error
     }
   }
@@ -102,19 +127,24 @@ class HttpClient {
 
   async getBlob(url: string): Promise<Blob> {
     const fullUrl = `${this.baseURL}${url}`
-    const res = await fetch(fullUrl, { method: 'GET' })
-    if (!res.ok) {
-      let msg = `HTTP ${res.status}`
-      try {
-        const ct = res.headers.get('Content-Type') || ''
-        if (ct.includes('application/json')) {
-          const json = await res.json()
-          if (json && (json.error || json.message)) msg = json.error || json.message
-        }
-      } catch {}
-      throw new Error(msg)
+    try {
+      const res = await fetch(fullUrl, { method: 'GET' })
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`
+        try {
+          const ct = res.headers.get('Content-Type') || ''
+          if (ct.includes('application/json')) {
+            const json = await res.json()
+            if (json && (json.error || json.message)) msg = json.error || json.message
+          }
+        } catch {}
+        throw new Error(msg)
+      }
+      return await res.blob()
+    } catch (error) {
+      this.handleError(error)
+      throw error
     }
-    return await res.blob()
   }
 }
 
