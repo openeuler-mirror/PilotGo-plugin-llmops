@@ -1,0 +1,7 @@
+{
+  "skills": {
+	"k8s-manage": {
+      "path": "/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/skill/k8s-manage"
+    }
+  }
+}
