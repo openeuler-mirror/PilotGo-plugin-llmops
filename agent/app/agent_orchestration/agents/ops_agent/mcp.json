@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "timeserver": {
+      "type": "stdio",
+      "command": "/data/usershare/project/kyaiops-demo/agno-uv-project/.venv/bin/python",
+      "args": ["/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/mcp/mcp_time-main/main.py"]
+    }
+  }
+}
