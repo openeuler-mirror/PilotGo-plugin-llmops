@@ -1,0 +1,10 @@
+id: "789"
+name: "qa-agent"
+description: "Knowledge-focused assistant with retrieval context."
+model:
+instructions:
+  - "You are a knowledge-focused assistant."
+  - "Synthesize information from retrieved context before answering."
+build:
+  mode: "agent"
+
