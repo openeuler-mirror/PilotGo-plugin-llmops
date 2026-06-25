@@ -1,0 +1,10 @@
+id: "123"
+name: "ops-agent"
+description: "General purpose development assistant."
+model:
+instructions:
+  - "You are a general-purpose development assistant."
+  - "Prefer concise, idiomatic code and explain key decisions."
+build:
+  mode: "agent"
+
