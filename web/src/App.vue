@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterView } from 'vue-router'
+import { ref, computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
+import { Odometer } from '@element-plus/icons-vue'
 
 interface Notification {
   id: number
@@ -33,29 +34,53 @@ const closeNotification = (id: number) => {
   }
 }
 
+// 侧边栏导航：根据当前路由高亮对应菜单项
+const route = useRoute()
+const activeMenu = computed(() => route.path)
 </script>
 
 <template>
-  <el-container class="h-screen flex flex-col overflow-hidden">
-    <!-- 通知栏顶栏 -->
-    <div class="shrink-0 space-y-2">
-      <el-alert v-for="notification in notifications" :key="notification.id" :description="notification.message"
-        :type="notification.type" show-icon :closable="true" @close="closeNotification(notification.id)" class="h-16" />
-    </div>
+  <el-container class="h-screen overflow-hidden">
+    <!-- 顶部标题栏 -->
+    <el-header class="bg-white border-b border-gray-200 flex items-center shrink-0">
+      <span class="text-lg font-semibold text-gray-800">PilotGo LLMOps</span>
+    </el-header>
 
-    <!-- 主要内容区域 - 路由页面 -->
-    <el-main class="flex-1 bg-gray-100 p-3! overflow-hidden">
-      <!-- 路由页面占位 -->
-      <RouterView />
-    </el-main>
+    <el-container class="overflow-hidden">
+      <!-- 左侧侧边栏导航 -->
+      <el-aside width="200px" class="bg-white border-r border-gray-200">
+        <!-- router 模式：菜单项 index 即路由路径，点击经 vue-router 跳转 -->
+        <el-menu :default-active="activeMenu" router class="h-full border-r-0">
+          <el-menu-item index="/">
+            <el-icon><Odometer /></el-icon>
+            <span>Overview</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
 
-    <!-- Footer 区域 -->
-    <el-footer class="bg-white shrink-0" style="height: 50px;">
-      <div class="h-full flex items-center justify-center">
-        <p class="text-sm text-gray-500">
-          &copy; KylinSoft 2024, All rights reserved | PilotGo-plugin-llmops v0.0.0
-        </p>
-      </div>
-    </el-footer>
+      <!-- 右侧主区域：通知栏 + 路由页面 + footer -->
+      <el-container class="flex flex-col overflow-hidden">
+        <!-- 通知栏顶栏 -->
+        <div class="shrink-0 space-y-2">
+          <el-alert v-for="notification in notifications" :key="notification.id" :description="notification.message"
+            :type="notification.type" show-icon :closable="true" @close="closeNotification(notification.id)" class="h-16" />
+        </div>
+
+        <!-- 主要内容区域 - 路由页面 -->
+        <el-main class="flex-1 bg-gray-100 p-3! overflow-hidden">
+          <!-- 路由页面占位 -->
+          <RouterView />
+        </el-main>
+
+        <!-- Footer 区域 -->
+        <el-footer class="bg-white shrink-0" style="height: 50px;">
+          <div class="h-full flex items-center justify-center">
+            <p class="text-sm text-gray-500">
+              &copy; KylinSoft 2026, All rights reserved | PilotGo-plugin-llmops v0.0.0
+            </p>
+          </div>
+        </el-footer>
+      </el-container>
+    </el-container>
   </el-container>
 </template>
