@@ -1,0 +1,24 @@
+{
+  "knowledgeBases": {
+    "qa_kb": {
+      "type": "stdio",
+      "collection": "qa_knowledge",
+      "path": "/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/knowledge/qa_kb",
+      "embedder": {
+        "id": "bge-m3",
+        "host": "",
+        "dimensions": 1024
+      }
+    },
+    "case_kb": {
+      "type": "stdio",
+      "collection": "incident_cases",
+      "path": "/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/knowledge/case_kb",
+      "embedder": {
+        "id": "bge-m3",
+        "host": "",
+        "dimensions": 1024
+      }
+    }
+  }
+}
