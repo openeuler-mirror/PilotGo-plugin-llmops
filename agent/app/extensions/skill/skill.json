@@ -1,0 +1,14 @@
+{
+  "skills": {
+    "find-skills": {
+      "path": "/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/skill/find-skills"
+    },
+    "web-design-guidelines": {
+      "path": "/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/skill/web-design-guidelines"
+    },
+	"k8s-manage": {
+      "path": "/data/usershare/project/kyaiops-demo/agno-uv-project/app/extensions/skill/k8s-manage"
+    }
+  }
+}
+
