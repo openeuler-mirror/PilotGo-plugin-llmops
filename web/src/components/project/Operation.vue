@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import MTable from '../common/MTable.vue'
+import { listOperationScripts, type OperationScript } from '../../apis/operation'
 
 interface ScriptItem {
   id: number | string
@@ -12,15 +13,7 @@ interface ScriptItem {
 
 const props = defineProps<{ projectId: string | number }>()
 
-const scripts = ref<ScriptItem[]>([
-    {
-        id: 1,
-        name: '扩充Nginx实例',
-        description: '扩充n个Nginx实例，提升集群服务能力',
-        updatedBy: 'admin',
-        updatedAt: '2023-01-01 00:00:00',
-    },
-])
+const scripts = ref<OperationScript[]>([])
 const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
@@ -34,21 +27,12 @@ const emit = defineEmits<{
 const loadScripts = async () => {
   loading.value = true
   try {
-    const res = await fetch(`/api/projects/${props.projectId}/operation/scripts?page=${currentPage.value}`)
-    if (res.ok) {
-      const data = await res.json()
-      if (Array.isArray(data)) {
-        scripts.value = data as ScriptItem[]
-        totalPages.value = 1
-      } else if (data && Array.isArray(data.items)) {
-        scripts.value = data.items as ScriptItem[]
-        totalPages.value = Number((data.totalPages ?? data.total_pages) || 1)
-      } else {
-        scripts.value = []
-        totalPages.value = 1
-      }
-    }
+    scripts.value = await listOperationScripts(props.projectId, currentPage.value)
+    totalPages.value = 1
   } catch (e) {
+    console.error('加载运维脚本失败', e)
+    scripts.value = []
+    totalPages.value = 1
   } finally {
     loading.value = false
   }
