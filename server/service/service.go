@@ -6,6 +6,7 @@ import (
     "gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
     "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/audit"
     "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/knowledge"
+    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/operation"
     "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/project"
     "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/topology"
     "github.com/sourcegraph/conc"
@@ -41,6 +42,7 @@ func registerServices() {
     registerService(knowledge.GetKnowledgeService())
     registerService(audit.GetAuditService())
     registerService(topology.GetTopologyService())
+    registerService(operation.GetOperationService())
 }
 
 func StartServices() error {
