@@ -86,3 +86,23 @@ func (s *AuditService) ListAuditsByProjectID(ctx context.Context, projectID int)
 	}
 	return s.ad.ListByProjectID(projectID)
 }
+
+func (s *AuditService) ListAuditsByProjectIDPaged(ctx context.Context, projectID, page, perPage int) (items []*dao.Audit, total int64, err error) {
+	if s.ad == nil {
+		return nil, 0, errors.New("audit service not initialized")
+	}
+	q := &dao.AuditQuery{
+		ProjectID: &projectID,
+		Limit:     perPage,
+		Offset:    (page - 1) * perPage,
+	}
+	total, err = s.ad.CountByQuery(q)
+	if err != nil {
+		return nil, 0, err
+	}
+	items, err = s.ad.ListByQuery(q)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}

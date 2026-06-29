@@ -17,7 +17,19 @@ func ListAuditByProjectID(c *gin.Context) {
 		ResponseError(c, http.StatusBadRequest, "invalid id")
 		return
 	}
-	items, err := auditSrv.ListAuditsByProjectID(c.Request.Context(), id)
+	page := 1
+	if v := c.Query("page"); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n > 0 {
+			page = n
+		}
+	}
+	perPage := 20
+	if v := c.Query("perpage"); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n > 0 && n <= 200 {
+			perPage = n
+		}
+	}
+	items, total, err := auditSrv.ListAuditsByProjectIDPaged(c.Request.Context(), id, page, perPage)
 	if err != nil {
 		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
@@ -32,7 +44,7 @@ func ListAuditByProjectID(c *gin.Context) {
 			"description": a.Action,
 		}
 	}
-	Response(c, res)
+	ResponsePage(c, page, perPage, int(total), res)
 }
 
 type listAuditQueryReq struct {

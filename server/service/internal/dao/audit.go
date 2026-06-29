@@ -68,6 +68,8 @@ type AuditQuery struct {
 	Actor      string
 	ActionType string
 	Target     string
+	Limit      int
+	Offset     int
 }
 
 func (d *AuditDao) ListByQuery(q *AuditQuery) ([]*Audit, error) {
@@ -89,9 +91,36 @@ func (d *AuditDao) ListByQuery(q *AuditQuery) ([]*Audit, error) {
 		if q.Target != "" {
 			tx = tx.Where("target = ?", q.Target)
 		}
+		if q.Limit > 0 {
+			tx = tx.Limit(q.Limit).Offset(q.Offset)
+		}
 	}
 	err := tx.Find(&items).Error
 	return items, err
+}
+
+func (d *AuditDao) CountByQuery(q *AuditQuery) (int64, error) {
+	if d.db == nil {
+		return 0, errors.New("database not initialized")
+	}
+	tx := d.db.Model(&Audit{})
+	if q != nil {
+		if q.ProjectID != nil {
+			tx = tx.Where("project_id = ?", *q.ProjectID)
+		}
+		if q.Actor != "" {
+			tx = tx.Where("actor = ?", q.Actor)
+		}
+		if q.ActionType != "" {
+			tx = tx.Where("action_type = ?", q.ActionType)
+		}
+		if q.Target != "" {
+			tx = tx.Where("target = ?", q.Target)
+		}
+	}
+	var n int64
+	err := tx.Count(&n).Error
+	return n, err
 }
 
 func (d *AuditDao) ListByProjectID(projectID int) ([]*Audit, error) {
