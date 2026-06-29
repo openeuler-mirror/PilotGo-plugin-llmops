@@ -11,6 +11,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func ListKnowledge(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ResponseError(c, http.StatusBadRequest, "invalid project id")
+		return
+	}
+	data, err := knowledge.GetKnowledgeService().ListKnowledge(id)
+	if err != nil {
+		ResponseError(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	Response(c, data)
+}
+
 func UploadKnowledge(c *gin.Context) {
 	object := c.PostForm("object")
 	projectIDStr := c.PostForm("project_id")

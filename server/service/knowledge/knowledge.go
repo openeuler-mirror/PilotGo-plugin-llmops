@@ -10,6 +10,52 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+type KnowledgeDTO struct {
+	ID        int64  `json:"id"`
+	ProjectID int    `json:"project_id"`
+	Object    string `json:"object"`
+	FileName  string `json:"file_name"`
+	Uploader  string `json:"uploader"`
+	Desc      string `json:"desc"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// ListKnowledge 获取知识文件列表，projectID > 0 时按项目过滤
+func (s *KnowledgeService) ListKnowledge(projectID int) ([]*KnowledgeDTO, error) {
+	if s.kd == nil {
+		return nil, errors.New("knowledge service not initialized")
+	}
+
+	var items []*dao.Knowledge
+	var err error
+	if projectID > 0 {
+		items, err = s.kd.ListByProjectID(projectID)
+	} else {
+		items, err = s.kd.List()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为DTO列表
+	result := make([]*KnowledgeDTO, len(items))
+	for i, item := range items {
+		result[i] = &KnowledgeDTO{
+			ID:        item.ID,
+			ProjectID: item.ProjectID,
+			Object:    item.Object,
+			FileName:  item.FileName,
+			Uploader:  item.Uploader,
+			Desc:      item.Desc,
+			CreatedAt: item.CreatedAt,
+			UpdatedAt: item.UpdatedAt,
+		}
+	}
+
+	return result, nil
+}
+
 type UploadKnowledgeReq struct {
 	ProjectID int    `json:"project_id"`
 	Object    string `json:"object"`
