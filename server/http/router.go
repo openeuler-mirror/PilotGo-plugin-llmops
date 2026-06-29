@@ -34,6 +34,13 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 		{
 			auditGroup.GET("/logs", handler.ListAuditByFilters)
 		}
+
+		topologyGroup := apiGroup.Group("/topology")
+		{
+			topologyGroup.GET("", handler.ListTopologyConfig)
+			topologyGroup.PUT("", handler.SaveTopologyConfig)
+			topologyGroup.DELETE("/:id", handler.DeleteTopologyConfig)
+		}
 	}
 	return router
 }
