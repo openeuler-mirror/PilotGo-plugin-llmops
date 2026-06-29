@@ -1,42 +1,55 @@
-# web
+# PilotGo-plugin-llmops · Web
 
-This template should help get you started developing with Vue 3 in Vite.
+PilotGo-plugin-llmops 的前端,LLM 辅助的集群故障分析、巡检与运维管理插件的 Web 控制台。
 
-## Recommended IDE Setup
+## 技术栈
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- Vue 3 + TypeScript + Vite
+- Element Plus(UI 组件)
+- Pinia(状态管理)
+- Vue Router
+- ECharts / @antv/g6(图表与拓扑可视化)
+- Tailwind CSS
 
-## Recommended Browser Setup
+## 环境要求
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- Node.js `^20.19.0` 或 `>=22.12.0`
 
-## Type Support for `.vue` Imports in TS
+## 快速开始
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
+# 安装依赖
 yarn
-```
 
-### Compile and Hot-Reload for Development
-
-```sh
+# 启动开发服务器(默认 http://localhost:4100)
 yarn dev
-```
 
-### Type-Check, Compile and Minify for Production
-
-```sh
+# 生产构建(含类型检查)
 yarn build
+
+# 预览构建产物
+yarn preview
 ```
+
+## 常用脚本
+
+| 命令 | 说明 |
+| --- | --- |
+| `yarn dev` | 启动 Vite 开发服务器 |
+| `yarn build` | 类型检查 + 生产构建 |
+| `yarn preview` | 预览构建产物 |
+| `yarn type-check` | 仅运行类型检查(vue-tsc) |
+| `yarn lint` | ESLint 检查 |
+| `yarn format` | Prettier 格式化 src/ |
+
+## 后端代理配置
+
+开发环境通过 Vite proxy 将 `/api` 转发到后端服务。相关环境变量见 `.env.example`:
+
+- `VITE_API_BASE_URL` — 留空表示同源相对 `/api`(经 dev proxy 转发);设为绝对 URL 则直连远端
+- `VITE_DEV_PROXY_TARGET` — 后端地址,默认 `http://localhost:8090`
+
+复制 `.env.example` 为 `.env.local` 后按需修改。
+
+## 目录结构
+
