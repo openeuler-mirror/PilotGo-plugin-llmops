@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { deleteProject } from '@/apis/project'
+import StatusTag from '@/components/common/StatusTag.vue'
 
 // 定义组件属性
 interface Props {
@@ -14,20 +14,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-// 获取状态样式
-const statusStyle = computed(() => {
-  switch (props.status) {
-    case '正常':
-      return { type: 'success' as const, text: 'success' }
-    case '警告':
-      return { type: 'warning' as const, text: 'warning' }
-    case '错误':
-      return { type: 'danger' as const, text: 'danger' }
-    default:
-      return { type: 'info' as const, text: 'info' }
-  }
-})
 
 // 定义事件
 const emit = defineEmits<{
@@ -58,9 +44,7 @@ const handleDelete = async () => {
       <h3 class="text-lg font-semibold text-gray-900 mb-1 line-clamp-1">
         {{ name }}
       </h3>
-      <el-tag :type="statusStyle.type" size="small" class="mb-2">
-        {{ status }}
-      </el-tag>
+      <StatusTag :status="status" size="small" class="mb-2" />
     </div>
 
     <!-- 项目描述 -->

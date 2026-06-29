@@ -19,6 +19,7 @@ import Audit from '../components/project/Audit.vue'
 import { getProject, updateProject, type Project as ApiProject } from '@/apis/project'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import StatusTag from '@/components/common/StatusTag.vue'
 
 // 接收路由参数
 const props = defineProps<{
@@ -145,10 +146,7 @@ const cancelEdit = () => {
           返回
         </el-button>
         <h2 class="text-black text-2xl font-bold">{{ projectInfo.name }}</h2>
-        <el-tag :type="projectInfo.status === '正常' ? 'success' : projectInfo.status === '警告' ? 'warning' : 'danger'"
-          size="small" class="ml-2 self-end">
-          {{ projectInfo.status }}
-        </el-tag>
+        <StatusTag :status="projectInfo.status" size="small" class="ml-2 self-end" />
       </div>
       <div class="flex items-center space-x-4">
         <el-button type="primary" @click="openEditDialog">编辑项目</el-button>
