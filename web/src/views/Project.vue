@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   Checked,
   Share,
@@ -28,6 +29,7 @@ const props = defineProps<{
 }>()
 
 const router = useRouter()
+const { t } = useI18n()
 
 // 当前选中的菜单项
 const activeMenu = ref('topology')
@@ -111,7 +113,7 @@ const editLoading = ref(false)
 const editFormRef = ref<FormInstance>()
 const editForm = ref<{ name: string; desc: string }>({ name: '', desc: '' })
 const editRules: FormRules = {
-  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  name: [{ required: true, message: t('project.form.namePlaceholder'), trigger: 'blur' }],
 }
 const openEditDialog = () => {
   editForm.value = { name: project.value?.name || '', desc: project.value?.desc || '' }
@@ -124,11 +126,11 @@ const submitEdit = async () => {
   editLoading.value = true
   try {
     const msg = await updateProject(Number(props.id), { name: editForm.value.name, desc: editForm.value.desc })
-    ElMessage.success(msg || '更新成功')
+    ElMessage.success(msg || t('project.updateSuccess'))
     editDialogVisible.value = false
     await loadProject()
   } catch (e: any) {
-    ElMessage.error(e?.message || '更新失败')
+    ElMessage.error(e?.message || t('project.updateFailed'))
   } finally {
     editLoading.value = false
   }
@@ -142,7 +144,7 @@ const operationRef = ref<InstanceType<typeof ClusterOperation>>()
 const handleOperationDelete = async (scriptId: number | string) => {
   try {
     const msg = await deleteOperationScript(props.id, scriptId)
-    ElMessage.success(msg || '删除成功')
+    ElMessage.success(msg || t('project.deleteSuccess'))
     operationRef.value?.loadScripts()
   } catch {
     // 失败提示由 request.ts 的 handleError 统一弹出,此处仅吞掉 rejection
@@ -162,7 +164,7 @@ const handleOperationDelete = async (scriptId: number | string) => {
         <StatusTag :status="projectInfo.status" size="small" class="ml-2 self-end" />
       </div>
       <div class="flex items-center space-x-4">
-        <el-button type="primary" @click="openEditDialog">编辑项目</el-button>
+        <el-button type="primary" @click="openEditDialog">{{ $t('project.editProject') }}</el-button>
       </div>
     </div>
 
@@ -219,18 +221,18 @@ const handleOperationDelete = async (scriptId: number | string) => {
         </div>
       </div>
     </div>
-    <el-dialog v-model="editDialogVisible" title="编辑项目" width="500px" :lock-scroll="false">
+    <el-dialog v-model="editDialogVisible" :title="$t('project.editProject')" width="500px" :lock-scroll="false">
       <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="100px">
-        <el-form-item label="项目名称" prop="name">
+        <el-form-item :label="$t('project.form.name')" prop="name">
           <el-input v-model="editForm.name" maxlength="255" show-word-limit />
         </el-form-item>
-        <el-form-item label="项目描述" prop="desc">
+        <el-form-item :label="$t('project.form.desc')" prop="desc">
           <el-input v-model="editForm.desc" type="textarea" rows="4" maxlength="1000" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cancelEdit">取消</el-button>
-        <el-button type="primary" :loading="editLoading" @click="submitEdit">更新</el-button>
+        <el-button @click="cancelEdit">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="editLoading" @click="submitEdit">{{ $t('project.update') }}</el-button>
       </template>
     </el-dialog>
   </div>
