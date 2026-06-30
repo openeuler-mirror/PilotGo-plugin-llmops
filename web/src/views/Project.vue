@@ -156,7 +156,7 @@ const handleOperationDelete = async (scriptId: number | string) => {
     <div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
       <div class="flex items-center">
         <el-button :icon="ArrowLeft" @click="goBack" class="mr-4 text-xl! font-bold text-black!" text>
-          返回
+          {{ $t('common.back') }}
         </el-button>
         <h2 class="text-black text-2xl font-bold">{{ projectInfo.name }}</h2>
         <StatusTag :status="projectInfo.status" size="small" class="ml-2 self-end" />
