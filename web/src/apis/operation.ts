@@ -22,3 +22,11 @@ export async function listOperationScripts(projectId: number | string, page?: nu
     updatedAt: it.updated_at ?? '',
   }))
 }
+
+export async function deleteOperationScript(
+  projectId: number | string,
+  scriptId: number | string,
+): Promise<string> {
+  const res = await httpClient.delete<void>(`/api/project/${projectId}/operation/scripts/${scriptId}`)
+  return res.message ?? ''
+}

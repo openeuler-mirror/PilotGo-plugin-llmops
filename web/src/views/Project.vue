@@ -17,6 +17,7 @@ import ClusterMonitor from '../components/project/Monitor.vue'
 import ClusterOperation from '../components/project/Operation.vue'
 import Audit from '../components/project/Audit.vue'
 import { getProject, updateProject, type Project as ApiProject } from '@/apis/project'
+import { deleteOperationScript } from '@/apis/operation'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import StatusTag from '@/components/common/StatusTag.vue'
@@ -135,6 +136,18 @@ const submitEdit = async () => {
 const cancelEdit = () => {
   editDialogVisible.value = false
 }
+
+// 集群运维脚本删除:projectId 在父组件,删除与刷新逻辑由父组件承接
+const operationRef = ref<InstanceType<typeof ClusterOperation>>()
+const handleOperationDelete = async (scriptId: number | string) => {
+  try {
+    const msg = await deleteOperationScript(props.id, scriptId)
+    ElMessage.success(msg || '删除成功')
+    operationRef.value?.loadScripts()
+  } catch {
+    // 失败提示由 request.ts 的 handleError 统一弹出,此处仅吞掉 rejection
+  }
+}
 </script>
 
 <template>
@@ -197,7 +210,7 @@ const cancelEdit = () => {
 
         <!-- 集群运维内容 -->
         <div v-else-if="activeMenu === 'operation'" class="bg-white rounded-lg shadow-sm p-6 h-full">
-          <ClusterOperation :projectId="props.id" />
+          <ClusterOperation ref="operationRef" :projectId="props.id" @delete="handleOperationDelete" />
         </div>
 
         <!-- 集群审计内容 -->
