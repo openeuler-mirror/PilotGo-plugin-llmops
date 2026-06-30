@@ -11,9 +11,9 @@ const totalPages = ref(1)
 
 const loadLogs = async () => {
   try {
-    const items = await listProjectAuditLogs(props.projectId, currentPage.value)
-    logs.value = items
-    totalPages.value = 1
+    const res = await listProjectAuditLogs(props.projectId, currentPage.value)
+    logs.value = res.data
+    totalPages.value = Math.max(1, Math.ceil(res.total / (res.perpage || 20)))
   } catch {}
 }
 
