@@ -37,6 +37,15 @@ const closeNotification = (id: number) => {
 // 侧边栏导航：根据当前路由高亮对应菜单项
 const route = useRoute()
 const activeMenu = computed(() => route.path)
+
+// 路由级面包屑导航
+const breadcrumbs = computed(() => {
+  const items: { text: string; to?: string }[] = [{ text: '总览', to: '/' }]
+  if (route.path.startsWith('/project/')) {
+    items.push({ text: '项目详情' })
+  }
+  return items
+})
 </script>
 
 <template>
@@ -44,6 +53,15 @@ const activeMenu = computed(() => route.path)
     <!-- 顶部标题栏 -->
     <el-header class="bg-white border-b border-gray-200 flex items-center shrink-0">
       <span class="text-lg font-semibold text-gray-800">PilotGo LLMOps</span>
+      <el-breadcrumb separator="/" class="ml-6">
+        <el-breadcrumb-item
+          v-for="(item, idx) in breadcrumbs"
+          :key="idx"
+          :to="idx < breadcrumbs.length - 1 && item.to ? { path: item.to } : undefined"
+        >
+          {{ item.text }}
+        </el-breadcrumb-item>
+      </el-breadcrumb>
     </el-header>
 
     <el-container class="overflow-hidden">
