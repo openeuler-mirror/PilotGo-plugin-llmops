@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import MTable from '../common/MTable.vue'
 import { listOperationScripts, type OperationScript } from '../../apis/operation'
 
@@ -57,7 +58,17 @@ const handlePageChange = (page: number) => {
 
 const handleEdit = (row: ScriptItem) => emit('edit', row.id)
 const handleRun = (row: ScriptItem) => emit('run', row.id)
-const handleDelete = (row: ScriptItem) => emit('delete', row.id)
+const handleDelete = (row: ScriptItem) => {
+  ElMessageBox.confirm(`确定删除脚本「${row.name}」吗?`, '删除确认', {
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+  })
+    .then(() => emit('delete', row.id))
+    .catch(() => {})
+}
+
+defineExpose({ loadScripts })
 </script>
 
 <template>
