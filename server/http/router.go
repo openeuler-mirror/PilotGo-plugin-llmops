@@ -20,6 +20,7 @@ func registerRouter(router *gin.Engine) *gin.Engine {
 			projectGroup.GET("/:id", handler.GetProject)
 			projectGroup.PUT("/:id", handler.UpdateProject)
 			projectGroup.GET("/:id/audit/logs", handler.ListAuditByProjectID)
+			projectGroup.GET("/:id/knowledge/files", handler.ListKnowledge)
 			projectGroup.GET("/:id/operation/scripts", handler.ListOperationScripts)
 			projectGroup.POST("/:id/operation/scripts", handler.CreateOperationScript)
 			projectGroup.PUT("/:id/operation/scripts/:sid", handler.UpdateOperationScript)
