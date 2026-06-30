@@ -36,4 +36,28 @@ export default {
       audit: { title: '集群审计', desc: '集群操作审计记录' },
     },
   },
+  knowledge: {
+    title: '集群知识库',
+    upload: '上传文件',
+    submitUpload: '上传',
+    columns: {
+      filename: '文件名',
+      fileType: '文件类型',
+      uploadedAt: '上传时间',
+      uploader: '上传人',
+      description: '文件描述',
+      action: '操作',
+    },
+    form: {
+      file: '文件',
+      object: '对象名',
+      objectPlaceholder: '默认使用文件名',
+      uploader: '上传人',
+      desc: '描述',
+    },
+    deleteConfirm: '确认删除该文件？',
+    deleteConfirmTitle: '确认删除',
+    deleteSuccess: '删除成功',
+    deleteMissingId: '无法删除：缺少ID',
+  },
 }

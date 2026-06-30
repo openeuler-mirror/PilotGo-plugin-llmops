@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MTable from '../common/MTable.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { uploadKnowledge, listKnowledgeFiles, deleteKnowledge as deleteKnowledgeApi, type KnowledgeFile } from '../../apis/knowledge'
 
 const props = defineProps<{ projectId: string }>()
+const { t } = useI18n()
 
 const files = ref<KnowledgeFile[]>([])
 const loading = ref(false)
@@ -84,14 +86,14 @@ const doUpload = async () => {
 
 const deleteKnowledge = async (row: any) => {
   try {
-    await ElMessageBox.confirm('确认删除该文件？', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', lockScroll: false })
+    await ElMessageBox.confirm(t('knowledge.deleteConfirm'), t('knowledge.deleteConfirmTitle'), { type: 'warning', confirmButtonText: t('common.delete'), cancelButtonText: t('common.cancel'), lockScroll: false })
     const id = Number(row?.id)
     if (!id || isNaN(id)) {
-      ElMessage.error('无法删除：缺少ID')
+      ElMessage.error(t('knowledge.deleteMissingId'))
       return
     }
     const msg = await deleteKnowledgeApi(id)
-    ElMessage.success(msg || '删除成功')
+    ElMessage.success(msg || t('knowledge.deleteSuccess'))
     loadFiles()
   } catch (e) {}
 }
@@ -100,46 +102,46 @@ const deleteKnowledge = async (row: any) => {
 <template>
   <div class="h-full flex flex-col">
     <div class="flex justify-between items-center">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4">集群知识库</h2>
-      <el-button type="primary" @click="openUpload">上传文件</el-button>
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ $t('knowledge.title') }}</h2>
+      <el-button type="primary" @click="openUpload">{{ $t('knowledge.upload') }}</el-button>
     </div>
     <MTable :data="files" :currentPage="currentPage" :totalPages="totalPages" @page-change="handlePageChange"
       class="flex-1">
       <template #columns>
-        <el-table-column prop="filename" label="文件名" min-width="220" />
-        <el-table-column prop="fileType" label="文件类型" min-width="80" />
-        <el-table-column prop="uploadedAt" label="上传时间" width="180" />
-        <el-table-column prop="uploader" label="上传人" width="140" />
-        <el-table-column prop="description" label="文件描述" min-width="300" show-overflow-tooltip />
-        <el-table-column label="操作" width="80">
+        <el-table-column prop="filename" :label="$t('knowledge.columns.filename')" min-width="220" />
+        <el-table-column prop="fileType" :label="$t('knowledge.columns.fileType')" min-width="80" />
+        <el-table-column prop="uploadedAt" :label="$t('knowledge.columns.uploadedAt')" width="180" />
+        <el-table-column prop="uploader" :label="$t('knowledge.columns.uploader')" width="140" />
+        <el-table-column prop="description" :label="$t('knowledge.columns.description')" min-width="300" show-overflow-tooltip />
+        <el-table-column :label="$t('knowledge.columns.action')" width="80">
           <template #default="scope">
-            <el-button type="danger" size="mini" @click="deleteKnowledge(scope.row)">删除</el-button>
+            <el-button type="danger" size="mini" @click="deleteKnowledge(scope.row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </template>
     </MTable>
-    <el-dialog v-model="uploadVisible" title="上传文件" width="520px">
+    <el-dialog v-model="uploadVisible" :title="$t('knowledge.upload')" width="520px">
       <div class="space-y-4">
         <div class="flex items-center">
-          <span class="w-20 text-gray-600">文件</span>
+          <span class="w-20 text-gray-600">{{ $t('knowledge.form.file') }}</span>
           <input type="file" @change="onFileSelect" />
         </div>
         <div class="flex items-center">
-          <span class="w-20 text-gray-600">对象名</span>
-          <el-input v-model="objectName" placeholder="默认使用文件名" />
+          <span class="w-20 text-gray-600">{{ $t('knowledge.form.object') }}</span>
+          <el-input v-model="objectName" :placeholder="$t('knowledge.form.objectPlaceholder')" />
         </div>
         <div class="flex items-center">
-          <span class="w-20 text-gray-600">上传人</span>
+          <span class="w-20 text-gray-600">{{ $t('knowledge.form.uploader') }}</span>
           <el-input v-model="uploader" />
         </div>
         <div class="flex items-start">
-          <span class="w-20 text-gray-600 leading-8">描述</span>
+          <span class="w-20 text-gray-600 leading-8">{{ $t('knowledge.form.desc') }}</span>
           <el-input type="textarea" v-model="description" />
         </div>
       </div>
       <template #footer>
-        <el-button @click="uploadVisible = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" :disabled="!selectedFile" @click="doUpload">上传</el-button>
+        <el-button @click="uploadVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="uploading" :disabled="!selectedFile" @click="doUpload">{{ $t('knowledge.submitUpload') }}</el-button>
       </template>
     </el-dialog>
   </div>

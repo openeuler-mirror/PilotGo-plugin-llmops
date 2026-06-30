@@ -36,4 +36,28 @@ export default {
       audit: { title: 'Cluster Audit', desc: 'Cluster operation audit logs' },
     },
   },
+  knowledge: {
+    title: 'Cluster Knowledge Base',
+    upload: 'Upload File',
+    submitUpload: 'Upload',
+    columns: {
+      filename: 'File Name',
+      fileType: 'File Type',
+      uploadedAt: 'Uploaded At',
+      uploader: 'Uploader',
+      description: 'Description',
+      action: 'Action',
+    },
+    form: {
+      file: 'File',
+      object: 'Object Name',
+      objectPlaceholder: 'Defaults to the file name',
+      uploader: 'Uploader',
+      desc: 'Description',
+    },
+    deleteConfirm: 'Delete this file?',
+    deleteConfirmTitle: 'Confirm Deletion',
+    deleteSuccess: 'Deleted successfully',
+    deleteMissingId: 'Cannot delete: missing ID',
+  },
 }
