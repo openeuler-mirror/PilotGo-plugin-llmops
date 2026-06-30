@@ -38,50 +38,50 @@ const project = ref<ApiProject | null>(null)
 
 const projectInfo = computed(() => {
   if (project.value) {
-    return { name: project.value.name, status: '正常', team: '未设置' }
+    return { name: project.value.name, status: t('project.status.normal'), team: t('project.team.unset') }
   }
-  return { name: '未知项目', status: '未知', team: '未知团队' }
+  return { name: t('project.unknownName'), status: t('project.status.unknown'), team: t('project.team.unknown') }
 })
 
-// 菜单项配置
-const menuItems = [
+// 菜单项配置(computed:title/description 随语言切换更新)
+const menuItems = computed(() => [
   {
     id: 'topology',
-    title: '业务拓扑',
+    title: t('project.menu.topology.title'),
     icon: Share,
-    description: '业务拓扑结构和依赖关系'
+    description: t('project.menu.topology.desc')
   },
   {
     id: 'monitoring',
-    title: '集群监控',
+    title: t('project.menu.monitoring.title'),
     icon: Monitor,
-    description: '集群性能和资源监控'
+    description: t('project.menu.monitoring.desc')
   },
   {
     id: 'events',
-    title: '集群事件',
+    title: t('project.menu.events.title'),
     icon: Warning,
-    description: '集群事件和告警信息'
+    description: t('project.menu.events.desc')
   },
   {
     id: 'operation',
-    title: '集群运维',
+    title: t('project.menu.operation.title'),
     icon: Operation,
-    description: '集群运维'
+    description: t('project.menu.operation.desc')
   },
   {
     id: 'knowledge',
-    title: '知识库',
+    title: t('project.menu.knowledge.title'),
     icon: DocumentCopy,
-    description: '项目相关文档和知识管理'
+    description: t('project.menu.knowledge.desc')
   },
   {
     id: 'audit',
-    title: '集群审计',
+    title: t('project.menu.audit.title'),
     icon: Checked,
-    description: '集群操作审计记录'
+    description: t('project.menu.audit.desc')
   },
-]
+])
 
 // 处理菜单点击
 const handleMenuClick = (index: string) => {
@@ -112,9 +112,9 @@ const editDialogVisible = ref(false)
 const editLoading = ref(false)
 const editFormRef = ref<FormInstance>()
 const editForm = ref<{ name: string; desc: string }>({ name: '', desc: '' })
-const editRules: FormRules = {
+const editRules = computed<FormRules>(() => ({
   name: [{ required: true, message: t('project.form.namePlaceholder'), trigger: 'blur' }],
-}
+}))
 const openEditDialog = () => {
   editForm.value = { name: project.value?.name || '', desc: project.value?.desc || '' }
   editDialogVisible.value = true
