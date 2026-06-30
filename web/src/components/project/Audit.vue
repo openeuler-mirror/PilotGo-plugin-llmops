@@ -37,14 +37,14 @@ const handlePageChange = (page: number) => {
 
 <template>
   <div class="h-full flex flex-col">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">审计日志</h2>
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ $t('audit.title') }}</h2>
     <MTable :data="logs" :currentPage="currentPage" :totalPages="totalPages" @page-change="handlePageChange" class="flex-1">
       <template #columns>
         <el-table-column prop="id" label="ID" width="100" />
-        <el-table-column prop="time" label="时间" width="180" />
-        <el-table-column prop="operator" label="操作人" width="140" />
-        <el-table-column prop="component" label="操作组件" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="description" label="变更描述" min-width="300" show-overflow-tooltip />
+        <el-table-column prop="time" :label="$t('audit.columns.time')" width="180" />
+        <el-table-column prop="operator" :label="$t('audit.columns.operator')" width="140" />
+        <el-table-column prop="component" :label="$t('audit.columns.component')" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="description" :label="$t('audit.columns.description')" min-width="300" show-overflow-tooltip />
       </template>
     </MTable>
   </div>
