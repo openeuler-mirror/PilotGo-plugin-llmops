@@ -2,16 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import MTable from '../common/MTable.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { uploadKnowledge, listKnowledgeFiles, deleteKnowledge as deleteKnowledgeApi } from '../../apis/knowledge'
-
-interface KnowledgeFile {
-  id?: number
-  filename: string
-  fileType: string
-  uploadedAt: string
-  uploader: string
-  description: string
-}
+import { uploadKnowledge, listKnowledgeFiles, deleteKnowledge as deleteKnowledgeApi, type KnowledgeFile } from '../../apis/knowledge'
 
 const props = defineProps<{ projectId: string }>()
 
@@ -30,16 +21,8 @@ const loadFiles = async () => {
   loading.value = true
   try {
     const data = await listKnowledgeFiles(props.projectId, currentPage.value)
-    if (Array.isArray(data)) {
-      files.value = data as KnowledgeFile[]
-      totalPages.value = 1
-    } else if (data && Array.isArray(data.items)) {
-      files.value = data.items as KnowledgeFile[]
-      totalPages.value = Number((data as any).totalPages || (data as any).total_pages || 1)
-    } else {
-      files.value = []
-      totalPages.value = 1
-    }
+    files.value = Array.isArray(data) ? data : []
+    totalPages.value = 1
   } catch (e) {
   } finally {
     loading.value = false

@@ -1,14 +1,12 @@
 import { httpClient } from './request'
 
-export interface KnowledgeItem {
-  id: number
-  project_id: number
-  object: string
-  file_name: string
+export interface KnowledgeFile {
+  id?: number
+  filename: string
+  fileType: string
+  uploadedAt: string
   uploader: string
-  desc: string
-  created_at: string
-  updated_at: string
+  description: string
 }
 
 export async function uploadKnowledge(params: {
@@ -45,7 +43,25 @@ export async function downloadKnowledge(object: string): Promise<Blob> {
   return await httpClient.getBlob(`/api/knowledge/download?object=${encodeURIComponent(object)}`)
 }
 
-export async function listKnowledgeFiles(projectId: number | string, page?: number): Promise<any> {
-  const res = await httpClient.get<any>(`/api/project/${projectId}/knowledge/files`, { page })
-  return res.data
+// 从文件名后缀推导文件类型(后端无此字段);取最后一个 "." 后的小写扩展名,无后缀则空
+function extOf(name: string): string {
+  const dot = name.lastIndexOf('.')
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
+}
+
+export async function listKnowledgeFiles(projectId: number | string, page?: number): Promise<KnowledgeFile[]> {
+  const res = await httpClient.get<any[]>(`/api/project/${projectId}/knowledge/files`, { page })
+  const list = res.data ?? []
+  // 后端下划线 → 前端驼峰映射;fileType 从 filename 后缀推导
+  return (Array.isArray(list) ? list : []).map((it: any) => {
+    const filename = it.file_name ?? ''
+    return {
+      id: it.id,
+      filename,
+      fileType: extOf(filename),
+      uploadedAt: it.created_at ?? '',
+      uploader: it.uploader ?? '',
+      description: it.desc ?? '',
+    }
+  })
 }
