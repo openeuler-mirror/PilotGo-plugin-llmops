@@ -1,8 +1,8 @@
 <template>
   <div class="topology-container flex flex-col">
     <div class="flex justify-between items-center">
-      <h2 class="text-xl font-semibold text-gray-800 mb-4">业务集群拓扑图</h2>
-      <el-button type="primary" @click="openConfig">配置集群</el-button>
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ $t('topology.title') }}</h2>
+      <el-button type="primary" @click="openConfig">{{ $t('topology.config') }}</el-button>
     </div>
     <div ref="graphContainer" class="graph-container flex-1"></div>
     <TopologyConfig v-model:visible="configVisible" :projectId="props.projectId" @submit="onConfigSubmit" />
@@ -11,9 +11,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Graph } from '@antv/g6'
 import TopologyConfig from './TopologyConfig.vue'
 import { ElMessage } from 'element-plus'
+
+const { t } = useI18n()
 
 interface Props {
   projectId: string | number
@@ -164,7 +167,7 @@ const openConfig = () => {
 
 const onConfigSubmit = (payload: Array<{ hostId: string | number; processes: string[] }>) => {
   configVisible.value = false
-  ElMessage.success('已更新配置')
+  ElMessage.success(t('topology.updateSuccess'))
 }
 
 // 暴露方法给父组件

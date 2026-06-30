@@ -103,37 +103,37 @@ const handleConfirm = () => {
 </script>
 
 <template>
-  <el-dialog v-model="dialogVisible" title="配置集群" width="720px" :lock-scroll="false">
+  <el-dialog v-model="dialogVisible" :title="$t('topology.config')" width="720px" :lock-scroll="false">
     <div class="flex items-center justify-between mb-3">
-      <span class="text-gray-700">规则列表</span>
-      <el-button type="primary" size="small" @click="addRule">添加规则</el-button>
+      <span class="text-gray-700">{{ $t('topology.ruleList') }}</span>
+      <el-button type="primary" size="small" @click="addRule">{{ $t('topology.addRule') }}</el-button>
     </div>
     <el-form label-width="80px">
       <div v-for="(rule, idx) in rules" :key="rule.id" class="mb-2">
         <el-row :gutter="12" align="middle">
           <el-col :span="10">
-            <el-form-item label="主机">
-              <el-select v-model="rule.hostId" placeholder="选择主机" filterable :loading="loadingHosts" class="w-full" @change="(val:any) => handleHostChange(rule, val)">
+            <el-form-item :label="$t('topology.host')">
+              <el-select v-model="rule.hostId" :placeholder="$t('topology.selectHost')" filterable :loading="loadingHosts" class="w-full" @change="(val:any) => handleHostChange(rule, val)">
                 <el-option v-for="h in hosts" :key="String(h.id)" :label="h.ip ? `${h.name} (${h.ip})` : h.name" :value="h.id" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="进程">
-              <el-select v-model="rule.processes" multiple filterable :disabled="!rule.hostId" placeholder="选择进程" :loading="rule.loading" class="w-full">
+            <el-form-item :label="$t('topology.process')">
+              <el-select v-model="rule.processes" multiple filterable :disabled="!rule.hostId" :placeholder="$t('topology.selectProcess')" :loading="rule.loading" class="w-full">
                 <el-option v-for="p in rule.processOptions" :key="p" :label="p" :value="p" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="2" class="flex items-center">
-            <el-button type="danger" text @click="removeRule(idx)">删除</el-button>
+            <el-button type="danger" text @click="removeRule(idx)">{{ $t('common.delete') }}</el-button>
           </el-col>
         </el-row>
       </div>
     </el-form>
     <template #footer>
-      <el-button @click="handleCancel">取消</el-button>
-      <el-button type="primary" :disabled="!canSubmit" @click="handleConfirm">确定</el-button>
+      <el-button @click="handleCancel">{{ $t('common.cancel') }}</el-button>
+      <el-button type="primary" :disabled="!canSubmit" @click="handleConfirm">{{ $t('common.confirm') }}</el-button>
     </template>
   </el-dialog>
 </template>
