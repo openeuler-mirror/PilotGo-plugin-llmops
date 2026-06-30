@@ -30,3 +30,39 @@ export async function deleteOperationScript(
   const res = await httpClient.delete<void>(`/api/project/${projectId}/operation/scripts/${scriptId}`)
   return res.message ?? ''
 }
+
+export interface OperationScriptPayload {
+  name: string
+  description?: string
+  content?: string
+  updatedBy?: string
+}
+
+export async function createOperationScript(
+  projectId: number | string,
+  payload: OperationScriptPayload,
+): Promise<string> {
+  // 前端驼峰 → 后端下划线
+  const res = await httpClient.post<void>(`/api/project/${projectId}/operation/scripts`, {
+    name: payload.name,
+    description: payload.description,
+    content: payload.content,
+    updated_by: payload.updatedBy,
+  })
+  return res.message ?? ''
+}
+
+export async function updateOperationScript(
+  projectId: number | string,
+  scriptId: number | string,
+  payload: OperationScriptPayload,
+): Promise<string> {
+  // 前端驼峰 → 后端下划线
+  const res = await httpClient.put<void>(`/api/project/${projectId}/operation/scripts/${scriptId}`, {
+    name: payload.name,
+    description: payload.description,
+    content: payload.content,
+    updated_by: payload.updatedBy,
+  })
+  return res.message ?? ''
+}
