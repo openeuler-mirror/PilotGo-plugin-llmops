@@ -12,9 +12,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Graph } from '@antv/g6'
+import { Graph, type GraphData as G6GraphData } from '@antv/g6'
 import TopologyConfig from './TopologyConfig.vue'
 import { ElMessage } from 'element-plus'
+import { listTopologyConfig } from '@/apis/topology'
+import { configRowsToGraph, type GraphData } from '@/utils/topologyGraph'
 
 const { t } = useI18n()
 
@@ -27,22 +29,6 @@ const props = defineProps<Props>()
 const graphContainer = ref<HTMLDivElement | null>(null)
 let graph: Graph | null = null
 const configVisible = ref(false)
-
-// 默认数据
-const defaultData = {
-  nodes: [
-    { id: 'node1', label: '节点1', x: 100, y: 100 },
-    { id: 'node2', label: '节点2', x: 300, y: 100 },
-    { id: 'node3', label: '节点3', x: 200, y: 200 },
-    { id: 'node4', label: '节点4', x: 400, y: 200 },
-  ],
-  edges: [
-    { source: 'node1', target: 'node2', label: '连接1' },
-    { source: 'node1', target: 'node3', label: '连接2' },
-    { source: 'node2', target: 'node4', label: '连接3' },
-    { source: 'node3', target: 'node4', label: '连接4' },
-  ]
-}
 
 // 初始化图形
 const initGraph = async () => {
@@ -65,6 +51,7 @@ const initGraph = async () => {
     },
     node: {
       style: {
+        labelText: (d: any) => (d.data?.label as string) ?? '',
         fill: '#C6E5FF',
         stroke: '#5B8FF9',
         lineWidth: 2,
@@ -96,9 +83,10 @@ const initGraph = async () => {
   // 设置节点类型
   data.nodes.forEach((node: any) => {
     node.type = 'circle'
+    node.data = { label: node.label }   // 把顶层 label 收进 G6 约定的 data，供 labelText 回调取用
   })
 
-  graph.setData(data)
+  graph.setData(data as unknown as G6GraphData)
   graph.render()
 
   // 添加事件监听
@@ -125,15 +113,15 @@ watch(
   }
 )
 
-const loadTopologyData = async () => {
+const loadTopologyData = async (): Promise<GraphData> => {
   try {
-    const res = await fetch(`/api/projects/${props.projectId}/topology`)
-    if (res.ok) {
-      const json = await res.json()
-      return json
-    }
-  } catch (e) { }
-  return defaultData
+    const rows = await listTopologyConfig(props.projectId)
+    return configRowsToGraph(rows, props.projectId)
+  } catch {
+    // 请求层（request.ts）失败时已弹过错误提示，这里不再弹避免双 toast，
+    // 仅返回仅根节点的兜底图。
+    return configRowsToGraph([], props.projectId)
+  }
 }
 
 // 监听容器大小变化
@@ -178,8 +166,9 @@ defineExpose({
       const data = await loadTopologyData()
       data.nodes.forEach((node: any) => {
         node.type = 'circle'
+        node.data = { label: node.label }   // 把顶层 label 收进 G6 约定的 data，供 labelText 回调取用
       })
-      graph.setData(data)
+      graph.setData(data as unknown as G6GraphData)
       graph.render()
     }
   },
