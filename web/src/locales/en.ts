@@ -101,4 +101,12 @@ export default {
     dialog: { createTitle: 'Create Script', editTitle: 'Edit Script' },
     rules: { nameRequired: 'Please enter script name' },
   },
+  monitorView: {
+    title: 'Cluster Monitoring',
+    cpuTrend: 'CPU Usage Trend',
+    memTrend: 'Memory Usage Trend',
+    netTrend: 'Network Traffic Trend',
+    alertDist: 'Alert Distribution',
+    cpuTop10: 'Host CPU Top 10',
+  },
 }

@@ -188,13 +188,13 @@ watch(() => props.projectId, () => {
 
 <template>
   <div class="h-full w-full">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">集群监控</h2>
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ $t('monitorView.title') }}</h2>
     <el-row :gutter="16">
       <el-col :xs="24" :md="12">
         <el-card class="mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-700 font-medium">CPU使用率趋势</span>
-            <el-tag type="info" size="small" v-if="loading">加载中</el-tag>
+            <span class="text-sm text-gray-700 font-medium">{{ $t('monitorView.cpuTrend') }}</span>
+            <el-tag type="info" size="small" v-if="loading">{{ $t('common.loading') }}</el-tag>
           </div>
           <div ref="cpuLineRef" class="w-full h-64"></div>
         </el-card>
@@ -202,8 +202,8 @@ watch(() => props.projectId, () => {
       <el-col :xs="24" :md="12">
         <el-card class="mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-700 font-medium">内存使用率趋势</span>
-            <el-tag type="info" size="small" v-if="loading">加载中</el-tag>
+            <span class="text-sm text-gray-700 font-medium">{{ $t('monitorView.memTrend') }}</span>
+            <el-tag type="info" size="small" v-if="loading">{{ $t('common.loading') }}</el-tag>
           </div>
           <div ref="memLineRef" class="w-full h-64"></div>
         </el-card>
@@ -214,7 +214,7 @@ watch(() => props.projectId, () => {
       <el-col :xs="24" :md="16">
         <el-card class="mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-700 font-medium">网络流量趋势</span>
+            <span class="text-sm text-gray-700 font-medium">{{ $t('monitorView.netTrend') }}</span>
           </div>
           <div ref="netLineRef" class="w-full h-64"></div>
         </el-card>
@@ -222,7 +222,7 @@ watch(() => props.projectId, () => {
       <el-col :xs="24" :md="8">
         <el-card class="mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-700 font-medium">告警分布</span>
+            <span class="text-sm text-gray-700 font-medium">{{ $t('monitorView.alertDist') }}</span>
           </div>
           <div ref="alertsPieRef" class="w-full h-64"></div>
         </el-card>
@@ -233,7 +233,7 @@ watch(() => props.projectId, () => {
       <el-col :xs="24" :md="24">
         <el-card>
           <div class="flex items-center justify-between mb-2">
-            <span class="text-sm text-gray-700 font-medium">主机CPU Top10</span>
+            <span class="text-sm text-gray-700 font-medium">{{ $t('monitorView.cpuTop10') }}</span>
           </div>
           <div ref="cpuBarRef" class="w-full h-72"></div>
         </el-card>
