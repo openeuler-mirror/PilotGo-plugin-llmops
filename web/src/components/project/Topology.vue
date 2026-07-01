@@ -4,7 +4,26 @@
       <h2 class="text-xl font-semibold text-gray-800 mb-4">{{ $t('topology.title') }}</h2>
       <el-button type="primary" @click="openConfig">{{ $t('topology.config') }}</el-button>
     </div>
-    <div ref="graphContainer" class="graph-container flex-1"></div>
+    <div class="flex flex-1 min-h-0 gap-4">
+      <div ref="graphContainer" class="graph-container flex-1 min-w-0"></div>
+      <div class="w-60 shrink-0 bg-white rounded-lg shadow-sm p-4 overflow-y-auto">
+        <template v-if="selectedNode">
+          <div class="mb-3">
+            <div class="text-xs text-gray-500">{{ $t('topology.detail.name') }}</div>
+            <div class="text-sm font-medium">{{ selectedNode.name }}</div>
+          </div>
+          <div class="mb-3">
+            <div class="text-xs text-gray-500">{{ $t('topology.detail.type') }}</div>
+            <div class="text-sm">{{ selectedNode.type }}</div>
+          </div>
+          <div v-if="selectedNode.host" class="mb-3">
+            <div class="text-xs text-gray-500">{{ $t('topology.detail.host') }}</div>
+            <div class="text-sm">{{ selectedNode.host }}</div>
+          </div>
+        </template>
+        <div v-else class="text-sm text-gray-400">{{ $t('topology.detail.placeholder') }}</div>
+      </div>
+    </div>
     <TopologyConfig v-model:visible="configVisible" :projectId="props.projectId" @submit="onConfigSubmit" />
   </div>
 </template>
@@ -29,6 +48,26 @@ const props = defineProps<Props>()
 const graphContainer = ref<HTMLDivElement | null>(null)
 let graph: Graph | null = null
 const configVisible = ref(false)
+
+// 当前选中节点的详情（点击节点时填充,点击空白/切项目时清空）
+const selectedNode = ref<{ name: string; type: string; host?: string } | null>(null)
+
+// 从 node id 解析详情:按 id 前缀判类型;proc 节点查入边 source 得所属 host。
+const buildNodeDetail = (id: string) => {
+  const nd = graph?.getNodeData(id)
+  const name = (nd?.data?.label as string) ?? ''
+  if (id.startsWith('project-')) {
+    return { name, type: t('topology.detail.typeProject') }
+  }
+  if (id.startsWith('host-')) {
+    return { name, type: t('topology.detail.typeHost') }
+  }
+  // proc 节点:入边 source 就是其 host node id
+  const parentEdge = graph?.getEdgeData().find((e: any) => e.target === id)
+  const hostId = parentEdge?.source as string | undefined
+  const hostLabel = hostId ? ((graph?.getNodeData(hostId)?.data?.label as string) ?? '') : ''
+  return { name, type: t('topology.detail.typeProcess'), host: hostLabel }
+}
 
 // 初始化图形
 const initGraph = async () => {
@@ -90,18 +129,15 @@ const initGraph = async () => {
   graph.render()
 
   // 添加事件监听
-  graph.on('node:mouseenter', (evt: any) => {
-    const { itemId } = evt
-    if (itemId) {
-      // TODO:
+  graph.on('node:click', (evt: any) => {
+    const id = evt.target?.id as string | undefined
+    if (id) {
+      selectedNode.value = buildNodeDetail(id)
     }
   })
 
-  graph.on('node:mouseleave', (evt: any) => {
-    const { itemId } = evt
-    if (itemId) {
-      // TODO:
-    }
+  graph.on('canvas:click', () => {
+    selectedNode.value = null
   })
 }
 
@@ -109,6 +145,7 @@ const initGraph = async () => {
 watch(
   () => props.projectId,
   () => {
+    selectedNode.value = null
     initGraph()
   }
 )
@@ -190,7 +227,6 @@ defineExpose({
 }
 
 .graph-container {
-  width: 100%;
   height: 100%;
   overflow: hidden;
 }

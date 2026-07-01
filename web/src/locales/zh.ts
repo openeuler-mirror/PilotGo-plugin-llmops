@@ -70,6 +70,15 @@ export default {
     selectHost: '选择主机',
     process: '进程',
     selectProcess: '选择进程',
+    detail: {
+      placeholder: '点击节点查看详情',
+      name: '名称',
+      type: '类型',
+      host: '所属主机',
+      typeProject: '项目',
+      typeHost: '主机',
+      typeProcess: '进程',
+    },
   },
   overview: {
     title: '项目概览',
