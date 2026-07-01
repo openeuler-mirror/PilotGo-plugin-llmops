@@ -60,4 +60,15 @@ export default {
     deleteSuccess: 'Deleted successfully',
     deleteMissingId: 'Cannot delete: missing ID',
   },
+  topology: {
+    title: 'Business Cluster Topology',
+    config: 'Configure Cluster',
+    updateSuccess: 'Configuration updated',
+    ruleList: 'Rule List',
+    addRule: 'Add Rule',
+    host: 'Host',
+    selectHost: 'Select host',
+    process: 'Process',
+    selectProcess: 'Select process',
+  },
 }

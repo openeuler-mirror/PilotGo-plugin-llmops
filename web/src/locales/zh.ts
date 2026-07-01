@@ -60,4 +60,15 @@ export default {
     deleteSuccess: '删除成功',
     deleteMissingId: '无法删除：缺少ID',
   },
+  topology: {
+    title: '业务集群拓扑图',
+    config: '配置集群',
+    updateSuccess: '已更新配置',
+    ruleList: '规则列表',
+    addRule: '添加规则',
+    host: '主机',
+    selectHost: '选择主机',
+    process: '进程',
+    selectProcess: '选择进程',
+  },
 }
