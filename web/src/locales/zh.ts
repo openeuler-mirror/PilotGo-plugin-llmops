@@ -109,4 +109,11 @@ export default {
     alertDist: '告警分布',
     cpuTop10: '主机CPU Top10',
   },
+  eventView: {
+    title: '集群事件',
+    clearFilter: '清除日期筛选',
+    timeline: '事件时间线',
+    dateLabel: '日期 {date}',
+    totalCount: '共 {count} 条',
+  },
 }

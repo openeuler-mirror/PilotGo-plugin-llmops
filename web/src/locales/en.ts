@@ -109,4 +109,11 @@ export default {
     alertDist: 'Alert Distribution',
     cpuTop10: 'Host CPU Top 10',
   },
+  eventView: {
+    title: 'Cluster Events',
+    clearFilter: 'Clear Date Filter',
+    timeline: 'Event Timeline',
+    dateLabel: 'Date {date}',
+    totalCount: '{count} total',
+  },
 }

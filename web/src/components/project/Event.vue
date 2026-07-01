@@ -135,9 +135,9 @@ watch(events, () => updateChart())
 <template>
   <div class="h-full flex flex-col">
     <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-gray-800">集群事件</h2>
+      <h2 class="text-xl font-semibold text-gray-800">{{ $t('eventView.title') }}</h2>
       <div class="flex items-center space-x-2">
-        <el-button v-if="selectedDate" size="small" @click="clearFilter">清除日期筛选</el-button>
+        <el-button v-if="selectedDate" size="small" @click="clearFilter">{{ $t('eventView.clearFilter') }}</el-button>
       </div>
     </div>
     <div class="bg-white rounded-lg shadow-sm p-4 h-[150px]">
@@ -146,10 +146,10 @@ watch(events, () => updateChart())
     <div class="mt-4 flex-1 overflow-y-auto bg-white rounded-lg shadow-sm p-4">
       <div class="flex items-center justify-between mb-2">
         <div class="text-gray-700">
-          <span>事件时间线</span>
-          <span v-if="selectedDate" class="ml-2 text-gray-500">日期 {{ selectedDate }}</span>
+          <span>{{ $t('eventView.timeline') }}</span>
+          <span v-if="selectedDate" class="ml-2 text-gray-500">{{ $t('eventView.dateLabel', { date: selectedDate }) }}</span>
         </div>
-        <el-tag type="info">共 {{ filteredEvents.length }} 条</el-tag>
+        <el-tag type="info">{{ $t('eventView.totalCount', { count: filteredEvents.length }) }}</el-tag>
       </div>
       <el-timeline>
         <el-timeline-item v-for="item in filteredEvents" :key="String(item.id)" :timestamp="formatTime(item.timestamp)" :color="severityColor(item.severity)">
