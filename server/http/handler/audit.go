@@ -69,15 +69,39 @@ func ListAuditByFilters(c *gin.Context) {
 			return
 		}
 	}
-	items, err := auditSrv.ListAuditsByFilters(c.Request.Context(), &audit.ListAuditReq{
+	page := 1
+	if v := c.Query("page"); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n > 0 {
+			page = n
+		}
+	}
+	perPage := 20
+	if v := c.Query("perpage"); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n > 0 && n <= 200 {
+			perPage = n
+		}
+	}
+	items, total, err := auditSrv.ListAuditsByFilters(c.Request.Context(), &audit.ListAuditReq{
 		ProjectID:  pid,
 		Actor:      req.Actor,
 		ActionType: req.ActionType,
 		Target:     req.Target,
+		Page:       page,
+		PerPage:    perPage,
 	})
 	if err != nil {
 		ResponseError(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	Response(c, items)
+	res := make([]gin.H, len(items))
+	for i, a := range items {
+		res[i] = gin.H{
+			"id":          a.ID,
+			"time":        a.CreatedAt,
+			"operator":    a.Actor,
+			"component":   a.Target,
+			"description": a.Action,
+		}
+	}
+	ResponsePage(c, page, perPage, int(total), res)
 }
