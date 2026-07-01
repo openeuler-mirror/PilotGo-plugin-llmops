@@ -88,4 +88,17 @@ export default {
       description: 'Description',
     },
   },
+  operationView: {
+    title: 'Cluster Ops Scripts',
+    create: 'Create',
+    run: 'Run',
+    createSuccess: 'Created successfully',
+    updateSuccess: 'Updated successfully',
+    deleteConfirm: 'Delete script "{name}"?',
+    deleteConfirmTitle: 'Delete Confirmation',
+    columns: { name: 'Name', description: 'Description', updatedBy: 'Updated By', updatedAt: 'Updated At', action: 'Actions' },
+    form: { name: 'Name', description: 'Description', content: 'Content', updatedBy: 'Updated By' },
+    dialog: { createTitle: 'Create Script', editTitle: 'Edit Script' },
+    rules: { nameRequired: 'Please enter script name' },
+  },
 }

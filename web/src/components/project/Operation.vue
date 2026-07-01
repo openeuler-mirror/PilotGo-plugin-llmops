@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import MTable from '../common/MTable.vue'
@@ -12,6 +13,8 @@ interface ScriptItem {
   updatedBy: string
   updatedAt: string
 }
+
+const { t } = useI18n()
 
 const props = defineProps<{ projectId: string | number }>()
 
@@ -37,9 +40,9 @@ const form = ref<{ name: string; description: string; content: string; updatedBy
   content: '',
   updatedBy: '',
 })
-const formRules: FormRules = {
-  name: [{ required: true, message: '请输入脚本名称', trigger: 'blur' }],
-}
+const formRules = computed<FormRules>(() => ({
+  name: [{ required: true, message: t('operationView.rules.nameRequired'), trigger: 'blur' }],
+}))
 
 const openCreateDialog = () => {
   dialogMode.value = 'create'
@@ -68,10 +71,10 @@ const submitForm = async () => {
   try {
     if (dialogMode.value === 'create') {
       const msg = await createOperationScript(props.projectId, form.value)
-      ElMessage.success(msg || '创建成功')
+      ElMessage.success(msg || t('operationView.createSuccess'))
     } else {
       const msg = await updateOperationScript(props.projectId, editingId.value, form.value)
-      ElMessage.success(msg || '更新成功')
+      ElMessage.success(msg || t('operationView.updateSuccess'))
     }
     dialogVisible.value = false
     loadScripts()
@@ -115,10 +118,10 @@ const handlePageChange = (page: number) => {
 
 const handleRun = (row: ScriptItem) => emit('run', row.id)
 const handleDelete = (row: ScriptItem) => {
-  ElMessageBox.confirm(`确定删除脚本「${row.name}」吗?`, '删除确认', {
+  ElMessageBox.confirm(t('operationView.deleteConfirm', { name: row.name }), t('operationView.deleteConfirmTitle'), {
     type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
+    confirmButtonText: t('common.delete'),
+    cancelButtonText: t('common.cancel'),
   })
     .then(() => emit('delete', row.id))
     .catch(() => {})
@@ -130,44 +133,44 @@ defineExpose({ loadScripts })
 <template>
   <div class="h-full flex flex-col">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-gray-800">集群运维脚本</h2>
-      <el-button type="primary" @click="openCreateDialog">新建</el-button>
+      <h2 class="text-xl font-semibold text-gray-800">{{ $t('operationView.title') }}</h2>
+      <el-button type="primary" @click="openCreateDialog">{{ $t('operationView.create') }}</el-button>
     </div>
     <MTable :data="scripts" :currentPage="currentPage" :totalPages="totalPages" @page-change="handlePageChange" class="flex-1">
       <template #columns>
         <el-table-column prop="id" label="ID" width="100" />
-        <el-table-column prop="name" label="名称" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="description" label="描述" min-width="300" show-overflow-tooltip />
-        <el-table-column prop="updatedBy" label="更新人" width="140" />
-        <el-table-column prop="updatedAt" label="更新时间" width="180" />
-        <el-table-column label="操作" width="240">
+        <el-table-column prop="name" :label="$t('operationView.columns.name')" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="description" :label="$t('operationView.columns.description')" min-width="300" show-overflow-tooltip />
+        <el-table-column prop="updatedBy" :label="$t('operationView.columns.updatedBy')" width="140" />
+        <el-table-column prop="updatedAt" :label="$t('operationView.columns.updatedAt')" width="180" />
+        <el-table-column :label="$t('operationView.columns.action')" width="240">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="openEditDialog(row)">编辑</el-button>
-            <el-button type="success" size="small" class="ml-2" @click="handleRun(row)">运行</el-button>
-            <el-button type="danger" size="small" class="ml-2" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" size="small" @click="openEditDialog(row)">{{ $t('common.edit') }}</el-button>
+            <el-button type="success" size="small" class="ml-2" @click="handleRun(row)">{{ $t('operationView.run') }}</el-button>
+            <el-button type="danger" size="small" class="ml-2" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </template>
     </MTable>
 
-    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? '新建脚本' : '编辑脚本'" width="600px" :lock-scroll="false">
+    <el-dialog v-model="dialogVisible" :title="dialogMode === 'create' ? $t('operationView.dialog.createTitle') : $t('operationView.dialog.editTitle')" width="600px" :lock-scroll="false">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="80px">
-        <el-form-item label="名称" prop="name">
+        <el-form-item :label="$t('operationView.form.name')" prop="name">
           <el-input v-model="form.name" maxlength="255" show-word-limit />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
+        <el-form-item :label="$t('operationView.form.description')" prop="description">
           <el-input v-model="form.description" type="textarea" rows="2" maxlength="1000" show-word-limit />
         </el-form-item>
-        <el-form-item label="内容" prop="content">
+        <el-form-item :label="$t('operationView.form.content')" prop="content">
           <el-input v-model="form.content" type="textarea" rows="6" />
         </el-form-item>
-        <el-form-item label="更新人" prop="updatedBy">
+        <el-form-item :label="$t('operationView.form.updatedBy')" prop="updatedBy">
           <el-input v-model="form.updatedBy" maxlength="255" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="dialogLoading" @click="submitForm">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="dialogLoading" @click="submitForm">{{ $t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
