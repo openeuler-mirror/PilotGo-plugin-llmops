@@ -88,4 +88,17 @@ export default {
       description: '变更描述',
     },
   },
+  operationView: {
+    title: '集群运维脚本',
+    create: '新建',
+    run: '运行',
+    createSuccess: '创建成功',
+    updateSuccess: '更新成功',
+    deleteConfirm: '确定删除脚本「{name}」吗？',
+    deleteConfirmTitle: '删除确认',
+    columns: { name: '名称', description: '描述', updatedBy: '更新人', updatedAt: '更新时间', action: '操作' },
+    form: { name: '名称', description: '描述', content: '内容', updatedBy: '更新人' },
+    dialog: { createTitle: '新建脚本', editTitle: '编辑脚本' },
+    rules: { nameRequired: '请输入脚本名称' },
+  },
 }
