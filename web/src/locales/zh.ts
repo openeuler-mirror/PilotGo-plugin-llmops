@@ -101,4 +101,12 @@ export default {
     dialog: { createTitle: '新建脚本', editTitle: '编辑脚本' },
     rules: { nameRequired: '请输入脚本名称' },
   },
+  monitorView: {
+    title: '集群监控',
+    cpuTrend: 'CPU使用率趋势',
+    memTrend: '内存使用率趋势',
+    netTrend: '网络流量趋势',
+    alertDist: '告警分布',
+    cpuTop10: '主机CPU Top10',
+  },
 }
