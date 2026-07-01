@@ -87,6 +87,13 @@ export default {
       component: 'Component',
       description: 'Description',
     },
+    filter: {
+      actor: 'Actor',
+      actionType: 'Action Type',
+      target: 'Target',
+      search: 'Search',
+      reset: 'Reset',
+    },
   },
   operationView: {
     title: 'Cluster Ops Scripts',
