@@ -48,22 +48,32 @@ type ListAuditReq struct {
 	Actor      string
 	ActionType string
 	Target     string
+	Page       int
+	PerPage    int
 }
 
-func (s *AuditService) ListAuditsByFilters(ctx context.Context, req *ListAuditReq) ([]*dao.Audit, error) {
+func (s *AuditService) ListAuditsByFilters(ctx context.Context, req *ListAuditReq) (items []*dao.Audit, total int64, err error) {
 	if s.ad == nil {
-		return nil, errors.New("audit service not initialized")
+		return nil, 0, errors.New("audit service not initialized")
 	}
-	var q *dao.AuditQuery
+	q := &dao.AuditQuery{}
 	if req != nil {
-		q = &dao.AuditQuery{
-			ProjectID:  req.ProjectID,
-			Actor:      req.Actor,
-			ActionType: req.ActionType,
-			Target:     req.Target,
-		}
+		q.ProjectID = req.ProjectID
+		q.Actor = req.Actor
+		q.ActionType = req.ActionType
+		q.Target = req.Target
+		q.Limit = req.PerPage
+		q.Offset = (req.Page - 1) * req.PerPage
 	}
-	return s.ad.ListByQuery(q)
+	total, err = s.ad.CountByQuery(q)
+	if err != nil {
+		return nil, 0, err
+	}
+	items, err = s.ad.ListByQuery(q)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 func (s *AuditService) GetAuditByID(ctx context.Context, id int64) (*dao.Audit, error) {
