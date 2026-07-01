@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Plus } from '@element-plus/icons-vue'
 import ProjectCard from '@/components/ProjectCard.vue'
 import { listProjects, createProject, type Project as ApiProject } from '@/apis/project'
@@ -8,6 +9,7 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const projects = ref<Array<{ id: number; name: string; description: string; status: string; lastUpdate: string; team: string }>>([])
 
@@ -17,9 +19,9 @@ const loadProjects = async () => {
     id: p.id,
     name: p.name,
     description: p.desc ?? '',
-    status: '正常',
+    status: t('project.status.normal'),
     lastUpdate: p.updated_at || p.created_at || '-',
-    team: '未设置'
+    team: t('project.team.unset')
   }))
 }
 
@@ -44,7 +46,7 @@ const createLoading = ref(false)
 const formRef = ref<FormInstance>()
 const form = ref<{ name: string; desc: string }>({ name: '', desc: '' })
 const rules: FormRules = {
-  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  name: [{ required: true, message: t('project.form.namePlaceholder'), trigger: 'blur' }],
 }
 const openCreateDialog = () => {
   form.value = { name: '', desc: '' }
@@ -57,11 +59,11 @@ const submitCreate = async () => {
   createLoading.value = true
   try {
     const msg = await createProject({ name: form.value.name, desc: form.value.desc })
-    ElMessage.success(msg || '创建成功')
+    ElMessage.success(msg || t('overview.createSuccess'))
     createDialogVisible.value = false
     await loadProjects()
   } catch (e: any) {
-    ElMessage.error(e?.message || '创建失败')
+    ElMessage.error(e?.message || t('overview.createFailed'))
   } finally {
     createLoading.value = false
   }
@@ -77,15 +79,15 @@ const cancelCreate = () => {
     <div class="flex justify-between items-center py-6 shrink-0">
       <div class="flex-1"></div>
       <div class="text-center">
-        <h1 class="text-4xl font-bold text-gray-900 mb-2">项目概览</h1>
-        <p class="text-gray-600">管理和监控您的所有项目</p>
+        <h1 class="text-4xl font-bold text-gray-900 mb-2">{{ $t('overview.title') }}</h1>
+        <p class="text-gray-600">{{ $t('overview.subtitle') }}</p>
       </div>
       <div class="flex-1 flex justify-end">
         <el-button type="primary" size="large" class="mr-3" @click="openCreateDialog">
           <el-icon class="mr-2">
             <Plus />
           </el-icon>
-          创建项目
+          {{ $t('overview.createProject') }}
         </el-button>
       </div>
     </div>
@@ -99,18 +101,18 @@ const cancelCreate = () => {
         </el-col>
       </el-row>
     </div>
-    <el-dialog v-model="createDialogVisible" title="创建项目" width="500px" :lock-scroll="false">
+    <el-dialog v-model="createDialogVisible" :title="$t('overview.createProject')" width="500px" :lock-scroll="false">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="项目名称" prop="name">
+        <el-form-item :label="$t('project.form.name')" prop="name">
           <el-input v-model="form.name" maxlength="255" show-word-limit />
         </el-form-item>
-        <el-form-item label="项目描述" prop="desc">
+        <el-form-item :label="$t('project.form.desc')" prop="desc">
           <el-input v-model="form.desc" type="textarea" rows="4" maxlength="1000" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="cancelCreate">取消</el-button>
-        <el-button type="primary" :loading="createLoading" @click="submitCreate">创建</el-button>
+        <el-button @click="cancelCreate">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="createLoading" @click="submitCreate">{{ $t('overview.submitCreate') }}</el-button>
       </template>
     </el-dialog>
   </div>

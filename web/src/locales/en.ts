@@ -71,4 +71,21 @@ export default {
     process: 'Process',
     selectProcess: 'Select process',
   },
+  overview: {
+    title: 'Project Overview',
+    subtitle: 'Manage and monitor all your projects',
+    createProject: 'Create Project',
+    submitCreate: 'Create',
+    createSuccess: 'Created successfully',
+    createFailed: 'Create failed',
+  },
+  audit: {
+    title: 'Audit Logs',
+    columns: {
+      time: 'Time',
+      operator: 'Operator',
+      component: 'Component',
+      description: 'Description',
+    },
+  },
 }

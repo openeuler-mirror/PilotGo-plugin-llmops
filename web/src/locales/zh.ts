@@ -71,4 +71,21 @@ export default {
     process: '进程',
     selectProcess: '选择进程',
   },
+  overview: {
+    title: '项目概览',
+    subtitle: '管理和监控您的所有项目',
+    createProject: '创建项目',
+    submitCreate: '创建',
+    createSuccess: '创建成功',
+    createFailed: '创建失败',
+  },
+  audit: {
+    title: '审计日志',
+    columns: {
+      time: '时间',
+      operator: '操作人',
+      component: '操作组件',
+      description: '变更描述',
+    },
+  },
 }
