@@ -1,4 +1,5 @@
 import { ElMessage } from 'element-plus'
+import { buildQueryString } from '../utils/queryString'
 
 const config = {
   // Read from the VITE_API_BASE_URL env var; defaults to an empty string so the
@@ -103,13 +104,7 @@ class HttpClient {
   async get<T>(url: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
     let fullUrl = url
     if (params) {
-      const searchParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          searchParams.append(key, String(value))
-        }
-      })
-      const queryString = searchParams.toString()
+      const queryString = buildQueryString(params)
       if (queryString) {
         fullUrl += `?${queryString}`
       }
