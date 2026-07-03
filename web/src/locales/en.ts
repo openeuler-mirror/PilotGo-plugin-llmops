@@ -70,6 +70,15 @@ export default {
     selectHost: 'Select host',
     process: 'Process',
     selectProcess: 'Select process',
+    detail: {
+      placeholder: 'Click a node to view details',
+      name: 'Name',
+      type: 'Type',
+      host: 'Host',
+      typeProject: 'Project',
+      typeHost: 'Host',
+      typeProcess: 'Process',
+    },
   },
   overview: {
     title: 'Project Overview',
