@@ -40,7 +40,7 @@ export async function deleteKnowledge(id: number): Promise<string> {
 }
 
 export async function downloadKnowledge(object: string): Promise<Blob> {
-  return await httpClient.getBlob(`/api/knowledge/download?object=${encodeURIComponent(object)}`)
+  return await httpClient.getBlob('/api/knowledge/download', { object })
 }
 
 // 从文件名后缀推导文件类型(后端无此字段);取最后一个 "." 后的小写扩展名,无后缀则空
