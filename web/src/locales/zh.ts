@@ -96,6 +96,13 @@ export default {
       component: '操作组件',
       description: '变更描述',
     },
+    filter: {
+      actor: '操作人',
+      actionType: '操作类型',
+      target: '操作对象',
+      search: '搜索',
+      reset: '重置',
+    },
   },
   operationView: {
     title: '集群运维脚本',
