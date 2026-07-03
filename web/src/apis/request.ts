@@ -1,5 +1,5 @@
 import { ElMessage } from 'element-plus'
-import { buildQueryString } from '../utils/queryString'
+import { appendQueryString } from '../utils/queryString'
 
 const config = {
   // Read from the VITE_API_BASE_URL env var; defaults to an empty string so the
@@ -102,15 +102,7 @@ class HttpClient {
   }
 
   async get<T>(url: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
-    let fullUrl = url
-    if (params) {
-      const queryString = buildQueryString(params)
-      if (queryString) {
-        fullUrl += `?${queryString}`
-      }
-    }
-
-    return this.request<T>(fullUrl, {
+    return this.request<T>(appendQueryString(url, params), {
       method: 'GET',
     })
   }
@@ -142,8 +134,8 @@ class HttpClient {
     })
   }
 
-  async getBlob(url: string): Promise<Blob> {
-    const fullUrl = `${this.baseURL}${url}`
+  async getBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
+    const fullUrl = `${this.baseURL}${appendQueryString(url, params)}`
     try {
       const res = await fetch(fullUrl, { method: 'GET' })
       if (!res.ok) {
