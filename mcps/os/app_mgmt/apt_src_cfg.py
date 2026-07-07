@@ -108,3 +108,26 @@ def fetch_app_apt_source(source_info=None):
     except Exception as e:
         logger.error(f'获取APT源配置失败: {e}')
         return f'获取APT源配置失败: {e}'
+def is_apt_based_system():
+    """
+    检查系统是否是基于APT的系统
+
+    返回:
+        bool: 是否是基于APT的系统
+    """
+    try:
+        # 检查是否存在apt命令
+        output = subprocess.run(['which', 'apt'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return True
+
+        # 检查系统发行版
+        if os.path.exists('/etc/debian_version'):
+            return True
+
+        # 检查系统类型
+        distro = platform.platform().lower()
+        return any(keyword in distro for keyword in ['ubuntu', 'debian'])
+
+    except Exception:
+        return False
