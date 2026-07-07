@@ -123,3 +123,60 @@ def fetch_custom_log_content(log_path, keyword=None, error_only=False, last=None
     except Exception as e:
         logger.error(f'获取自定义应用日志内容失败: {e}')
         raise  # 抛出异常，让调用者处理
+def fetch_file_info(file_path):
+    """
+    获取文件信息
+    """
+    details = {}
+
+    try:
+        # 获取文件状态
+        stat_info = os.stat(file_path)
+
+        # 文件大小
+        details['文件大小'] = f"{stat_info.st_size} 字节"
+
+        # 修改时间
+        mod_time = datetime.fromtimestamp(stat_info.st_mtime)
+        details['修改时间'] = mod_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        # 访问时间
+        access_time = datetime.fromtimestamp(stat_info.st_atime)
+        details['访问时间'] = access_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        # 文件权限
+        details['文件权限'] = oct(stat_info.st_mode)[-4:]
+
+    except Exception as e:
+        logger.error(f'获取文件信息失败: {e}')
+
+    return details
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_log_app_custom",
+    "function": fetch_log_app_custom,
+    "description": "采集自定义应用日志（指定应用日志路径/最新内容/错误行/按关键字过滤）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "log_path": {
+                "type": "string",
+                "description": "日志文件路径，如 \"/var/log/nginx/access.log\""
+            },
+            "keyword": {
+                "type": "string",
+                "description": "关键字，用于过滤日志"
+            },
+            "error_only": {
+                "type": "boolean",
+                "description": "是否只显示错误行"
+            },
+            "last": {
+                "type": "string",
+                "description": "显示最近的行数，如 \"100\""
+            }
+        },
+        "required": ["log_path"]
+    }
+}
