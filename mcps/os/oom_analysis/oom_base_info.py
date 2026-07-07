@@ -77,3 +77,38 @@ def oom_basic_info() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def gather_memory_info() -> Dict[str, Any]:
+    """收集系统内存信息"""
+    mem_data = {}
+
+    try:
+        # 从/proc/meminfo读取内存信息
+        with open('/proc/meminfo', 'r') as f:
+            body = f.read()
+
+        for line in body.split('\n'):
+            if ':' in line:
+                key, value = line.split(':', 1)
+                mem_data[key.strip()] = value.strip()
+
+        # 计算内存使用率
+        if 'MemTotal' in mem_data and 'MemAvailable' in mem_data:
+            total = analyze_mem_value(mem_data['MemTotal'])
+            available = analyze_mem_value(mem_data['MemAvailable'])
+            if total > 0:
+                mem_data['usage_percent'] = round((total - available) / total * 100, 2)
+
+        # 获取Swap信息
+        swap_result = execute_command(['swapon', '--show=NAME,SIZE,USED,TYPE', '--noheadings'])
+        if swap_result['success']:
+            mem_data['swap_info'] = swap_result['stdout'].strip()
+
+        # 获取内存统计
+        stat_result = execute_command(['vmstat', '-s'])
+        if stat_result['success']:
+            mem_data['vmstat'] = stat_result['stdout'].strip()
+
+    except Exception as e:
+        mem_data['error'] = str(e)
+
+    return mem_data
