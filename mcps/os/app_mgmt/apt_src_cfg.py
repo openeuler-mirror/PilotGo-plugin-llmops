@@ -200,3 +200,82 @@ def analyze_source_file(file_path):
     except Exception as e:
         logger.error(f'解析APT源文件失败 {file_path}: {e}')
         return []
+def analyze_source_line(line, file_path, line_num):
+    """
+    解析单行APT源配置
+
+    参数:
+        line: 配置行
+        file_path: 文件路径
+        line_num: 行号
+
+    返回:
+        源配置字典
+    """
+    try:
+        # 基本格式: deb [选项] uri distribution [component1] [component2] ...
+        parts = line.split()
+
+        if not parts:
+            return None
+
+        source_info = {
+            'name': f"{os.path.basename(file_path)}:{line_num}",
+            'enabled': not line.startswith('#'),
+            'type': parts[0],
+            'uri': '',
+            'distribution': '',
+            'components': [],
+            'arch': []
+        }
+
+        # 解析选项部分
+        if parts[1].startswith('['):
+            # 有选项
+            option_end = line.find(']')
+            if option_end != -1:
+                options = line[line.find('[')+1:option_end].split()
+                for option in options:
+                    if '=' in option:
+                        key, value = option.split('=', 1)
+                        if key == 'arch':
+                            source_info['arch'] = value.split(',')
+
+            # 解析uri和distribution
+            remaining = line[option_end+1:].strip().split()
+            if len(remaining) >= 2:
+                source_info['uri'] = remaining[0]
+                source_info['distribution'] = remaining[1]
+                if len(remaining) > 2:
+                    source_info['components'] = remaining[2:]
+        else:
+            # 无选项
+            if len(parts) >= 3:
+                source_info['uri'] = parts[1]
+                source_info['distribution'] = parts[2]
+                if len(parts) > 3:
+                    source_info['components'] = parts[3:]
+
+        return source_info
+
+    except Exception as e:
+        logger.error(f'解析APT源配置行失败 {file_path}:{line_num}: {e}')
+        return None
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_apt_source",
+    "function": fetch_app_apt_source,
+    "description": "采集APT源配置（所有启用/禁用的APT源/源地址/发行版代号/组件）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "source_info": {
+                "type": "string",
+                "description": "信息类型，可选值：enabled（启用的源）、disabled（禁用的源）、components（源组件信息），不指定则获取所有信息",
+                "enum": ["enabled", "disabled", "components"]
+            }
+        },
+        "required": []
+    }
+}
