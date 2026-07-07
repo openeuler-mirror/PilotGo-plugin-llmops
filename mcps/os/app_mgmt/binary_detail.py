@@ -147,3 +147,30 @@ def fetch_binary_architecture(file_path):
         return '未知'
     except Exception:
         return '未知'
+def fetch_binary_dependencies(file_path):
+    """
+    获取二进制文件依赖库
+    """
+    dependencies = []
+    try:
+        # 检查是否是ELF文件
+        output = subprocess.run(['file', '-b', file_path], capture_output=True, text=True)
+        if 'ELF' not in output.stdout:
+            return dependencies
+
+        # 使用ldd获取依赖
+        ldd_result = subprocess.run(['ldd', file_path], capture_output=True, text=True)
+        if ldd_result.returncode == 0:
+            lines = ldd_result.stdout.strip().split('\n')
+            for line in lines:
+                if line.strip():
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        lib_name = parts[0]
+                        lib_path = parts[2]
+                        dependencies.append(f"{lib_name} ({lib_path})")
+                    else:
+                        dependencies.append(line.strip())
+    except Exception:
+        pass
+    return dependencies
