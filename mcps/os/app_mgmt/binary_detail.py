@@ -111,3 +111,12 @@ def fetch_file_permissions(file_path):
         return permissions
     except Exception:
         return '未知'
+def render_file_size(size_in_bytes):
+    """
+    格式化文件大小
+    """
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_in_bytes < 1024.0:
+            return f"{size_in_bytes:.2f} {unit}"
+        size_in_bytes /= 1024.0
+    return f"{size_in_bytes:.2f} TB"
