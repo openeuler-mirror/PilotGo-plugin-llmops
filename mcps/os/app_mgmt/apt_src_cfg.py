@@ -1,0 +1,110 @@
+import logging
+import os
+import platform
+import re
+import subprocess
+
+LOG_DIR = os.path.join(os.path.expanduser("~"), ".software_applications_logs")
+os.makedirs(LOG_DIR, mode=0o700, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "app_apt_source.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename=LOG_FILE
+)
+logger = logging.getLogger('app_apt_source')
+
+def fetch_app_apt_source(source_info=None):
+    """
+    采集APT源配置
+
+    参数:
+        source_info: 信息类型，可选值：
+            - 'enabled': 启用的源
+            - 'disabled': 禁用的源
+            - 'components': 源组件信息
+            - None: 获取所有信息
+
+    返回:
+        格式化的APT源配置信息字符串
+    """
+    try:
+        # 基本信息
+        output = []
+        output.append('=== APT源配置信息 ===')
+
+        # 检查系统是否支持APT
+        if not is_apt_based_system():
+            return "当前系统不是基于APT的系统（如Ubuntu/Debian）"
+
+        # 获取APT源配置
+        sources = fetch_apt_sources()
+
+        # 根据参数返回不同信息
+        if source_info == 'enabled':
+            enabled_sources = [source for source in sources if source['enabled']]
+            if enabled_sources:
+                output.append(f"启用的源数量: {len(enabled_sources)}")
+                for source in enabled_sources:
+                    output.append(f"\n{source['name']}:")
+                    output.append(f"  源地址: {source['uri']}")
+                    output.append(f"  发行版代号: {source['distribution']}")
+                    output.append(f"  组件: {', '.join(source['components'])}")
+            else:
+                output.append("没有启用的APT源")
+            output.append('=====================')
+            return '\n'.join(output)
+        elif source_info == 'disabled':
+            disabled_sources = [source for source in sources if not source['enabled']]
+            if disabled_sources:
+                output.append(f"禁用的源数量: {len(disabled_sources)}")
+                for source in disabled_sources:
+                    output.append(f"\n{source['name']}:")
+                    output.append(f"  源地址: {source['uri']}")
+                    output.append(f"  发行版代号: {source['distribution']}")
+                    output.append(f"  组件: {', '.join(source['components'])}")
+            else:
+                output.append("没有禁用的APT源")
+            output.append('=====================')
+            return '\n'.join(output)
+        elif source_info == 'components':
+            if sources:
+                output.append("APT源组件信息:")
+                for source in sources:
+                    output.append(f"\n{source['name']}:")
+                    output.append(f"  状态: {'启用' if source['enabled'] else '禁用'}")
+                    output.append(f"  组件: {', '.join(source['components'])}")
+            else:
+                output.append("未检测到APT源配置")
+            output.append('=====================')
+            return '\n'.join(output)
+        else:
+            # 获取所有信息
+            if sources:
+                enabled_count = len([source for source in sources if source['enabled']])
+                disabled_count = len([source for source in sources if not source['enabled']])
+
+                output.append(f"总源数量: {len(sources)}")
+                output.append(f"启用的源: {enabled_count}")
+                output.append(f"禁用的源: {disabled_count}")
+
+                # 详细信息
+                output.append("\n详细源配置:")
+                for source in sources:
+                    output.append(f"\n{source['name']}:")
+                    output.append(f"  状态: {'启用' if source['enabled'] else '禁用'}")
+                    output.append(f"  源地址: {source['uri']}")
+                    output.append(f"  发行版代号: {source['distribution']}")
+                    output.append(f"  组件: {', '.join(source['components'])}")
+                    output.append(f"  类型: {source.get('type', 'deb')}")
+                    output.append(f"  架构: {', '.join(source.get('arch', []))}")
+            else:
+                output.append("未检测到APT源配置")
+
+            output.append('=====================')
+            return '\n'.join(output)
+
+    except Exception as e:
+        logger.error(f'获取APT源配置失败: {e}')
+        return f'获取APT源配置失败: {e}'
