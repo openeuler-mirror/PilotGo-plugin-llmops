@@ -119,3 +119,29 @@ def fetch_auditd_config():
         raise  # 重新抛出异常以便上层捕获
 
     return settings
+def fetch_auditd_config_files():
+    """
+    获取auditd配置文件
+    """
+    files = []
+
+    try:
+        # 主配置文件
+        main_config = '/etc/audit/auditd.conf'
+        if os.path.exists(main_config):
+            files.append(main_config)
+
+        # 规则文件
+        rule_files = [
+            '/etc/audit/rules.d/',
+            '/etc/audit/audit.rules'
+        ]
+
+        for file in rule_files:
+            if os.path.exists(file):
+                files.append(file)
+
+    except Exception:
+        pass
+
+    return files
