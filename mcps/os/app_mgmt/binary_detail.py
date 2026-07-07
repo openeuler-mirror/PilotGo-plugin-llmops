@@ -100,3 +100,14 @@ def fetch_app_binary_info(binary_path=None):
     except Exception as e:
         logger.error(f'获取可执行程序信息失败: {e}')
         return f'获取可执行程序信息失败: {e}'
+def fetch_file_permissions(file_path):
+    """
+    获取文件权限
+    """
+    try:
+        st = os.stat(file_path)
+        mode = st.st_mode
+        permissions = stat.filemode(mode)
+        return permissions
+    except Exception:
+        return '未知'
