@@ -8,47 +8,47 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
-logger = logging.getLogger('log_cron')
+logger = logging.getLogger('log_secure')
 
-def fetch_log_cron(since=None, until=None, user=None):
+def fetch_log_secure(ip=None, user=None, since=None, until=None):
     """
-    采集定时任务日志（/var/log/cron/cron.log/定时任务执行/失败/时间/用户）
+    采集安全日志内容（/var/log/secure/认证/登录/权限变更/SSH日志/按IP/用户过滤）
 
     参数:
+        ip: IP地址，如 "192.168.1.1"
+        user: 用户名，如 "root"
         since: 起始时间，如 "1h ago", "2023-01-01"
         until: 结束时间，如 "now", "2023-01-02"
-        user: 用户名，如 "root"
 
     返回:
-        格式化的定时任务日志内容字符串
+        格式化的安全日志内容字符串
     """
     try:
         # 基本信息
         output = []
-        output.append('=== 定时任务日志内容 ===')
+        output.append('=== 安全日志内容 ===')
 
-        # 确定定时任务日志文件路径
-        cron_logs = [
-            '/var/log/cron',
-            '/var/log/cron.log',
-            '/var/log/syslog'
+        # 确定安全日志文件路径
+        secure_logs = [
+            '/var/log/secure',
+            '/var/log/auth.log'
         ]
 
         log_file = None
-        for log in cron_logs:
+        for log in secure_logs:
             if os.path.exists(log):
                 log_file = log
                 break
 
         if not log_file:
-            output.append('未检测到定时任务日志文件')
+            output.append('未检测到安全日志文件')
             output.append('=====================')
             return '\n'.join(output)
 
         output.append(f'日志文件: {log_file}')
 
         # 获取日志内容
-        logs = fetch_cron_log_content(log_file, since, until, user)
+        logs = fetch_secure_log_content(log_file, ip, user, since, until)
         if logs:
             output.append('\n日志内容:')
             output.append(logs)
@@ -57,6 +57,8 @@ def fetch_log_cron(since=None, until=None, user=None):
 
         # 显示过滤条件
         filters = []
+        if ip:
+            filters.append(f'IP: {ip}')
         if user:
             filters.append(f'用户: {user}')
         if since:
@@ -72,11 +74,12 @@ def fetch_log_cron(since=None, until=None, user=None):
         return '\n'.join(output)
 
     except Exception as e:
-        logger.error(f'获取定时任务日志内容失败: {e}')
-        return f'获取定时任务日志内容失败: {e}'
-def fetch_cron_log_content(log_file, since=None, until=None, user=None):
+        logger.error(f'获取安全日志内容失败: {e}')
+        return f'获取安全日志内容失败: {e}'
+
+def fetch_secure_log_content(log_file, ip=None, user=None, since=None, until=None):
     """
-    获取定时任务日志内容
+    获取安全日志内容
     """
     try:
         # 计算时间范围
@@ -123,8 +126,8 @@ def fetch_cron_log_content(log_file, since=None, until=None, user=None):
         # 过滤日志
         filtered_lines = []
         for line in lines:
-            # 只保留包含cron相关内容的行
-            if 'cron' not in line.lower():
+            # 按IP过滤
+            if ip and ip not in line:
                 continue
 
             # 按用户过滤
@@ -156,17 +159,25 @@ def fetch_cron_log_content(log_file, since=None, until=None, user=None):
         return ''.join(filtered_lines[-50:])
 
     except Exception as e:
-        logger.error(f'获取定时任务日志内容失败: {e}')
-        raise  # 抛出异常，让上级函数捕获
+        logger.error(f'获取安全日志内容失败: {e}')
+        raise  # 重新抛出异常，让上级函数处理
 
 # 工具配置
 TOOL_CONFIG = {
-    "name": "fetch_log_cron",
-    "function": fetch_log_cron,
-    "description": "采集定时任务日志（/var/log/cron/cron.log/定时任务执行/失败/时间/用户）",
+    "name": "fetch_log_secure",
+    "function": fetch_log_secure,
+    "description": "采集安全日志内容（/var/log/secure/认证/登录/权限变更/SSH日志/按IP/用户过滤）",
     "parameters": {
         "type": "object",
         "properties": {
+            "ip": {
+                "type": "string",
+                "description": "IP地址，如 \"192.168.1.1\""
+            },
+            "user": {
+                "type": "string",
+                "description": "用户名，如 \"root\""
+            },
             "since": {
                 "type": "string",
                 "description": "起始时间，如 \"1h ago\", \"2023-01-01\""
@@ -174,10 +185,6 @@ TOOL_CONFIG = {
             "until": {
                 "type": "string",
                 "description": "结束时间，如 \"now\", \"2023-01-02\""
-            },
-            "user": {
-                "type": "string",
-                "description": "用户名，如 \"root\""
             }
         },
         "required": []

@@ -8,75 +8,76 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
 )
-logger = logging.getLogger('log_cron')
+logger = logging.getLogger('log_syslog_content')
 
-def fetch_log_cron(since=None, until=None, user=None):
+def fetch_log_syslog_content(log_file=None, since=None, until=None, level=None):
     """
-    采集定时任务日志（/var/log/cron/cron.log/定时任务执行/失败/时间/用户）
+    采集系统日志内容（/var/log/messages/syslog/auth.log/按时间/级别过滤）
 
     参数:
+        log_file: 日志文件路径，如 "/var/log/messages", "/var/log/syslog"
         since: 起始时间，如 "1h ago", "2023-01-01"
         until: 结束时间，如 "now", "2023-01-02"
-        user: 用户名，如 "root"
+        level: 日志级别，如 "error", "warn", "info"
 
     返回:
-        格式化的定时任务日志内容字符串
+        格式化的系统日志内容字符串
     """
     try:
         # 基本信息
         output = []
-        output.append('=== 定时任务日志内容 ===')
+        output.append('=== 系统日志内容 ===')
 
-        # 确定定时任务日志文件路径
-        cron_logs = [
-            '/var/log/cron',
-            '/var/log/cron.log',
-            '/var/log/syslog'
-        ]
+        # 确定要检查的日志文件
+        log_files = []
+        if log_file:
+            # 检查文件是否存在
+            if os.path.exists(log_file):
+                log_files.append(log_file)
+            else:
+                output.append(f'错误: 日志文件 {log_file} 不存在')
+                output.append('=====================')
+                return '\n'.join(output)
+        else:
+            # 默认检查常见系统日志文件
+            default_logs = [
+                '/var/log/messages',
+                '/var/log/syslog',
+                '/var/log/auth.log',
+                '/var/log/daemon.log'
+            ]
 
-        log_file = None
-        for log in cron_logs:
-            if os.path.exists(log):
-                log_file = log
-                break
+            for log in default_logs:
+                if os.path.exists(log):
+                    log_files.append(log)
 
-        if not log_file:
-            output.append('未检测到定时任务日志文件')
+        if not log_files:
+            output.append('未检测到系统日志文件')
             output.append('=====================')
             return '\n'.join(output)
 
-        output.append(f'日志文件: {log_file}')
+        # 处理每个日志文件
+        for log_file_path in log_files:
+            output.append(f'\n=== 日志文件: {log_file_path} ===')
 
-        # 获取日志内容
-        logs = fetch_cron_log_content(log_file, since, until, user)
-        if logs:
-            output.append('\n日志内容:')
-            output.append(logs)
-        else:
-            output.append('未检测到日志内容')
-
-        # 显示过滤条件
-        filters = []
-        if user:
-            filters.append(f'用户: {user}')
-        if since:
-            filters.append(f'起始时间: {since}')
-        if until:
-            filters.append(f'结束时间: {until}')
-
-        if filters:
-            output.append('\n过滤条件:')
-            output.append(', '.join(filters))
+            # 获取日志内容
+            logs = fetch_log_content(log_file_path, since, until, level)
+            if logs:
+                output.append('\n日志内容:')
+                output.append(logs)
+            else:
+                output.append('未检测到日志内容')
 
         output.append('=====================')
         return '\n'.join(output)
 
     except Exception as e:
-        logger.error(f'获取定时任务日志内容失败: {e}')
-        return f'获取定时任务日志内容失败: {e}'
-def fetch_cron_log_content(log_file, since=None, until=None, user=None):
+        logger.error(f'获取系统日志内容失败: {e}')
+        return f'获取系统日志内容失败: {e}'
+
+def fetch_log_content(log_file, since=None, until=None, level=None):
     """
-    获取定时任务日志内容
+    获取日志文件内容
     """
     try:
         # 计算时间范围
@@ -123,14 +124,6 @@ def fetch_cron_log_content(log_file, since=None, until=None, user=None):
         # 过滤日志
         filtered_lines = []
         for line in lines:
-            # 只保留包含cron相关内容的行
-            if 'cron' not in line.lower():
-                continue
-
-            # 按用户过滤
-            if user and user not in line:
-                continue
-
             # 按时间过滤
             if start_time or end_time:
                 # 尝试解析时间戳
@@ -150,23 +143,33 @@ def fetch_cron_log_content(log_file, since=None, until=None, user=None):
                     except ValueError:
                         pass
 
+            # 按级别过滤
+            if level:
+                level_pattern = re.compile(r'\b(' + level + r')\b', re.IGNORECASE)  # NOSONAR
+                if not level_pattern.search(line):
+                    continue
+
             filtered_lines.append(line)
 
         # 只返回最后50行
         return ''.join(filtered_lines[-50:])
 
     except Exception as e:
-        logger.error(f'获取定时任务日志内容失败: {e}')
-        raise  # 抛出异常，让上级函数捕获
+        logger.error(f'获取日志内容失败: {e}')
+        raise  # 重新抛出异常，让上级函数处理
 
 # 工具配置
 TOOL_CONFIG = {
-    "name": "fetch_log_cron",
-    "function": fetch_log_cron,
-    "description": "采集定时任务日志（/var/log/cron/cron.log/定时任务执行/失败/时间/用户）",
+    "name": "fetch_log_syslog_content",
+    "function": fetch_log_syslog_content,
+    "description": "采集系统日志内容（/var/log/messages/syslog/auth.log/按时间/级别过滤）",
     "parameters": {
         "type": "object",
         "properties": {
+            "log_file": {
+                "type": "string",
+                "description": "日志文件路径，如 \"/var/log/messages\", \"/var/log/syslog\""
+            },
             "since": {
                 "type": "string",
                 "description": "起始时间，如 \"1h ago\", \"2023-01-01\""
@@ -175,9 +178,9 @@ TOOL_CONFIG = {
                 "type": "string",
                 "description": "结束时间，如 \"now\", \"2023-01-02\""
             },
-            "user": {
+            "level": {
                 "type": "string",
-                "description": "用户名，如 \"root\""
+                "description": "日志级别，如 \"error\", \"warn\", \"info\""
             }
         },
         "required": []
