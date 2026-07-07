@@ -145,3 +145,54 @@ def fetch_auditd_config_files():
         pass
 
     return files
+def fetch_audit_rules():
+    """
+    获取审计规则
+    """
+    rules = []
+
+    try:
+        # 使用auditctl命令获取规则
+        output = subprocess.run(
+            ['auditctl', '-l'],
+            capture_output=True,
+            text=True,
+            timeout=10  # 添加超时防止长时间等待
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if line.strip():
+                    rules.append(line.strip())
+
+        # 检查规则文件
+        rule_file = '/etc/audit/audit.rules'
+        if os.path.exists(rule_file):
+            with open(rule_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        rules.append(line)
+
+    except subprocess.TimeoutExpired as e:
+        logger.error(f'获取审计规则超时: {e}')
+        raise  # 重新抛出异常以便上层捕获
+    except Exception as e:
+        logger.error(f'获取审计规则失败: {e}')
+        raise  # 重新抛出异常以便上层捕获
+
+    return rules
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_log_auditd",
+    "function": fetch_log_auditd,
+    "description": "采集auditd审计配置（审计服务/规则/日志存储/保留策略/审计级别）",
+    "parameters": {
+        "type": "object",
+        "properties": {}
+    },
+    "required": []
+}
