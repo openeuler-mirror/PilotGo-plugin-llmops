@@ -713,3 +713,47 @@ def fetch_windows_bridges():
     except Exception as e:
         logger.error(f'获取Windows网络桥接信息失败: {e}')
         return []
+def fetch_network_topology():
+    """
+    获取网络拓扑信息
+
+    返回:
+        网络拓扑信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['ip', 'link', 'show'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    topology_info = []
+                    for line in lines[:20]:  # 限制输出行数
+                        if line.strip():
+                            topology_info.append(line.strip())
+                    return '\n'.join(topology_info)
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取网络拓扑信息失败: {e}')
+        return None
+
+# 工具配置
+TOOL_CONFIG = {
+    "label": "fetch_hw_switch_bridge",
+    "function": fetch_hw_switch_bridge,
+    "description": "采集物理桥接/交换机硬件信息，包括板载交换机/外接交换机的基础标识",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "switch_type": {
+                "type": "string",
+                "description": "信息类型，可选值：bridge（物理桥接信息）、onboard（板载交换机信息）、external（外接交换机信息）、state（交换机状态），不指定则获取所有信息",
+                "enum": ["bridge", "onboard", "external", "state"]
+            }
+        },
+        "required": []
+    }
+}
