@@ -476,3 +476,114 @@ def fetch_onboard_switches():
     except Exception as e:
         logger.error(f'获取板载交换机信息失败: {e}')
         return []
+def fetch_external_switches():
+    """
+    获取外接交换机信息
+
+    返回:
+        外接交换机信息列表
+    """
+    try:
+        external_switches = []
+
+        # 尝试获取网络邻居信息（可能包含交换机）
+        try:
+            output = subprocess.run(['ip', 'neigh'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                for line in lines:
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 5:
+                            ip = parts[0]
+                            mac = parts[4]
+                            dev = parts[5]
+
+                            # 假设某些MAC地址前缀可能是交换机
+                            # 这里只是简单的示例，实际情况需要更复杂的判断
+                            switch_vendors = ['00:1b:44', '00:0f:53', '00:12:0f']  # 示例MAC前缀
+                            mac_prefix = ':'.join(mac.split(':')[:3])
+
+                            if mac_prefix in switch_vendors:
+                                switch = {
+                                    'model': f"External Switch ({ip})",
+                                    'vendor': 'Unknown',
+                                    'ports': 'Unknown',
+                                    'state': 'Reachable',
+                                    'identifier': mac,
+                                    'interface': dev,
+                                    'ip_address': ip,
+                                    'type': 'External Switch'
+                                }
+                                external_switches.append(switch)
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试使用arp命令
+        try:
+            output = subprocess.run(['arp', '-a'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                for line in lines:
+                    if line.strip():
+                        # 解析arp输出
+                        try:
+                            parts = line.split()
+                            if len(parts) >= 4:
+                                ip = parts[1].strip('()')
+                                mac = parts[3]
+                                dev = parts[-1] if 'on' in parts else 'Unknown'
+
+                                switch = {
+                                    'model': f"Network Device ({ip})",
+                                    'vendor': 'Unknown',
+                                    'ports': 'Unknown',
+                                    'state': 'Known',
+                                    'identifier': mac,
+                                    'interface': dev,
+                                    'ip_address': ip,
+                                    'type': 'External Device'
+                                }
+                                external_switches.append(switch)
+                        except Exception:
+                            pass
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试获取LLDP信息（如果支持）
+        try:
+            output = subprocess.run(['lldpctl'], capture_output=True, text=True)
+            if output.returncode == 0:
+                # 解析lldpctl输出
+                # 这里只是简单的示例，实际解析需要更复杂的逻辑
+                lines = output.stdout.split('\n')
+                current_device = None
+
+                for line in lines:
+                    if 'Chassis ID' in line:
+                        if current_device:
+                            external_switches.append(current_device)
+                        current_device = {
+                            'model': 'Unknown',
+                            'vendor': 'Unknown',
+                            'ports': 'Unknown',
+                            'state': 'Discovered via LLDP',
+                            'identifier': line.split(':')[1].strip(),
+                            'interface': 'Unknown',
+                            'type': 'External Switch'
+                        }
+                    elif current_device and 'SysName' in line:
+                        current_device['model'] = line.split(':')[1].strip()
+                    elif current_device and 'SysDescr' in line:
+                        current_device['vendor'] = line.split(':')[1].strip()
+
+                if current_device:
+                    external_switches.append(current_device)
+        except subprocess.SubprocessError:
+            pass
+
+        return external_switches
+
+    except Exception as e:
+        logger.error(f'获取外接交换机信息失败: {e}')
+        return []
