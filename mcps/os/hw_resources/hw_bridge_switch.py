@@ -587,3 +587,60 @@ def fetch_external_switches():
     except Exception as e:
         logger.error(f'获取外接交换机信息失败: {e}')
         return []
+def fetch_macos_bridges():
+    """
+    获取macOS系统中的网络桥接信息
+
+    返回:
+        网络桥接信息列表
+    """
+    try:
+        bridges = []
+
+        # 尝试使用networksetup命令
+        try:
+            output = subprocess.run(['networksetup', '-listallnetworkservices'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')[1:]  # 跳过标题行
+                for line in lines:
+                    if line.strip() and 'Bridge' in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            label = ' '.join(parts[:-1])
+
+                            # 安全校验：验证设备名
+                            is_valid, error_msg = validate_device_name(label)
+                            if not is_valid:
+                                logger.warning(f'跳过不合法的设备名 {label}: {error_msg}')
+                                continue
+
+                            status_code = parts[-1]
+
+                            # 状态码映射
+                            status_map = {
+                                '0': 'Disabled',
+                                '1': 'Enabled',
+                                '2': 'Connected',
+                                '3': 'Disconnected',
+                                '4': 'Connecting',
+                                '5': 'Disconnecting'
+                            }
+                            state = status_map.get(status_code, 'Unknown')
+
+                            bridge = {
+                                'label': label,
+                                'state': state,
+                                'interfaces': 'Unknown',
+                                'mac': 'Unknown',
+                                'type': 'Network Bridge',
+                                'ports': 'Unknown'
+                            }
+                            bridges.append(bridge)
+        except subprocess.SubprocessError:
+            pass
+
+        return bridges
+
+    except Exception as e:
+        logger.error(f'获取macOS网络桥接信息失败: {e}')
+        return []
