@@ -131,3 +131,39 @@ def is_apt_based_system():
 
     except Exception:
         return False
+def fetch_apt_sources():
+    """
+    获取所有APT源配置
+
+    返回:
+        源配置列表
+    """
+    try:
+        sources = []
+
+        # 检查APT源配置目录
+        source_dirs = ['/etc/apt/sources.list.d', '/etc/apt']
+        source_files = []
+
+        # 添加sources.list文件
+        sources_list_file = '/etc/apt/sources.list'
+        if os.path.exists(sources_list_file):
+            source_files.append(sources_list_file)
+
+        # 添加sources.list.d目录下的文件
+        sources_list_d_dir = '/etc/apt/sources.list.d'
+        if os.path.exists(sources_list_d_dir):
+            for file in os.listdir(sources_list_d_dir):
+                if file.endswith('.list'):
+                    source_files.append(os.path.join(sources_list_d_dir, file))
+
+        # 解析配置文件
+        for source_file in source_files:
+            file_sources = analyze_source_file(source_file)
+            sources.extend(file_sources)
+
+        return sources
+
+    except Exception as e:
+        logger.error(f'获取APT源配置失败: {e}')
+        return []
