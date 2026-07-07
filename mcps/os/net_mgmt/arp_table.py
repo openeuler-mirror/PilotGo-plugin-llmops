@@ -268,3 +268,37 @@ def fetch_arp_errors():
         logger.error(f'获取ARP错误统计失败: {e}')
 
     return errors
+def fetch_network_interfaces():
+    """
+    获取网络接口列表
+    """
+    interfaces = []
+
+    try:
+        # 读取/sys/class/net目录
+        net_dir = '/sys/class/net'
+        if os.path.exists(net_dir):
+            for item in os.listdir(net_dir):
+                interfaces.append(item)
+
+    except Exception as e:
+        logger.error(f'获取网络接口列表失败: {e}')
+
+    return interfaces
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_arptable",
+    "function": fetch_net_arptable,
+    "description": "采集ARP表（ARP缓存/IP-MAC映射/静态ARP/过期时间/接口）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "interface": {
+                "type": "string",
+                "description": "网络接口名称，如 \"eth0\""
+            }
+        },
+        "required": []
+    }
+}
