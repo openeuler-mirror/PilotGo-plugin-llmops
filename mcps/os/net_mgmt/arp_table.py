@@ -200,3 +200,46 @@ def fetch_arp_stats(arp_entries):
         stats['接口分布'] = ', '.join([f"{k}:{v}" for k, v in interface_counts.items()])
 
     return stats
+def fetch_arp_cache_config():
+    """
+    获取ARP缓存配置
+    """
+    settings = {}
+
+    try:
+        # 检查arp_ignore设置
+        for iface in fetch_network_interfaces():
+            arp_ignore_path = f'/proc/sys/net/ipv4/conf/{iface}/arp_ignore'
+            if os.path.exists(arp_ignore_path):
+                try:
+                    with open(arp_ignore_path, 'r') as f:
+                        arp_ignore = f.read().strip()
+                        settings[f'{iface} arp_ignore'] = arp_ignore
+                except Exception:
+                    pass
+
+        # 检查arp_announce设置
+        for iface in fetch_network_interfaces():
+            arp_announce_path = f'/proc/sys/net/ipv4/conf/{iface}/arp_announce'
+            if os.path.exists(arp_announce_path):
+                try:
+                    with open(arp_announce_path, 'r') as f:
+                        arp_announce = f.read().strip()
+                        settings[f'{iface} arp_announce'] = arp_announce
+                except Exception:
+                    pass
+
+        # 检查gc_stale_time设置
+        gc_stale_time_path = '/proc/sys/net/ipv4/neigh/default/gc_stale_time'
+        if os.path.exists(gc_stale_time_path):
+            try:
+                with open(gc_stale_time_path, 'r') as f:
+                    gc_stale_time = f.read().strip()
+                    settings['gc_stale_time'] = f"{gc_stale_time}秒"
+            except Exception:
+                pass
+
+    except Exception as e:
+        logger.error(f'获取ARP缓存配置失败: {e}')
+
+    return settings
