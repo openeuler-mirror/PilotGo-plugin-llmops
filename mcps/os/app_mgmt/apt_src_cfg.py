@@ -167,3 +167,36 @@ def fetch_apt_sources():
     except Exception as e:
         logger.error(f'获取APT源配置失败: {e}')
         return []
+def analyze_source_file(file_path):
+    """
+    解析APT源配置文件
+
+    参数:
+        file_path: 配置文件路径
+
+    返回:
+        源配置列表
+    """
+    try:
+        sources = []
+
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        for line_num, line in enumerate(lines, 1):
+            line = line.strip()
+
+            # 跳过注释和空行
+            if not line or line.startswith('#'):
+                continue
+
+            # 解析源配置行
+            source_info = analyze_source_line(line, file_path, line_num)
+            if source_info:
+                sources.append(source_info)
+
+        return sources
+
+    except Exception as e:
+        logger.error(f'解析APT源文件失败 {file_path}: {e}')
+        return []
