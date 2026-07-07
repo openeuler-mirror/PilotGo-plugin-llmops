@@ -83,3 +83,43 @@ def fetch_log_app_custom(log_path=None, keyword=None, error_only=False, last=Non
     except Exception as e:
         logger.error(f'获取自定义应用日志失败: {e}')
         return f'获取自定义应用日志失败: {e}'
+def fetch_custom_log_content(log_path, keyword=None, error_only=False, last=None):
+    """
+    获取自定义应用日志内容
+    """
+    try:
+        # 读取日志文件
+        with open(log_path, 'r') as f:
+            lines = f.readlines()
+
+        # 过滤日志
+        filtered_lines = []
+        for line in lines:
+            # 按关键字过滤
+            if keyword and keyword not in line:
+                continue
+
+            # 按错误行过滤
+            if error_only:
+                error_patterns = ['error', 'ERROR', 'Error', 'warn', 'WARN', 'Warn', 'fail', 'FAIL', 'Fail']
+                if not any(pattern in line for pattern in error_patterns):
+                    continue
+
+            filtered_lines.append(line)
+
+        # 限制行数
+        if last:
+            try:
+                lines_count = int(last)
+                filtered_lines = filtered_lines[-lines_count:]
+            except ValueError:
+                pass
+        else:
+            # 默认显示最后100行
+            filtered_lines = filtered_lines[-100:]
+
+        return ''.join(filtered_lines)
+
+    except Exception as e:
+        logger.error(f'获取自定义应用日志内容失败: {e}')
+        raise  # 抛出异常，让调用者处理
