@@ -132,3 +132,67 @@ def fetch_app_apt_list(apt_info=None):
     except Exception as e:
         logger.error(f'获取APT包信息失败: {e}')
         return f'获取APT包信息失败: {e}'
+def is_apt_based_system():
+    """
+    检查系统是否是基于APT的系统
+
+    返回:
+        bool: 是否是基于APT的系统
+    """
+    try:
+        # 检查是否存在apt命令
+        output = subprocess.run(['which', 'apt'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return True
+
+        # 检查系统发行版
+        if os.path.exists('/etc/debian_version'):
+            return True
+
+        # 检查系统类型
+        distro = platform.platform().lower()
+        return any(keyword in distro for keyword in ['ubuntu', 'debian'])
+
+    except Exception:
+        return False
+def fetch_apt_packages():
+    """
+    获取所有已安装的APT包
+
+    返回:
+        APT包信息列表
+    """
+    try:
+        packages = []
+
+        # 使用dpkg命令获取所有已安装的包
+        output = subprocess.run(['dpkg-query', '-W', '-f=${Package}\t${Version}\t${Status}\n'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if line.strip():
+                    parts = line.split('\t')
+                    if len(parts) >= 3 and 'installed' in parts[2]:
+                        pkg_info = {
+                            'name': parts[0],
+                            'version': parts[1]
+                        }
+
+                        # 获取发布者信息
+                        publisher = fetch_package_publisher(parts[0])
+                        if publisher:
+                            pkg_info['publisher'] = publisher
+
+                        # 获取安装时间
+                        install_time = fetch_package_install_time(parts[0])
+                        if install_time:
+                            pkg_info['install_time'] = install_time
+
+                        packages.append(pkg_info)
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取APT包列表失败: {e}')
+        return []
