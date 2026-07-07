@@ -174,3 +174,29 @@ def display_arp_entry(output, entry):
     output.append(f"    类型: {entry.get('type', '未知')}")
     output.append(f"    状态: {entry.get('state', '未知')}")
     output.append(f"    过期时间: {entry.get('expires', '未知')}")
+def fetch_arp_stats(arp_entries):
+    """
+    获取ARP表统计信息
+    """
+    stats = {}
+
+    if arp_entries:
+        stats['总条目数'] = len(arp_entries)
+        stats['静态条目数'] = len([entry for entry in arp_entries if entry.get('type') == 'static'])
+        stats['动态条目数'] = len([entry for entry in arp_entries if entry.get('type') == 'dynamic'])
+
+        # 按状态统计
+        state_counts = {}
+        for entry in arp_entries:
+            state = entry.get('state', '未知')
+            state_counts[state] = state_counts.get(state, 0) + 1
+        stats['状态分布'] = ', '.join([f"{k}:{v}" for k, v in state_counts.items()])
+
+        # 按接口统计
+        interface_counts = {}
+        for entry in arp_entries:
+            interface = entry.get('interface', '未知')
+            interface_counts[interface] = interface_counts.get(interface, 0) + 1
+        stats['接口分布'] = ', '.join([f"{k}:{v}" for k, v in interface_counts.items()])
+
+    return stats
