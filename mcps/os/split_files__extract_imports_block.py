@@ -5,11 +5,6 @@ import ast
 import re
 import json
 
-        if 'logging.basicConfig' in line:
-            in_basicConfig = True
-        if in_basicConfig:
-            result.append(line)
-
 
 def extract_imports_block(source):
     """提取所有 import 语句（含空行分隔）"""

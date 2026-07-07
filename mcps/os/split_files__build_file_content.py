@@ -5,11 +5,6 @@ import ast
 import re
 import json
 
-        if 'logging.basicConfig' in line:
-            in_basicConfig = True
-        if in_basicConfig:
-            result.append(line)
-
 
 def build_file_content(imports, logging_cfg, func_source, tool_config=None):
     """构建独立文件内容"""

@@ -5,11 +5,6 @@ import ast
 import re
 import json
 
-        if 'logging.basicConfig' in line:
-            in_basicConfig = True
-        if in_basicConfig:
-            result.append(line)
-
 
 def split_file(filepath):
     """拆分一个文件为多个单元"""

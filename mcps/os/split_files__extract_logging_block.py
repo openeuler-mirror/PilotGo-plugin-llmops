@@ -5,11 +5,6 @@ import ast
 import re
 import json
 
-        if 'logging.basicConfig' in line:
-            in_basicConfig = True
-        if in_basicConfig:
-            result.append(line)
-
 
 def extract_logging_block(source):
     """提取 logging 配置块"""
@@ -17,7 +12,9 @@ def extract_logging_block(source):
     result = []
     in_basicConfig = False
     for line in lines:
-        if 'logging.basicConfig' in line:
+        stripped = line.strip()
+        # 只匹配实际的 logging.basicConfig 调用，而不是包含这个字符串的代码
+        if stripped.startswith('logging.basicConfig') or stripped.startswith('logging.basicConfig('):
             in_basicConfig = True
         if in_basicConfig:
             result.append(line)
