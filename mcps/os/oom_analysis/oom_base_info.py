@@ -112,3 +112,12 @@ def gather_memory_info() -> Dict[str, Any]:
         mem_data['error'] = str(e)
 
     return mem_data
+def analyze_mem_value(value_str: str) -> int:
+    """解析内存值（如 '16384000 kB' -> 16384000）"""
+    try:
+        parts = value_str.strip().split()
+        if len(parts) >= 1:
+            return int(parts[0])
+    except Exception:
+        pass
+    return 0
