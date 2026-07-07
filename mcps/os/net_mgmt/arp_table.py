@@ -115,3 +115,52 @@ def fetch_arp_table(interface=None):
         logger.error(f'获取ARP表失败: {e}')
 
     return entries
+def analyze_arp_entry(line):
+    """
+    解析ARP条目
+    """
+    entry = {}
+
+    try:
+        parts = line.strip().split()
+        if len(parts) < 4:
+            return None
+
+        # 解析IP地址
+        entry['ip'] = parts[0]
+
+        # 解析MAC地址
+        if parts[2] == 'lladdr':
+            entry['mac'] = parts[3]
+
+        # 解析接口
+        if 'dev' in parts:
+            dev_index = parts.index('dev')
+            if dev_index + 1 < len(parts):
+                entry['interface'] = parts[dev_index + 1]
+
+        # 解析状态
+        states = ['REACHABLE', 'STALE', 'PERMANENT', 'NONE', 'FAILED', 'INCOMPLETE']
+        for state in states:
+            if state in parts:
+                entry['state'] = state
+                break
+
+        # 解析类型（静态/动态）
+        if 'PERMANENT' in parts:
+            entry['type'] = 'static'
+        else:
+            entry['type'] = 'dynamic'
+
+        # 估算过期时间
+        if entry.get('state') == 'REACHABLE':
+            entry['expires'] = '~120秒'
+        elif entry.get('state') == 'STALE':
+            entry['expires'] = '已过期'
+        elif entry.get('type') == 'static':
+            entry['expires'] = '永久'
+
+    except Exception as e:
+        logger.error(f'解析ARP条目失败: {e}')
+
+    return entry
