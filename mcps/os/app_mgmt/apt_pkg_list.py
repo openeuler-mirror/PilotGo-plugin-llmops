@@ -219,3 +219,64 @@ def fetch_package_publisher(package_name):
 
     except Exception:
         return 'Unknown'
+def fetch_package_install_time(package_name):
+    """
+    获取包的安装时间
+
+    参数:
+        package_name: 包名
+
+    返回:
+        安装时间
+    """
+    try:
+        # 检查/var/log/dpkg.log文件
+        if os.path.exists('/var/log/dpkg.log'):
+            output = subprocess.run(['grep', 'install', '/var/log/dpkg.log'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                lines = output.stdout.strip().split('\n')
+                for line in reversed(lines):
+                    if package_name in line:
+                        parts = line.split(' ')
+                        if len(parts) >= 4:
+                            return f"{parts[0]} {parts[1]}"
+
+        # 检查/var/log/apt/history.log文件
+        if os.path.exists('/var/log/apt/history.log'):
+            output = subprocess.run(['grep', '-A', '2', 'Install:', '/var/log/apt/history.log'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                output = output.stdout
+                # 解析安装时间
+                lines = output.split('\n')
+                for i, line in enumerate(lines):
+                    if line.startswith('Start-Date:'):
+                        date_str = line.split(':', 1)[1].strip()
+                        # 检查下几行是否包含包名
+                        for j in range(1, 5):
+                            if i + j < len(lines) and package_name in lines[i + j]:
+                                return date_str
+
+        return 'Unknown'
+
+    except Exception:
+        return 'Unknown'
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_apt_list",
+    "function": fetch_app_apt_list,
+    "description": "采集APT包信息（Ubuntu/Debian，所有已安装DEB包/版本/发布者/安装时间）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "apt_info": {
+                "type": "string",
+                "description": "信息类型，可选值：all（所有已安装DEB包）、version（版本信息）、publisher（发布者信息）、time（安装时间），不指定则获取所有信息",
+                "enum": ["all", "version", "publisher", "time"]
+            }
+        },
+        "required": []
+    }
+}
