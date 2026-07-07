@@ -131,3 +131,19 @@ def fetch_file_type(file_path):
         return '未知'
     except Exception:
         return '未知'
+def fetch_binary_architecture(file_path):
+    """
+    获取二进制文件架构
+    """
+    try:
+        output = subprocess.run(['file', '-b', file_path], capture_output=True, text=True)
+        if output.returncode == 0:
+            output = output.stdout.strip()
+            if '64-bit' in output:
+                return '64位'
+            elif '32-bit' in output:
+                return '32位'
+            return output
+        return '未知'
+    except Exception:
+        return '未知'
