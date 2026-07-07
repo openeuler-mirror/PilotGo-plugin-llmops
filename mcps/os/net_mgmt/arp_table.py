@@ -243,3 +243,28 @@ def fetch_arp_cache_config():
         logger.error(f'获取ARP缓存配置失败: {e}')
 
     return settings
+def fetch_arp_errors():
+    """
+    获取ARP错误统计
+    """
+    errors = {}
+
+    try:
+        # 读取/proc/net/snmp
+        with open('/proc/net/snmp', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    if parts[0] == 'Ip:':
+                        if len(parts) >= 11:
+                            errors['InDelivers'] = parts[10]
+                    elif parts[0] == 'Icmp:':
+                        if len(parts) >= 10:
+                            errors['InDestUnreachs'] = parts[9]
+
+    except Exception as e:
+        logger.error(f'获取ARP错误统计失败: {e}')
+
+    return errors
