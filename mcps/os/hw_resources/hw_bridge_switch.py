@@ -351,3 +351,128 @@ def fetch_linux_bridges():
     except Exception as e:
         logger.error(f'获取Linux网络桥接信息失败: {e}')
         return []
+def fetch_onboard_switches():
+    """
+    获取板载交换机信息
+
+    返回:
+        板载交换机信息列表
+    """
+    try:
+        onboard_switches = []
+
+        # 尝试使用lspci命令查找网络交换机
+        try:
+            output = subprocess.run(
+                ['lspci', '-nn', '-d', '0x0207:'],  # 0x0207是网络交换机设备ID
+                capture_output=True,
+                text=True
+            )
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                for line in lines:
+                    if line.strip():
+                        parts = line.split(':')
+                        if len(parts) >= 3:
+                            pci_address = parts[0].strip()
+                            switch_info = parts[2].strip()
+
+                            # 提取厂商和型号
+                            vendor = 'Unknown'
+                            model = switch_info
+                            if '[' in switch_info and ']' in switch_info:
+                                vendor_part = switch_info.split('[')[1].split(']')[0]
+                                vendor = vendor_part
+                                model = switch_info.split(']')[1].strip()
+
+                            switch = {
+                                'model': model,
+                                'vendor': vendor,
+                                'ports': 'Unknown',
+                                'state': 'Present',
+                                'identifier': pci_address,
+                                'type': 'Onboard Switch',
+                                'pci_address': pci_address
+                            }
+                            onboard_switches.append(switch)
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试查找常见的板载交换机芯片
+        try:
+            output = subprocess.run(['lspci', '-nn'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                for line in lines:
+                    if line.strip() and ('switch' in line.lower() or 'hub' in line.lower()):
+                        parts = line.split(':')
+                        if len(parts) >= 3:
+                            pci_address = parts[0].strip()
+                            switch_info = parts[2].strip()
+
+                            vendor = 'Unknown'
+                            model = switch_info
+                            if '[' in switch_info and ']' in switch_info:
+                                vendor_part = switch_info.split('[')[1].split(']')[0]
+                                vendor = vendor_part
+                                model = switch_info.split(']')[1].strip()
+
+                            # 检查是否已经存在
+                            existing = False
+                            for switch in onboard_switches:
+                                if switch.get('identifier') == pci_address:
+                                    existing = True
+                                    break
+                            if not existing:
+                                switch = {
+                                    'model': model,
+                                    'vendor': vendor,
+                                    'ports': 'Unknown',
+                                    'state': 'Present',
+                                    'identifier': pci_address,
+                                    'type': 'Onboard Switch',
+                                    'pci_address': pci_address
+                                }
+                                onboard_switches.append(switch)
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试从/sys获取板载交换机信息
+        try:
+            if os.path.exists('/sys/class/net'):
+                for dev in os.listdir('/sys/class/net'):
+                    if dev != 'lo':
+                        try:
+                            if os.path.exists(f'/sys/class/net/{dev}/device'):
+                                # 检查是否为交换机设备
+                                try:
+                                    with open(f'/sys/class/net/{dev}/device/device', 'r') as f:
+                                        device_id = f.read().strip()
+                                    with open(f'/sys/class/net/{dev}/device/vendor', 'r') as f:
+                                        vendor_id = f.read().strip()
+
+                                    # 检查是否为交换机设备
+                                    if device_id and vendor_id:
+                                        # 这里可以添加更多的设备ID判断
+                                        switch = {
+                                            'model': f"Network Device ({dev})",
+                                            'vendor': vendor_id,
+                                            'ports': 'Unknown',
+                                            'state': 'Present',
+                                            'identifier': dev,
+                                            'type': 'Onboard Switch',
+                                            'device_id': device_id
+                                        }
+                                        onboard_switches.append(switch)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+        return onboard_switches
+
+    except Exception as e:
+        logger.error(f'获取板载交换机信息失败: {e}')
+        return []
