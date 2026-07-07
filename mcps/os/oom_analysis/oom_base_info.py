@@ -121,3 +121,40 @@ def analyze_mem_value(value_str: str) -> int:
     except Exception:
         pass
     return 0
+def gather_oom_config() -> Dict[str, Any]:
+    """收集OOM Killer配置"""
+    settings = {}
+
+    try:
+        # OOM Killer开关
+        if os.path.exists('/proc/sys/vm/oom_kill_allocating_task'):
+            with open('/proc/sys/vm/oom_kill_allocating_task', 'r') as f:
+                settings['oom_kill_allocating_task'] = f.read().strip()
+
+        # OOM Killer panic开关
+        if os.path.exists('/proc/sys/vm/panic_on_oom'):
+            with open('/proc/sys/vm/panic_on_oom', 'r') as f:
+                settings['panic_on_oom'] = f.read().strip()
+
+        # 内存过量使用配置
+        if os.path.exists('/proc/sys/vm/overcommit_memory'):
+            with open('/proc/sys/vm/overcommit_memory', 'r') as f:
+                settings['overcommit_memory'] = f.read().strip()
+
+        # 过量使用比例
+        if os.path.exists('/proc/sys/vm/overcommit_ratio'):
+            with open('/proc/sys/vm/overcommit_ratio', 'r') as f:
+                settings['overcommit_ratio'] = f.read().strip()
+
+        # 解释配置含义
+        settings['explanations'] = {
+            'oom_kill_allocating_task': '1=直接kill分配内存的进程, 0=选择得分最高的进程',
+            'panic_on_oom': '0=触发OOM Killer, 1=触发panic, 2=强制panic（无论是否配置mempolicy/cpuset）',
+            'overcommit_memory': '0=启发式过量使用, 1=总是允许过量使用, 2=不允许过量使用',
+            'overcommit_ratio': '可过量使用的内存百分比（当overcommit_memory=2时有效）'
+        }
+
+    except Exception as e:
+        settings['error'] = str(e)
+
+    return settings
