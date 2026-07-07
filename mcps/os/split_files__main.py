@@ -5,11 +5,6 @@ import ast
 import re
 import json
 
-        if 'logging.basicConfig' in line:
-            in_basicConfig = True
-        if in_basicConfig:
-            result.append(line)
-
 
 def main():
     os.makedirs(SPLIT_DIR, exist_ok=True)

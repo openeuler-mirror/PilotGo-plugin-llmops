@@ -5,11 +5,6 @@ import ast
 import re
 import json
 
-        if 'logging.basicConfig' in line:
-            in_basicConfig = True
-        if in_basicConfig:
-            result.append(line)
-
 
 def generate_init_files():
     """为每个目录生成 __init__.py"""
