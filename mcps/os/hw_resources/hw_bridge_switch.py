@@ -195,3 +195,159 @@ def fetch_switch_details():
             'external_switches': [],
             'statuses': []
         }
+def fetch_linux_bridges():
+    """
+    获取Linux系统中的网络桥接信息
+
+    返回:
+        网络桥接信息列表
+    """
+    try:
+        bridges = []
+
+        # 尝试使用brctl命令
+        try:
+            output = subprocess.run(['brctl', 'show'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')[1:]
+                for line in lines:
+                    if line.strip():
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            bridge_name = parts[0]
+
+                            # 安全校验：验证桥接设备名
+                            is_valid, error_msg = validate_device_name(bridge_name)
+                            if not is_valid:
+                                logger.warning(f'跳过不合法的桥接设备名 {bridge_name}: {error_msg}')
+                                continue
+
+                            interfaces = parts[3:] if len(parts) > 3 else []
+
+                            # 获取桥接状态
+                            state = 'Unknown'
+                            try:
+                                with open(f'/sys/class/net/{bridge_name}/operstate', 'r') as f:
+                                    state = f.read().strip()
+                            except Exception:
+                                pass
+
+                            # 获取桥接MAC地址
+                            mac = 'Unknown'
+                            try:
+                                with open(f'/sys/class/net/{bridge_name}/address', 'r') as f:
+                                    mac = f.read().strip()
+                            except Exception:
+                                pass
+
+                            bridge = {
+                                'label': bridge_name,
+                                'state': state,
+                                'interfaces': ', '.join(interfaces) if interfaces else 'None',
+                                'mac': mac,
+                                'type': 'Network Bridge',
+                                'ports': len(interfaces)
+                            }
+                            bridges.append(bridge)
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试使用ip命令
+        try:
+            output = subprocess.run(['ip', 'link', 'show', 'type', 'bridge'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                current_bridge = None
+
+                for line in lines:
+                    if line.strip() and not line.startswith(' '):
+                        if current_bridge:
+                            bridges.append(current_bridge)
+
+                        parts = line.split(':')
+                        if len(parts) >= 2:
+                            bridge_name = parts[1].strip()
+                            current_bridge = {
+                                'label': bridge_name,
+                                'state': 'Unknown',
+                                'interfaces': 'Unknown',
+                                'mac': 'Unknown',
+                                'type': 'Network Bridge',
+                                'ports': 'Unknown'
+                            }
+                    elif current_bridge and 'state' in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            current_bridge['state'] = parts[1]
+                    elif current_bridge and 'link/ether' in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            current_bridge['mac'] = parts[1]
+
+                if current_bridge:
+                    bridges.append(current_bridge)
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试从/sys获取桥接信息
+        try:
+            net_devices = os.listdir('/sys/class/net')
+            for dev in net_devices:
+                if dev != 'lo':
+                    try:
+                        if os.path.exists(f'/sys/class/net/{dev}/bridge'):
+                            # 这是一个桥接设备
+                            bridge_name = dev
+
+                            # 检查是否已经存在
+                            existing = False
+                            for bridge in bridges:
+                                if bridge.get('label') == bridge_name:
+                                    existing = True
+                                    break
+                            if existing:
+                                continue
+
+                            # 获取状态
+                            state = 'Unknown'
+                            try:
+                                with open(f'/sys/class/net/{bridge_name}/operstate', 'r') as f:
+                                    state = f.read().strip()
+                            except Exception:
+                                pass
+
+                            # 获取MAC地址
+                            mac = 'Unknown'
+                            try:
+                                with open(f'/sys/class/net/{bridge_name}/address', 'r') as f:
+                                    mac = f.read().strip()
+                            except Exception:
+                                pass
+
+                            # 获取接口列表
+                            interfaces = []
+                            try:
+                                if os.path.exists(f'/sys/class/net/{bridge_name}/brif'):
+                                    interfaces = os.listdir(f'/sys/class/net/{bridge_name}/brif')
+                            except Exception:
+                                pass
+
+                            bridge = {
+                                'label': bridge_name,
+                                'state': state,
+                                'interfaces': ', '.join(interfaces) if interfaces else 'None',
+                                'mac': mac,
+                                'type': 'Network Bridge',
+                                'ports': len(interfaces)
+                            }
+                            bridges.append(bridge)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return bridges
+
+    except Exception as e:
+        logger.error(f'获取Linux网络桥接信息失败: {e}')
+        return []
