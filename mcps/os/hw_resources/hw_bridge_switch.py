@@ -644,3 +644,72 @@ def fetch_macos_bridges():
     except Exception as e:
         logger.error(f'获取macOS网络桥接信息失败: {e}')
         return []
+def fetch_windows_bridges():
+    """
+    获取Windows系统中的网络桥接信息
+
+    返回:
+        网络桥接信息列表
+    """
+    try:
+        bridges = []
+
+        # 尝试使用netsh命令
+        try:
+            output = subprocess.run(['netsh', 'bridge', 'show', 'adapter'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                bridge_adapters = [line.strip() for line in lines if line.strip() and not line.startswith('---')]
+                if bridge_adapters:
+                    bridge = {
+                        'label': 'Network Bridge',
+                        'state': 'Unknown',
+                        'interfaces': ', '.join(bridge_adapters),
+                        'mac': 'Unknown',
+                        'type': 'Network Bridge',
+                        'ports': len(bridge_adapters)
+                    }
+                    bridges.append(bridge)
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试使用wmic命令
+        try:
+            output = subprocess.run(['wmic', 'nic', 'get', 'Name,NetConnectionStatus'], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.strip().split('\n')[1:]
+                for line in lines:
+                    if line.strip() and 'Bridge' in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            label = ' '.join(parts[:-1])
+                            status_code = parts[-1]
+
+                            # 状态码映射
+                            status_map = {
+                                '0': 'Disabled',
+                                '1': 'Enabled',
+                                '2': 'Connected',
+                                '3': 'Disconnected',
+                                '4': 'Connecting',
+                                '5': 'Disconnecting'
+                            }
+                            state = status_map.get(status_code, 'Unknown')
+
+                            bridge = {
+                                'label': label,
+                                'state': state,
+                                'interfaces': 'Unknown',
+                                'mac': 'Unknown',
+                                'type': 'Network Bridge',
+                                'ports': 'Unknown'
+                            }
+                            bridges.append(bridge)
+        except subprocess.SubprocessError:
+            pass
+
+        return bridges
+
+    except Exception as e:
+        logger.error(f'获取Windows网络桥接信息失败: {e}')
+        return []
