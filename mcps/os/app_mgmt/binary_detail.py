@@ -120,3 +120,14 @@ def render_file_size(size_in_bytes):
             return f"{size_in_bytes:.2f} {unit}"
         size_in_bytes /= 1024.0
     return f"{size_in_bytes:.2f} TB"
+def fetch_file_type(file_path):
+    """
+    获取文件类型
+    """
+    try:
+        output = subprocess.run(['file', file_path], capture_output=True, text=True)
+        if output.returncode == 0:
+            return output.stdout.strip().split(':', 1)[1].strip()
+        return '未知'
+    except Exception:
+        return '未知'
