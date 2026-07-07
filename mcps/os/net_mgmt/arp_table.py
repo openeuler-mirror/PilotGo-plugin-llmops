@@ -85,3 +85,33 @@ def fetch_net_arptable(interface=None):
     except Exception as e:
         logger.error(f'获取ARP表失败: {e}')
         return f'获取ARP表失败: {e}'
+def fetch_arp_table(interface=None):
+    """
+    获取ARP表
+    """
+    entries = []
+
+    try:
+        # 构建命令
+        cmd = ['ip', 'neigh', 'show']
+        if interface:
+            cmd.extend(['dev', interface])
+
+        output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if line.strip():
+                    entry = analyze_arp_entry(line)
+                    if entry:
+                        entries.append(entry)
+
+    except Exception as e:
+        logger.error(f'获取ARP表失败: {e}')
+
+    return entries
