@@ -174,3 +174,31 @@ def fetch_binary_dependencies(file_path):
     except Exception:
         pass
     return dependencies
+def fetch_build_time(file_path):
+    """
+    获取二进制文件编译时间
+    """
+    try:
+        # 检查是否是ELF文件
+        output = subprocess.run(['file', '-b', file_path], capture_output=True, text=True)
+        if 'ELF' not in output.stdout:
+            return None
+
+        # 使用readelf获取编译时间
+        readelf_result = subprocess.run(['readelf', '-h', file_path], capture_output=True, text=True)
+        if readelf_result.returncode == 0:
+            for line in readelf_result.stdout.split('\n'):
+                if 'Build ID:' in line:
+                    return line.strip().split(':', 1)[1].strip()
+
+        # 尝试使用strings查找时间戳
+        strings_result = subprocess.run(['strings', file_path], capture_output=True, text=True)
+        if strings_result.returncode == 0:
+            # 查找类似编译时间的字符串
+            time_pattern = r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
+            matches = re.findall(time_pattern, strings_result.stdout)
+            if matches:
+                return matches[0]
+    except Exception:
+        pass
+    return None
