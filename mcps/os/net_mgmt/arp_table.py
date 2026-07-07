@@ -164,3 +164,13 @@ def analyze_arp_entry(line):
         logger.error(f'解析ARP条目失败: {e}')
 
     return entry
+def display_arp_entry(output, entry):
+    """
+    显示ARP条目
+    """
+    output.append(f"  IP地址: {entry.get('ip', '未知')}")
+    output.append(f"    MAC地址: {entry.get('mac', '未知')}")
+    output.append(f"    接口: {entry.get('interface', '未知')}")
+    output.append(f"    类型: {entry.get('type', '未知')}")
+    output.append(f"    状态: {entry.get('state', '未知')}")
+    output.append(f"    过期时间: {entry.get('expires', '未知')}")
