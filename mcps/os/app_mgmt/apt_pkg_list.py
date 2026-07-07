@@ -196,3 +196,26 @@ def fetch_apt_packages():
     except Exception as e:
         logger.error(f'获取APT包列表失败: {e}')
         return []
+def fetch_package_publisher(package_name):
+    """
+    获取包的发布者信息
+
+    参数:
+        package_name: 包名
+
+    返回:
+        发布者信息
+    """
+    try:
+        output = subprocess.run(['apt-cache', 'show', package_name], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            output = output.stdout
+            for line in output.split('\n'):
+                if line.startswith('Maintainer:'):
+                    return line.split(':', 1)[1].strip()
+
+        return 'Unknown'
+
+    except Exception:
+        return 'Unknown'
