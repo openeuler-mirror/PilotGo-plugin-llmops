@@ -122,3 +122,76 @@ def fetch_hw_switch_bridge(switch_type=None):
     except Exception as e:
         logger.error(f'获取物理桥接/交换机硬件信息失败: {e}')
         return f'获取物理桥接/交换机硬件信息失败: {e}'
+def fetch_switch_details():
+    """
+    获取物理桥接/交换机详细信息
+
+    返回:
+        物理桥接/交换机详细信息字典
+    """
+    try:
+        switch_info = {
+            'bridges': [],
+            'onboard_switches': [],
+            'external_switches': [],
+            'statuses': []
+        }
+
+        if platform.system() == 'Linux':
+            # 尝试获取网络桥接信息
+            try:
+                bridges = fetch_linux_bridges()
+                for bridge in bridges:
+                    switch_info['bridges'].append(bridge)
+                    switch_info['statuses'].append(f"{bridge.get('label')}: {bridge.get('state')}")
+            except Exception:
+                pass
+
+            # 尝试获取板载交换机信息
+            try:
+                onboard_switches = fetch_onboard_switches()
+                for switch in onboard_switches:
+                    switch_info['onboard_switches'].append(switch)
+                    switch_info['statuses'].append(f"{switch.get('model')}: {switch.get('state')}")
+            except Exception:
+                pass
+
+            # 尝试获取外接交换机信息
+            try:
+                external_switches = fetch_external_switches()
+                for switch in external_switches:
+                    switch_info['external_switches'].append(switch)
+                    switch_info['statuses'].append(f"{switch.get('model')}: {switch.get('state')}")
+            except Exception:
+                pass
+
+        elif platform.system() == 'Darwin':
+            # macOS系统
+            try:
+                bridges = fetch_macos_bridges()
+                for bridge in bridges:
+                    switch_info['bridges'].append(bridge)
+                    switch_info['statuses'].append(f"{bridge.get('label')}: {bridge.get('state')}")
+            except Exception:
+                pass
+
+        elif platform.system() == 'Windows':
+            # Windows系统
+            try:
+                bridges = fetch_windows_bridges()
+                for bridge in bridges:
+                    switch_info['bridges'].append(bridge)
+                    switch_info['statuses'].append(f"{bridge.get('label')}: {bridge.get('state')}")
+            except Exception:
+                pass
+
+        return switch_info
+
+    except Exception as e:
+        logger.error(f'获取物理桥接/交换机详细信息失败: {e}')
+        return {
+            'bridges': [],
+            'onboard_switches': [],
+            'external_switches': [],
+            'statuses': []
+        }
