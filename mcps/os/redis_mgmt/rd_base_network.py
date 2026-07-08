@@ -94,3 +94,74 @@ def fetch_redis_base_network(network_type=None):
     except Exception as e:
         logger.error(f'获取Redis网络信息失败: {e}')
         return f'获取Redis网络信息失败: {e}'
+def fetch_network_info_from_config():
+    """
+    从配置文件获取网络信息
+    """
+    network_info = {}
+
+    try:
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'bind'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'bind' and i + 1 < len(lines):
+                    bind_address = lines[i + 1].strip()
+                    network_info['绑定地址'] = bind_address
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'port'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'port' and i + 1 < len(lines):
+                    port = lines[i + 1].strip()
+                    network_info['监听端口'] = port
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'protected-mode'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'protected-mode' and i + 1 < len(lines):
+                    protected_mode = lines[i + 1].strip()
+                    network_info['保护模式'] = '启用' if protected_mode == 'yes' else '禁用'
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'tcp-backlog'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'tcp-backlog' and i + 1 < len(lines):
+                    backlog = lines[i + 1].strip()
+                    network_info['TCP连接队列'] = backlog
+                    break
+
+    except Exception as e:
+        logger.error(f'从配置文件获取网络信息失败: {e}')
+
+    return network_info
