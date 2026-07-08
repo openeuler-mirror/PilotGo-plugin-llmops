@@ -80,3 +80,25 @@ def fetch_net_bandwidth():
     except Exception as e:
         logger.error(f'获取网卡带宽失败: {e}')
         return f'获取网卡带宽失败: {e}'
+def fetch_network_interfaces():
+    """
+    获取网络接口列表
+    """
+    interfaces = []
+
+    try:
+        # 读取/proc/net/dev
+        with open('/proc/net/dev', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines[2:]:  # 跳过标题行
+                if ':' in line:
+                    interface = line.split(':')[0].strip()
+                    # 排除回环接口和虚拟接口
+                    if interface != 'lo' and not interface.startswith('veth') and not interface.startswith('docker'):
+                        interfaces.append(interface)
+
+    except Exception as e:
+        logger.error(f'获取网络接口失败: {e}')
+
+    return interfaces
