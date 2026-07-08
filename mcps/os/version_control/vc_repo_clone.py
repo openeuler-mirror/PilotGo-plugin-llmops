@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_url_param, validate_path_param, validate_identifier_param
 
+
 def git_clone(repo_url, target_dir=None, branch=None):
     """
     克隆Git仓库到指定目录
@@ -107,7 +108,7 @@ def git_clone(repo_url, target_dir=None, branch=None):
             "branch": branch
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "vc_repo_clone",
     "function": git_clone,
