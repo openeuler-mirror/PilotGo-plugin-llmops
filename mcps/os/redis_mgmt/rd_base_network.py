@@ -427,3 +427,99 @@ def fetch_interface_info(pid):
         logger.error(f'获取绑定网卡信息失败: {e}')
 
     return interface_info
+def fetch_firewall_info(pid):
+    """
+    获取防火墙规则
+    """
+    firewall_info = {}
+
+    try:
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'port'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        redis_port = None
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'port' and i + 1 < len(lines):
+                    redis_port = lines[i + 1].strip()
+                    break
+
+        output = subprocess.run(['systemctl', 'is-active', 'firewalld'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            firewall_info['Firewalld状态'] = output.stdout.strip()
+
+        output = subprocess.run(['systemctl', 'is-active', 'ufw'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            firewall_info['UFW状态'] = output.stdout.strip()
+
+        output = subprocess.run(['systemctl', 'is-active', 'iptables'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            firewall_info['Iptables状态'] = output.stdout.strip()
+
+        output = subprocess.run(['iptables', '-L', '-n', '2>/dev/null'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            if redis_port:
+                redis_rules = [line.strip() for line in output.stdout.split('\n') if redis_port in line or 'dpt:' + redis_port in line]
+
+                if redis_rules:
+                    firewall_info['Iptables Redis规则'] = '\n    '.join(redis_rules)
+                else:
+                    firewall_info['Iptables Redis规则'] = '未找到Redis端口规则'
+            else:
+                firewall_info['Iptables规则数量'] = str(len([line for line in output.stdout.split('\n') if line.strip()]))
+
+        output = subprocess.run(['firewall-cmd', '--list-ports', '2>/dev/null'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            ports = output.stdout.strip()
+            if redis_port and redis_port in ports:
+                firewall_info['Firewalld开放端口'] = ports
+                firewall_info['Redis端口状态'] = '已开放'
+            else:
+                firewall_info['Firewalld开放端口'] = ports
+                if redis_port:
+                    firewall_info['Redis端口状态'] = '未开放'
+
+        output = subprocess.run(['ufw', 'status', '2>/dev/null'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            ufw_status = output.stdout.strip()
+            firewall_info['UFW状态详情'] = ufw_status
+
+            if redis_port and redis_port in ufw_status:
+                firewall_info['Redis端口UFW状态'] = '已开放'
+            elif redis_port:
+                firewall_info['Redis端口UFW状态'] = '未开放'
+
+        output = subprocess.run(['ss', '-tlnp'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            if redis_port:
+                port_listening = False
+                for line in output.stdout.split('\n'):
+                    if f':{redis_port}' in line and 'LISTEN' in line:
+                        port_listening = True
+                        break
+
+                firewall_info['端口监听状态'] = '正在监听' if port_listening else '未监听'
+
+        output = subprocess.run(['nc', '-zv', '127.0.0.1', str(redis_port), '2>&1'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            firewall_info['本地端口连通性'] = '可连接'
+        else:
+            firewall_info['本地端口连通性'] = '不可连接'
+
+    except Exception as e:
+        logger.error(f'获取防火墙规则失败: {e}')
+
+    return firewall_info
