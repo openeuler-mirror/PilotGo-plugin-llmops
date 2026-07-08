@@ -119,3 +119,56 @@ def spot_cgroup_version() -> str:
         logger.error(f'检测cgroup版本失败: {e}')
 
     return 'unknown'
+def examine_cgroup_oom_events() -> List[Dict[str, Any]]:
+    """分析cgroup OOM事件"""
+    events = []
+
+    try:
+        # 从journalctl获取cgroup OOM日志
+        journal_result = execute_command([
+            'journalctl', '--since', '24 hours ago',
+            '--grep', 'Memory cgroup|memory cgroup|oom', '-q', '--no-pager'
+        ])
+
+        if journal_result['success']:
+            for line in journal_result['stdout'].split('\n'):
+                if 'Memory cgroup' in line or 'memory cgroup' in line.lower():
+                    event = analyze_cgroup_oom_log(line)
+                    if event:
+                        events.append(event)
+
+        # 从dmesg获取cgroup OOM日志
+        dmesg_result = execute_command(['dmesg'])
+        if dmesg_result['success']:
+            body = dmesg_result['stdout']
+
+            # 匹配cgroup OOM模式
+            cgroup_oom_pattern = r'Memory cgroup out of memory:.*Killed process (\d+) \(([^)]+)\)'
+            for match in re.finditer(cgroup_oom_pattern, body, re.IGNORECASE):
+                events.append({
+                    'pid': match.group(1),
+                    'process_name': match.group(2),
+                    'source': 'dmesg',
+                    'type': 'cgroup_oom_kill',
+                    'timestamp': derive_dmesg_timestamp(body, match.start()),
+                    'cgroup': derive_cgroup_from_context(body, match.start())
+                })
+
+        # 检查cgroup事件文件（cgroup v2）
+        events.extend(verify_cgroup_v2_events())
+
+        # 去重
+        seen = set()
+        unique_events = []
+        for event in events:
+            key = (event.get('pid'), event.get('process_name'), event.get('cgroup'))
+            if key not in seen:
+                seen.add(key)
+                unique_events.append(event)
+
+        events = unique_events
+
+    except Exception as e:
+        events.append({'error': str(e)})
+
+    return events
