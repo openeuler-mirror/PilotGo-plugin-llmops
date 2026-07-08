@@ -106,3 +106,12 @@ def fetch_app_ldd_info(binary_path=None, check_missing=True):
     except Exception as e:
         logger.error(f'获取动态链接库信息失败: {e}')
         return f'获取动态链接库信息失败: {e}'
+def is_elf_file(file_path):
+    """
+    检查文件是否是ELF文件
+    """
+    try:
+        output = subprocess.run(['file', '-b', file_path], capture_output=True, text=True)
+        return 'ELF' in output.stdout
+    except Exception:
+        return False
