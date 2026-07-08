@@ -219,3 +219,16 @@ def derive_dmesg_timestamp(body: str, position: int) -> str:
     except Exception:
         pass
     return 'unknown'
+def derive_cgroup_from_context(body: str, position: int) -> str:
+    """从上下文提取cgroup路径"""
+    try:
+        context_start = max(0, position - 1000)
+        context = body[context_start:position]
+
+        # 查找cgroup路径
+        cgroup_match = re.search(r'cgroup[:\s]+(/[^\s,]+)', context, re.IGNORECASE)
+        if cgroup_match:
+            return cgroup_match.group(1)
+    except Exception:
+        pass
+    return 'unknown'
