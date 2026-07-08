@@ -179,3 +179,68 @@ def fetch_go_version():
 
     except Exception:
         return 'Unknown'
+def fetch_module_info():
+    """
+    获取模块信息
+
+    返回:
+        模块信息字典
+    """
+    try:
+        details = {}
+
+        # 获取模块路径
+        output = subprocess.run(['go', 'list', '-m'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            details['module'] = output.stdout.strip()
+
+        # 获取依赖信息
+        dependencies = fetch_dependencies()
+        if dependencies:
+            details['dependencies'] = dependencies
+        else:
+            details['dependencies'] = []
+
+        return details
+
+    except Exception as e:
+        logger.error(f'获取模块信息失败: {e}')
+        return {'module': 'Unknown', 'dependencies': []}
+def fetch_dependencies():
+    """
+    获取依赖信息
+
+    返回:
+        依赖信息列表
+    """
+    try:
+        dependencies = []
+
+        # 使用go mod graph获取依赖
+        output = subprocess.run(['go', 'mod', 'graph'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            dep_paths = set()
+
+            for line in lines:
+                parts = line.split(' ')
+                if len(parts) == 2:
+                    dep = parts[1]
+                    # 解析依赖路径和版本
+                    if '@' in dep:
+                        path, version = dep.split('@', 1)
+                        if path not in dep_paths:
+                            dep_paths.add(path)
+                            dependencies.append({
+                                'path': path,
+                                'version': version,
+                                'download_url': fetch_download_url(path)
+                            })
+
+        return dependencies
+
+    except Exception as e:
+        logger.error(f'获取依赖信息失败: {e}')
+        return []
