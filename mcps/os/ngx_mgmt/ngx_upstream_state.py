@@ -306,3 +306,53 @@ def analyze_load_balancing_method(upstream_content: str) -> str:
         logger.error(f"解析负载均衡策略失败: {e}")
     
     return lb_method
+
+def verify_server_connectivity(server_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    检查服务器连通性
+    
+    参数:
+        server_info: 服务器信息
+        
+    返回:
+        dict: 连通性检查结果
+    """
+    connectivity = {
+        'state': 'unknown',
+        'response_time': 0,
+        'error': None,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    try:
+        address = server_info['address']
+        port = server_info['port']
+        
+        # 检查端口连通性
+        start_time = time.time()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        output = sock.connect_ex((address, port))
+        end_time = time.time()
+        
+        connectivity['response_time'] = round((end_time - start_time) * 1000, 2)  # 毫秒
+        
+        if output == 0:
+            connectivity['state'] = 'online'
+        else:
+            connectivity['state'] = 'offline'
+            connectivity['error'] = f"连接失败 (错误码: {output})"
+        
+        sock.close()
+        
+    except socket.timeout:
+        connectivity['state'] = 'timeout'
+        connectivity['error'] = '连接超时'
+    except socket.gaierror as e:
+        connectivity['state'] = 'dns_error'
+        connectivity['error'] = f"DNS解析失败: {e}"
+    except Exception as e:
+        connectivity['state'] = 'error'
+        connectivity['error'] = f"连接检查失败: {e}"
+    
+    return connectivity
