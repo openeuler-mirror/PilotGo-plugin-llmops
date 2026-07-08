@@ -105,3 +105,35 @@ def fetch_net_bond():
     except Exception as e:
         logger.error(f'获取网卡绑定失败: {e}')
         return f'获取网卡绑定失败: {e}'
+def fetch_bond_interfaces():
+    """
+    获取bond接口列表
+    """
+    interfaces = []
+
+    try:
+        # 检查/sys/class/net目录
+        net_dir = '/sys/class/net'
+        if os.path.exists(net_dir):
+            for interface in os.listdir(net_dir):
+                bond_dir = os.path.join(net_dir, interface, 'bonding')
+                if os.path.exists(bond_dir):
+                    interfaces.append(interface)
+
+        # 使用ip命令获取bond接口
+        output = subprocess.run(['ip', 'link', 'show'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if 'bond' in line:
+                    parts = line.split(':')
+                    if len(parts) >= 2:
+                        interface = parts[1].strip().split('@')[0]
+                        if interface not in interfaces:
+                            interfaces.append(interface)
+
+    except Exception as e:
+        logger.error(f'获取bond接口失败: {e}')
+
+    return interfaces
