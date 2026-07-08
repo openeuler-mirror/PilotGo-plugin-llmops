@@ -317,3 +317,113 @@ def fetch_listen_info(pid):
         logger.error(f'获取监听信息失败: {e}')
 
     return listen_info
+def fetch_interface_info(pid):
+    """
+    获取绑定网卡信息
+    """
+    interface_info = {}
+
+    try:
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'bind'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        bind_addresses = []
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'bind' and i + 1 < len(lines):
+                    bind_address = lines[i + 1].strip()
+                    bind_addresses = bind_address.split()
+                    break
+
+        if bind_addresses:
+            interface_info['绑定IP地址'] = ', '.join(bind_addresses)
+
+        output = subprocess.run(['ip', 'addr', 'show'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            interfaces = {}
+            current_interface = None
+
+            for line in output.stdout.split('\n'):
+                if line.strip().startswith('inet'):
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        ip_address = parts[1].split('/')[0]
+                        if current_interface:
+                            if current_interface not in interfaces:
+                                interfaces[current_interface] = []
+                            interfaces[current_interface].append(ip_address)
+                elif ':' in line and not line.strip().startswith(' '):
+                    current_interface = line.split(':')[1].strip()
+
+            if bind_addresses:
+                bound_interfaces = []
+                for bind_addr in bind_addresses:
+                    if bind_addr == '*':
+                        bound_interfaces = list(interfaces.keys())
+                        break
+                    elif bind_addr == '0.0.0.0':
+                        bound_interfaces = list(interfaces.keys())
+                        break
+                    else:
+                        for interface, ips in interfaces.items():
+                            if bind_addr in ips:
+                                bound_interfaces.append(interface)
+
+                if bound_interfaces:
+                    interface_info['绑定网卡'] = ', '.join(sorted(set(bound_interfaces)))
+
+        output = subprocess.run(['ifconfig'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            interfaces = []
+            for line in output.stdout.split('\n'):
+                if ':' in line and 'flags=' in line:
+                    interface_name = line.split(':')[0].strip()
+                    interfaces.append(interface_name)
+
+            if interfaces:
+                interface_info['可用网卡'] = ', '.join(interfaces)
+
+        output = subprocess.run(
+            ['ip', 'route', 'get', '1.1.1.1'],  # NOSONAR
+            capture_output=True,
+            text=True
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for line in lines:
+                if 'dev' in line:
+                    parts = line.split()
+                    if 'dev' in parts:
+                        dev_index = parts.index('dev')
+                        if dev_index + 1 < len(parts):
+                            interface_info['默认网卡'] = parts[dev_index + 1]
+                    break
+
+        output = subprocess.run(['hostname', '-I'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            interface_info['主机IP地址'] = output.stdout.strip()
+
+        output = subprocess.run(
+            ['ip', 'addr', 'show', '|', 'grep', 'inet'],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0:
+            inet_lines = output.stdout.strip().split('\n')
+            interface_info['所有IP地址'] = ', '.join([line.split()[1].split('/')[0] for line in inet_lines if line.strip()])
+
+    except Exception as e:
+        logger.error(f'获取绑定网卡信息失败: {e}')
+
+    return interface_info
