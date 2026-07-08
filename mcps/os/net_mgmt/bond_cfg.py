@@ -332,3 +332,37 @@ def fetch_bond_status(interface):
         logger.error(f'获取bond状态失败: {e}')
 
     return state
+def fetch_bond_stats(interface):
+    """
+    获取 bond统计
+    """
+    stats = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return stats
+
+        # 读取/proc/net/dev获取统计
+        with open('/proc/net/dev', 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                if interface in line:
+                    parts = line.split(':')[1].strip().split()
+                    if len(parts) >= 16:
+                        stats['接收字节数'] = parts[0]
+                        stats['接收数据包数'] = parts[1]
+                        stats['接收错误数'] = parts[2]
+                        stats['接收丢弃数'] = parts[3]
+                        stats['发送字节数'] = parts[8]
+                        stats['发送数据包数'] = parts[9]
+                        stats['发送错误数'] = parts[10]
+                        stats['发送丢弃数'] = parts[11]
+                    break
+
+    except Exception as e:
+        logger.error(f'获取bond统计失败: {e}')
+
+    return stats
