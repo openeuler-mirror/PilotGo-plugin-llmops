@@ -197,3 +197,25 @@ def fetch_dev_stats(interface):
         logger.error(f'获取网卡统计失败: {e}')
 
     return stats
+def fetch_interface_stats(interface):
+    """
+    获取网卡统计信息
+    """
+    stats = {}
+
+    try:
+        dev_stats = fetch_dev_stats(interface)
+        if dev_stats:
+            stats['接收字节数'] = f"{dev_stats['rx_bytes']} 字节"
+            stats['接收数据包数'] = dev_stats['rx_packets']
+            stats['接收错误数'] = dev_stats['rx_errors']
+            stats['接收丢弃数'] = dev_stats['rx_dropped']
+            stats['发送字节数'] = f"{dev_stats['tx_bytes']} 字节"
+            stats['发送数据包数'] = dev_stats['tx_packets']
+            stats['发送错误数'] = dev_stats['tx_errors']
+            stats['发送丢弃数'] = dev_stats['tx_dropped']
+
+    except Exception as e:
+        logger.error(f'获取网卡统计失败: {e}')
+
+    return stats
