@@ -172,3 +172,35 @@ def examine_cgroup_oom_events() -> List[Dict[str, Any]]:
         events.append({'error': str(e)})
 
     return events
+def analyze_cgroup_oom_log(line: str) -> Dict[str, Any]:
+    """解析cgroup OOM日志行"""
+    try:
+        event = {'source': 'journalctl', 'raw': line}
+
+        # 提取时间戳
+        timestamp_match = re.match(r'(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})', line)
+        if timestamp_match:
+            event['timestamp'] = timestamp_match.group(1)
+
+        # 提取cgroup路径
+        cgroup_match = re.search(r'cgroup[:\s]+([^\s,]+)', line, re.IGNORECASE)
+        if cgroup_match:
+            event['cgroup'] = cgroup_match.group(1)
+
+        # 提取进程信息
+        pid_match = re.search(r'pid\s*(\d+)', line, re.IGNORECASE)
+        if pid_match:
+            event['pid'] = pid_match.group(1)
+
+        # 提取进程名
+        proc_match = re.search(r'process\s+([^\s,]+)', line, re.IGNORECASE)
+        if proc_match:
+            event['process_name'] = proc_match.group(1)
+
+        if 'cgroup' in event or 'pid' in event:
+            return event
+
+    except Exception as e:
+        return {'error': str(e), 'raw': line}
+
+    return None
