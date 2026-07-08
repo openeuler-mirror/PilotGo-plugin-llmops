@@ -355,3 +355,82 @@ def fetch_redis_persistence_path(pid):
         logger.error(f'获取Redis持久化文件路径失败: {str(e)}')
 
     return persistence_info
+def fetch_redis_log_path(pid):
+    """
+    获取Redis日志文件路径
+    """
+    log_info = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', 'logfile'], capture_output=True, text=True, timeout=5)
+
+        log_file = None
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'logfile' and i + 1 < len(lines):
+                    log_file = lines[i + 1].strip()
+                    log_info['日志文件'] = log_file
+                    break
+
+        if log_file and log_file != 'stdout' and log_file != '':
+            if os.path.exists(log_file):
+                log_info['日志文件状态'] = '存在'
+                log_info['日志文件大小'] = f"{os.path.getsize(log_file)} 字节"
+
+                stat_info = os.stat(log_file)
+                mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                log_info['日志修改时间'] = mtime
+            else:
+                log_info['日志文件状态'] = '不存在'
+        elif log_file == 'stdout':
+            log_info['日志输出'] = '标准输出'
+        elif log_file == '':
+            log_info['日志输出'] = '未配置'
+
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', 'loglevel'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'loglevel' and i + 1 < len(lines):
+                    log_info['日志级别'] = lines[i + 1].strip()
+                    break
+
+        common_log_paths = [
+            '/var/log/redis/redis-server.log',
+            '/var/log/redis.log',
+            '/var/log/redis/redis.log',
+            '/usr/local/var/log/redis.log',
+            '/opt/redis/logs/redis.log'
+        ]
+
+        for path in common_log_paths:
+            if os.path.exists(path):
+                if '日志文件' not in log_info:
+                    log_info['日志文件'] = path
+                    log_info['日志文件状态'] = '存在'
+                    log_info['日志文件大小'] = f"{os.path.getsize(path)} 字节"
+                    break
+
+    except Exception as e:
+        logger.error(f'获取Redis日志文件路径失败: {str(e)}')
+
+    return log_info
+
+TOOL_CONFIG = {
+    "name": "fetch_redis_base_path",
+    "function": fetch_redis_base_path,
+    "description": "采集Redis安装路径、配置文件路径、持久化文件路径（RDB/AOF）、日志文件路径",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "path_type": {
+                "type": "string",
+                "description": "指定要采集的路径类型，可选值：install（安装路径）、config（配置文件路径）、persistence（持久化文件路径）、log（日志文件路径）、all（所有路径信息）",
+                "enum": ["install", "config", "persistence", "log", "all"]
+            }
+        },
+        "required": []
+    }
+}
