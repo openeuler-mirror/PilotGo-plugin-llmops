@@ -440,3 +440,42 @@ def fetch_bios_security_info():
     except Exception as e:
         logger.error(f'获取BIOS安全信息失败: {e}')
         return None
+def fetch_bios_boot_info():
+    """
+    获取BIOS启动配置
+
+    返回:
+        BIOS启动配置字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                # 检查EFI启动
+                if os.path.exists('/sys/firmware/efi'):
+                    try:
+                        output = subprocess.run(['efibootmgr'], capture_output=True, text=True)
+                        if output.returncode == 0:
+                            lines = output.stdout.split('\n')
+                            boot_info = [line.strip() for line in lines[:10] if line.strip()]
+                            return '\n'.join(boot_info)
+                    except subprocess.SubprocessError:
+                        pass
+
+                # 检查GRUB配置
+                if os.path.exists('/boot/grub/grub.cfg'):
+                    try:
+                        output = subprocess.run(['grep', '-E', '^menuentry|^set default', '/boot/grub/grub.cfg'], capture_output=True, text=True)
+                        if output.returncode == 0:
+                            lines = output.stdout.split('\n')
+                            boot_info = [line.strip() for line in lines[:10] if line.strip()]
+                            return '\n'.join(boot_info)
+                    except subprocess.SubprocessError:
+                        pass
+            except Exception:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取BIOS启动配置失败: {e}')
+        return None
