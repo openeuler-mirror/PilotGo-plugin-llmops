@@ -283,3 +283,42 @@ def analyze_load_balancing_config(upstream_content: str) -> Dict[str, Any]:
         logger.error(f"解析负载均衡配置失败: {e}")
     
     return lb_config
+
+def analyze_timeout_config(upstream_content: str) -> Dict[str, Any]:
+    """
+    解析超时时间配置
+    
+    参数:
+        upstream_content: upstream块内容
+        
+    返回:
+        dict: 超时配置信息
+    """
+    timeout_config = {
+        'connect_timeout': None,
+        'send_timeout': None,
+        'read_timeout': None,
+        'keepalive_timeout': None,
+        'proxy_connect_timeout': None,
+        'proxy_send_timeout': None,
+        'proxy_read_timeout': None
+    }
+    
+    try:
+        # 解析各种超时设置
+        timeout_patterns = {
+            'connect_timeout': r'proxy_connect_timeout\s+([^;]+);',
+            'send_timeout': r'proxy_send_timeout\s+([^;]+);',
+            'read_timeout': r'proxy_read_timeout\s+([^;]+);',
+            'keepalive_timeout': r'keepalive_timeout\s+([^;]+);'
+        }
+        
+        for key, pattern in timeout_patterns.items():
+            match = re.search(pattern, upstream_content)  # NOSONAR
+            if match:
+                timeout_config[key] = match.group(1).strip()
+        
+    except Exception as e:
+        logger.error(f"解析超时配置失败: {e}")
+    
+    return timeout_config
