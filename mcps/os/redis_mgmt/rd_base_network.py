@@ -660,3 +660,151 @@ def fetch_whitelist_info(pid):
         logger.error(f'获取白名单配置失败: {e}')
 
     return whitelist_info
+def fetch_connections_info(pid):
+    """
+    获取连接信息
+    """
+    connections_info = {}
+
+    try:
+        output = subprocess.run(
+            ['redis-cli', 'INFO', 'clients'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('connected_clients:'):
+                    connections_info['已连接客户端数'] = line.split(':')[1]
+                elif line.startswith('blocked_clients:'):
+                    connections_info['阻塞客户端数'] = line.split(':')[1]
+                elif line.startswith('tracking_clients:'):
+                    connections_info['跟踪客户端数'] = line.split(':')[1]
+                elif line.startswith('clients_in_timeout_table:'):
+                    connections_info['超时表客户端数'] = line.split(':')[1]
+
+        output = subprocess.run(
+            ['redis-cli', 'CLIENT', 'LIST'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            client_lines = output.stdout.strip().split('\n')
+            connections_info['客户端列表数量'] = str(len(client_lines))
+
+            if client_lines:
+                connections_info['客户端详情'] = '前5个客户端:'
+                for i, client_line in enumerate(client_lines[:5], 1):
+                    connections_info[f'客户端{i}'] = client_line
+
+        output = subprocess.run(
+            ['ss', '-tnp', '|', 'grep', str(pid)],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            lines = output.stdout.strip().split('\n')
+            connections_info['TCP连接数'] = str(len(lines))
+
+            established_count = 0
+            listen_count = 0
+            for line in lines:
+                if 'ESTAB' in line:
+                    established_count += 1
+                elif 'LISTEN' in line:
+                    listen_count += 1
+
+            connections_info['已建立连接'] = str(established_count)
+            connections_info['监听连接'] = str(listen_count)
+
+        output = subprocess.run(
+            ['netstat', '-tnp', '2>/dev/null', '|', 'grep', str(pid)],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            lines = output.stdout.strip().split('\n')
+            connections_info['Netstat连接数'] = str(len(lines))
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'maxclients'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'maxclients' and i + 1 < len(lines):
+                    maxclients = lines[i + 1].strip()
+                    connections_info['最大客户端数'] = maxclients
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'INFO', 'stats'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('total_connections_received:'):
+                    connections_info['总连接接收数'] = line.split(':')[1]
+                elif line.startswith('rejected_connections:'):
+                    connections_info['拒绝连接数'] = line.split(':')[1]
+                elif line.startswith('total_net_input_bytes:'):
+                    connections_info['网络输入字节'] = line.split(':')[1]
+                elif line.startswith('total_net_output_bytes:'):
+                    connections_info['网络输出字节'] = line.split(':')[1]
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'deadline'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'deadline' and i + 1 < len(lines):
+                    deadline = lines[i + 1].strip()
+                    if deadline == '0':
+                        connections_info['连接超时'] = '永不超时'
+                    else:
+                        connections_info['连接超时'] = f"{deadline} 秒"
+                    break
+
+    except Exception as e:
+        logger.error(f'获取连接信息失败: {e}')
+
+    return connections_info
+
+TOOL_CONFIG = {
+    "name": "fetch_redis_base_network",
+    "function": fetch_redis_base_network,
+    "description": "采集Redis监听IP/端口（TCP/UDP）、绑定网卡、防火墙放行规则、连接白名单配置",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "network_type": {
+                "type": "string",
+                "description": "指定要采集的网络信息类型，可选值：listen（监听信息）、interface（绑定网卡信息）、firewall（防火墙规则）、whitelist（白名单配置）、connections（连接信息）、all（所有网络信息）",
+                "enum": ["listen", "interface", "firewall", "whitelist", "connections", "all"]
+            }
+        },
+        "required": []
+    }
+}
