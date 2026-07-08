@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param, contains_dangerous_chars
 
+
 def git_diff_unstaged(directory=None, files=None):
     """
     查看 Git 仓库中未暂存的变更
@@ -128,7 +129,7 @@ def git_diff_unstaged(directory=None, files=None):
             "has_changes": False
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "vc_diff_unstaged",
     "function": git_diff_unstaged,
