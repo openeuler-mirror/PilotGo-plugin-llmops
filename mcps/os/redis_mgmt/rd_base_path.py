@@ -268,3 +268,90 @@ def fetch_redis_config_path(pid):
         logger.error(f'获取Redis配置文件路径失败: {str(e)}')
 
     return cfg_state
+def fetch_redis_persistence_path(pid):
+    """
+    获取Redis持久化文件路径
+    """
+    persistence_info = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', 'dir'], capture_output=True, text=True, timeout=5)
+
+        data_dir = None
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'dir' and i + 1 < len(lines):
+                    data_dir = lines[i + 1].strip()
+                    persistence_info['数据目录'] = data_dir
+                    break
+
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', 'dbfilename'], capture_output=True, text=True, timeout=5)
+
+        rdb_filename = None
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'dbfilename' and i + 1 < len(lines):
+                    rdb_filename = lines[i + 1].strip()
+                    persistence_info['RDB文件名'] = rdb_filename
+                    break
+
+        if data_dir and rdb_filename:
+            rdb_path = os.path.join(data_dir, rdb_filename)
+            persistence_info['RDB文件路径'] = rdb_path
+
+            if os.path.exists(rdb_path):
+                persistence_info['RDB文件状态'] = '存在'
+                persistence_info['RDB文件大小'] = f"{os.path.getsize(rdb_path)} 字节"
+
+                stat_info = os.stat(rdb_path)
+                mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                persistence_info['RDB修改时间'] = mtime
+            else:
+                persistence_info['RDB文件状态'] = '不存在'
+
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', 'appendfilename'], capture_output=True, text=True, timeout=5)
+
+        aof_filename = None
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'appendfilename' and i + 1 < len(lines):
+                    aof_filename = lines[i + 1].strip()
+                    persistence_info['AOF文件名'] = aof_filename
+                    break
+
+        if data_dir and aof_filename:
+            aof_path = os.path.join(data_dir, aof_filename)
+            persistence_info['AOF文件路径'] = aof_path
+
+            if os.path.exists(aof_path):
+                persistence_info['AOF文件状态'] = '存在'
+                persistence_info['AOF文件大小'] = f"{os.path.getsize(aof_path)} 字节"
+
+                stat_info = os.stat(aof_path)
+                mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                persistence_info['AOF修改时间'] = mtime
+            else:
+                persistence_info['AOF文件状态'] = '不存在'
+
+        output = subprocess.run(['redis-cli', 'INFO', 'persistence'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for line in lines:
+                if line.startswith('rdb_last_save_time:'):
+                    save_time = datetime.fromtimestamp(int(line.split(':')[1])).strftime('%Y-%m-%d %H:%M:%S')
+                    persistence_info['RDB最后保存时间'] = save_time
+                elif line.startswith('rdb_last_bgsave_status:'):
+                    persistence_info['RDB最后保存状态'] = line.split(':')[1]
+                elif line.startswith('aof_last_rewrite_status:'):
+                    persistence_info['AOF最后重写状态'] = line.split(':')[1]
+                elif line.startswith('aof_last_rewrite_time_sec:'):
+                    persistence_info['AOF最后重写耗时'] = f"{line.split(':')[1]} 秒"
+
+    except Exception as e:
+        logger.error(f'获取Redis持久化文件路径失败: {str(e)}')
+
+    return persistence_info
