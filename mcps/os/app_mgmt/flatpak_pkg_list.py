@@ -163,3 +163,75 @@ def is_flatpak_available():
 
     except Exception:
         return False
+def fetch_flatpak_packages():
+    """
+    获取所有已安装的Flatpak包
+
+    返回:
+        Flatpak包信息列表
+    """
+    try:
+        packages = []
+
+        # 使用flatpak命令获取所有已安装的包
+        output = subprocess.run(['flatpak', 'list', '--app', '--columns=name,application,version,origin,active'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            # 跳过表头
+            for line in lines[1:]:
+                if line.strip():
+                    parts = line.split('\t')
+                    if len(parts) >= 5:
+                        pkg_info = {
+                            'name': parts[0],
+                            'app_id': parts[1],
+                            'version': parts[2],
+                            'remote': parts[3],
+                            'state': '活跃' if parts[4] == 'true' else '非活跃'
+                        }
+                        packages.append(pkg_info)
+
+        # 如果没有应用包，尝试获取运行时包
+        if not packages:
+            output = subprocess.run(['flatpak', 'list', '--runtime', '--columns=name,application,version,origin,active'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                lines = output.stdout.strip().split('\n')
+                # 跳过表头
+                for line in lines[1:]:
+                    if line.strip():
+                        parts = line.split('\t')
+                        if len(parts) >= 5:
+                            pkg_info = {
+                                'name': parts[0],
+                                'app_id': parts[1],
+                                'version': parts[2],
+                                'remote': parts[3],
+                                'state': '活跃' if parts[4] == 'true' else '非活跃'
+                            }
+                            packages.append(pkg_info)
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取Flatpak包列表失败: {e}')
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_flatpak_list",
+    "function": fetch_app_flatpak_list,
+    "description": "采集Flatpak包信息（已安装Flatpak包/版本/远程仓库/运行状态）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "flatpak_info": {
+                "type": "string",
+                "description": "信息类型，可选值：all（所有已安装Flatpak包）、version（版本信息）、remote（远程仓库信息）、state（运行状态），不指定则获取所有信息",
+                "enum": ["all", "version", "remote", "state"]
+            }
+        },
+        "required": []
+    }
+}
