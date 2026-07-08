@@ -271,3 +271,19 @@ def verify_cgroup_v2_events() -> List[Dict[str, Any]]:
         events.append({'error': str(e)})
 
     return events
+def examine_cgroup_memory_stats() -> List[Dict[str, Any]]:
+    """分析cgroup内存统计"""
+    stats = []
+
+    try:
+        cgroup_version = spot_cgroup_version()
+
+        if cgroup_version == 'cgroup2':
+            stats = examine_cgroup_v2_memory()
+        elif cgroup_version == 'cgroup1':
+            stats = examine_cgroup_v1_memory()
+
+    except Exception as e:
+        stats.append({'error': str(e)})
+
+    return stats
