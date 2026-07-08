@@ -165,3 +165,24 @@ def analyze_ldd_output(ldd_output):
         dependencies.append(dep_info)
 
     return dependencies
+def verify_library_versions(dependencies):
+    """
+    检查依赖库版本
+    """
+    ver_data = []
+
+    for dep in dependencies:
+        if dep['path'] and os.path.exists(dep['path']):
+            try:
+                # 尝试使用readelf获取版本信息
+                output = subprocess.run(['readelf', '-d', dep['path']], capture_output=True, text=True)
+                if output.returncode == 0:
+                    for line in output.stdout.split('\n'):
+                        if 'SONAME' in line:
+                            soname = line.strip().split(':')[-1].strip().strip('[]"')
+                            ver_data.append(f"{dep['name']}: {soname}")
+                            break
+            except Exception:
+                pass
+
+    return ver_data
