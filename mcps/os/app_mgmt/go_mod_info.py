@@ -244,3 +244,36 @@ def fetch_dependencies():
     except Exception as e:
         logger.error(f'获取依赖信息失败: {e}')
         return []
+def fetch_download_url(module_path):
+    """
+    获取模块下载地址
+
+    参数:
+        module_path: 模块路径
+
+    返回:
+        下载地址
+    """
+    try:
+        return f"https://{module_path}"
+
+    except Exception:
+        return 'Unknown'
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_go_mod",
+    "function": fetch_app_go_mod,
+    "description": "采集Go模块信息（当前项目Go版本/依赖模块/版本/下载地址）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "mod_info": {
+                "type": "string",
+                "description": "信息类型，可选值：version（Go版本信息）、dependencies（依赖模块信息）、paths（下载地址信息），不指定则获取所有信息",
+                "enum": ["version", "dependencies", "paths"]
+            }
+        },
+        "required": []
+    }
+}
