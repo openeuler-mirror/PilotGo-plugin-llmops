@@ -135,3 +135,37 @@ def fetch_interface_bandwidth(interface):
         bandwidth['最大带宽'] = '未知'
 
     return bandwidth
+def fetch_interface_rate(interface):
+    """
+    获取网卡速率
+    """
+    rate = {}
+
+    try:
+        # 读取/proc/net/dev获取初始统计
+        initial_stats = fetch_dev_stats(interface)
+        if initial_stats:
+            # 等待1秒
+            time.sleep(1)
+
+            # 读取/proc/net/dev获取结束统计
+            final_stats = fetch_dev_stats(interface)
+            if final_stats:
+                # 计算接收速率
+                rx_bytes = final_stats['rx_bytes'] - initial_stats['rx_bytes']
+                rx_rate = rx_bytes * 8 / 1024 / 1024  # 转换为Mbps
+                rate['接收速率'] = f"{rx_rate:.2f} Mbps"
+
+                # 计算发送速率
+                tx_bytes = final_stats['tx_bytes'] - initial_stats['tx_bytes']
+                tx_rate = tx_bytes * 8 / 1024 / 1024  # 转换为Mbps
+                rate['发送速率'] = f"{tx_rate:.2f} Mbps"
+
+                # 计算总速率
+                total_rate = rx_rate + tx_rate
+                rate['总速率'] = f"{total_rate:.2f} Mbps"
+
+    except Exception as e:
+        logger.error(f'获取网卡速率失败: {e}')
+
+    return rate
