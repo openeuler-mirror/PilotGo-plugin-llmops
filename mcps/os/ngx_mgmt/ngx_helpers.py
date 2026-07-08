@@ -400,3 +400,77 @@ def fetch_basic_paths():
             'binary_path': '获取失败',
             'init_script': '获取失败'
         }
+
+def fetch_system_info():
+    """
+    获取系统信息
+
+    返回:
+        dict: 包含系统类型、发行版和包管理器信息的字典
+    """
+    try:
+        sys_info_data = {
+            'package_manager': 'Unknown',
+            'service_config': 'Unknown',
+            'system_log': 'Unknown',
+            'distribution': 'Unknown'
+        }
+
+        # 检测操作系统类型
+        system = platform.system()
+
+        try:
+            # 尝试获取发行版信息
+            if os.path.exists('/etc/os-release'):
+                with open('/etc/os-release', 'r') as f:
+                    body = f.read()
+                    if 'Ubuntu' in body or 'Debian' in body:
+                        sys_info_data['distribution'] = 'Debian/Ubuntu'
+                        sys_info_data['package_manager'] = 'apt (apt-get)'
+                    elif 'CentOS' in body or 'Red Hat' in body or 'Fedora' in body:
+                        sys_info_data['distribution'] = 'Red Hat/CentOS/Fedora'
+                        sys_info_data['package_manager'] = 'yum/dnf'
+                    elif 'SUSE' in body:
+                        sys_info_data['distribution'] = 'SUSE'
+                        sys_info_data['package_manager'] = 'zypper'
+                    elif 'Arch' in body:
+                        sys_info_data['distribution'] = 'Arch Linux'
+                        sys_info_data['package_manager'] = 'pacman'
+        except Exception:
+            pass
+
+        # 服务配置路径
+        service_configs = [
+            '/lib/systemd/system/nginx.service',
+            '/usr/lib/systemd/system/nginx.service',
+            '/etc/systemd/system/nginx.service',
+            '/etc/init.d/nginx'
+        ]
+
+        for service_config in service_configs:
+            if os.path.exists(service_config):
+                sys_info_data['service_config'] = service_config
+                break
+
+        # 系统日志路径
+        system_logs = [
+            '/var/log/syslog',
+            '/var/log/messages',
+            '/var/log/system.log'
+        ]
+
+        for system_log in system_logs:
+            if os.path.exists(system_log):
+                sys_info_data['system_log'] = system_log
+                break
+
+        return sys_info_data
+
+    except Exception as e:
+        logger.error(f'获取系统信息失败: {e}')
+        return {
+            'package_manager': '获取失败',
+            'service_config': '获取失败',
+            'system_log': '获取失败',
+            'distribution': '获取失败'
+        }
