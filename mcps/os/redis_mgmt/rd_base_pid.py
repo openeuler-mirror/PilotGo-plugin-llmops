@@ -83,3 +83,66 @@ def fetch_redis_base_pid(pid_type=None):
     except Exception as e:
         logger.error(f'获取Redis进程信息失败: {e}')
         return f'获取Redis进程信息失败: {e}'
+def fetch_pid_info(pid):
+    """
+    获取进程ID信息
+    """
+    pid_info = {}
+
+    try:
+        pid_info['进程ID'] = pid
+
+        if os.path.exists(f'/proc/{pid}'):
+            exe_path = f'/proc/{pid}/exe'
+            if os.path.exists(exe_path):
+                output = subprocess.run(['readlink', '-f', exe_path], capture_output=True, text=True)
+
+                if output.returncode == 0:
+                    pid_info['可执行文件'] = output.stdout.strip()
+
+            cmdline_path = f'/proc/{pid}/cmdline'
+            if os.path.exists(cmdline_path):
+                with open(cmdline_path, 'r') as f:
+                    cmdline = f.read().replace('\x00', ' ')
+                pid_info['命令行'] = cmdline
+
+            cwd_path = f'/proc/{pid}/cwd'
+            if os.path.exists(cwd_path):
+                output = subprocess.run(['readlink', '-f', cwd_path], capture_output=True, text=True)
+
+                if output.returncode == 0:
+                    pid_info['工作目录'] = output.stdout.strip()
+
+            output = subprocess.run(['ps', '-p', pid, '-o', 'pid,ppid,pgid,sid,tty'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                lines = output.stdout.split('\n')
+                if len(lines) > 1:
+                    parts = lines[1].split()
+                    if len(parts) >= 5:
+                        pid_info['父进程ID'] = parts[1]
+                        pid_info['进程组ID'] = parts[2]
+                        pid_info['会话ID'] = parts[3]
+                        pid_info['终端'] = parts[4]
+
+            output = subprocess.run(['redis-cli', 'INFO', 'server'], capture_output=True, text=True, timeout=5)
+
+            if output.returncode == 0:
+                info_lines = output.stdout.split('\n')
+                for line in info_lines:
+                    if line.startswith('process_id:'):
+                        redis_pid = line.split(':')[1]
+                        if redis_pid == pid:
+                            pid_info['Redis进程ID'] = redis_pid
+                    elif line.startswith('run_id:'):
+                        pid_info['运行ID'] = line.split(':')[1]
+
+        output = subprocess.run(['ps', '-p', pid, '-o', 'comm='], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            pid_info['进程名称'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取进程ID信息失败: {e}')
+
+    return pid_info
