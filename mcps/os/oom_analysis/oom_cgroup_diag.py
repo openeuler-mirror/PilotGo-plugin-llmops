@@ -204,3 +204,18 @@ def analyze_cgroup_oom_log(line: str) -> Dict[str, Any]:
         return {'error': str(e), 'raw': line}
 
     return None
+def derive_dmesg_timestamp(body: str, position: int) -> str:
+    """从dmesg内容提取时间戳"""
+    try:
+        lines_before = body[:position].split('\n')
+        for line in reversed(lines_before[-5:]):
+            match = re.match(r'\[\s*([\d.]+)\]', line)
+            if match:
+                seconds = float(match.group(1))
+                hours = int(seconds // 3600)
+                minutes = int((seconds % 3600) // 60)
+                secs = int(seconds % 60)
+                return f'{hours:02d}:{minutes:02d}:{secs:02d}'
+    except Exception:
+        pass
+    return 'unknown'
