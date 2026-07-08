@@ -118,3 +118,101 @@ def fetch_hw_disk_part_table(part_table_type=None):
     except Exception as e:
         logger.error(f'获取磁盘分区表信息失败: {e}')
         return f'获取磁盘分区表信息失败: {e}'
+def fetch_partition_table_details():
+    """
+    获取磁盘分区表详细信息
+
+    返回:
+        磁盘分区表详细信息字典
+    """
+    try:
+        part_table_info = {
+            'devices': [],
+            'table_types': {},  # 设备: 分区表类型
+            'identifiers': {},  # 设备: 分区表标识
+            'versions': {},     # 设备: 分区表版本
+            'partitions': {},   # 设备: 分区列表
+            'part_types': {}    # 设备: 分区类型
+        }
+
+        if platform.system() == 'Linux':
+            # 尝试使用parted命令获取分区表信息
+            try:
+                # 获取所有磁盘设备
+                output = subprocess.run(['lsblk', '-o', 'NAME,TYPE'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    devices = []
+                    for line in output.stdout.split('\n'):
+                        parts = line.split()
+                        if len(parts) == 2 and parts[1] == 'disk':
+                            devices.append(parts[0])
+
+                    # 对每个磁盘获取分区表信息
+                    for device in devices:
+                        # 安全校验：验证设备名
+                        is_valid, error_msg = validate_device_name(device)
+                        if not is_valid:
+                            logger.warning(f'跳过不合法的设备名 {device}: {error_msg}')
+                            continue
+
+                        dev_path = f"/dev/{device}"
+                        part_table_info['devices'].append(dev_path)
+
+                        # 使用parted获取分区表信息
+                        output = subprocess.run(['sudo', 'parted', '-s', dev_path, 'print'], capture_output=True, text=True)
+                        if output.returncode == 0:
+                            part_table_info = analyze_parted_output(output.stdout, dev_path, part_table_info)
+
+                        # 使用fdisk获取分区信息
+                        output = subprocess.run(['sudo', 'fdisk', '-l', dev_path], capture_output=True, text=True)
+                        if output.returncode == 0:
+                            part_table_info = analyze_fdisk_output(output.stdout, dev_path, part_table_info)
+            except subprocess.SubprocessError:
+                pass
+
+            # 尝试从/proc/partitions获取分区信息
+            try:
+                with open('/proc/partitions', 'r') as f:
+                    lines = f.readlines()[2:]  # 跳过前两行表头
+                    for line in lines:
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            device = parts[3]
+                            if not device.endswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')):
+                                # 可能是主设备
+                                dev_path = f"/dev/{device}"
+                                if dev_path not in part_table_info['devices']:
+                                    part_table_info['devices'].append(dev_path)
+            except Exception:
+                pass
+
+        elif platform.system() == 'Darwin':
+            # macOS系统
+            try:
+                output = subprocess.run(['diskutil', 'list'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    part_table_info = analyze_macos_diskutil_output(output.stdout, part_table_info)
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Windows':
+            # Windows系统
+            try:
+                output = subprocess.run(['wmic', 'diskdrive', 'get', 'DeviceID,Partitions,Signature'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    part_table_info = analyze_windows_diskdrive_output(output.stdout, part_table_info)
+            except subprocess.SubprocessError:
+                pass
+
+        return part_table_info
+
+    except Exception as e:
+        logger.error(f'获取磁盘分区表详细信息失败: {e}')
+        return {
+            'devices': [],
+            'table_types': {},
+            'identifiers': {},
+            'versions': {},
+            'partitions': {},
+            'part_types': {}
+        }
