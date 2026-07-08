@@ -126,3 +126,42 @@ def fetch_ldd_output(binary_path):
         return None
     except Exception:
         return None
+def analyze_ldd_output(ldd_output):
+    """
+    解析ldd命令输出
+    """
+    dependencies = []
+    lines = ldd_output.strip().split('\n')
+
+    for line in lines:
+        if not line.strip():
+            continue
+
+        parts = line.split()
+        dep_info = {
+            'name': '',
+            'path': '',
+            'version': '',
+            'status': '正常'
+        }
+
+        if '=>' in line:
+            # 正常依赖库
+            if len(parts) >= 3:
+                dep_info['name'] = parts[0]
+                if parts[1] == '=>':
+                    if parts[2] != 'not':
+                        dep_info['path'] = parts[2]
+                        # 尝试获取版本信息
+                        if len(parts) > 3:
+                            dep_info['version'] = ' '.join(parts[3:])
+                    else:
+                        dep_info['status'] = '缺失'
+        else:
+            # 特殊依赖（如linux-vdso.so）
+            dep_info['name'] = parts[0]
+            dep_info['path'] = parts[0]
+
+        dependencies.append(dep_info)
+
+    return dependencies
