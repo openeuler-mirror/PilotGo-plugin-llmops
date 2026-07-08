@@ -349,3 +349,54 @@ def fetch_nginx_modules():
             'builtin_modules_count': 0,
             'dynamic_modules_count': 0
         }
+
+def fetch_basic_paths():
+    """
+    获取基本路径信息
+
+    返回:
+        dict: 包含安装目录、二进制路径和启动脚本的字典
+    """
+    try:
+        base_info = {
+            'install_dir': 'Unknown',
+            'binary_path': 'Unknown',
+            'init_script': 'Unknown'
+        }
+
+        # 获取nginx二进制路径
+        output = subprocess.run(['which', 'nginx'], capture_output=True, text=True)
+        if output.returncode == 0:
+            binary_path = output.stdout.strip()
+            base_info['binary_path'] = binary_path
+
+            # 推导安装目录
+            if '/sbin/nginx' in binary_path:
+                install_dir = binary_path.replace('/sbin/nginx', '')
+                base_info['install_dir'] = install_dir if install_dir else '/'
+            elif '/bin/nginx' in binary_path:
+                install_dir = binary_path.replace('/bin/nginx', '')
+                base_info['install_dir'] = install_dir if install_dir else '/'
+
+        # 检查启动脚本
+        init_scripts = [
+            '/etc/init.d/nginx',
+            '/lib/systemd/system/nginx.service',
+            '/usr/lib/systemd/system/nginx.service',
+            '/etc/systemd/system/nginx.service'
+        ]
+
+        for script in init_scripts:
+            if os.path.exists(script):
+                base_info['init_script'] = script
+                break
+
+        return base_info
+
+    except Exception as e:
+        logger.error(f'获取基本路径信息失败: {e}')
+        return {
+            'install_dir': '获取失败',
+            'binary_path': '获取失败',
+            'init_script': '获取失败'
+        }
