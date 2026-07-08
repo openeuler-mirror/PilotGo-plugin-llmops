@@ -102,3 +102,36 @@ def fetch_network_interfaces():
         logger.error(f'获取网络接口失败: {e}')
 
     return interfaces
+def fetch_interface_bandwidth(interface):
+    """
+    获取网卡带宽信息
+    """
+    bandwidth = {}
+
+    try:
+        # 安全校验：验证网卡名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'网卡名称不合法：{error_msg}')
+            bandwidth['最大带宽'] = '未知'
+            return bandwidth
+
+        # 尝试使用 ethtool 获取网卡最大带宽
+        output = subprocess.run(['ethtool', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if 'Speed:' in line:
+                    speed = line.split(':')[1].strip()
+                    bandwidth['最大带宽'] = speed
+                    break
+        else:
+            # 如果 ethtool 不可用，使用默认值
+            bandwidth['最大带宽'] = '未知'
+
+    except Exception as e:
+        logger.error(f'获取网卡带宽失败：{e}')
+        bandwidth['最大带宽'] = '未知'
+
+    return bandwidth
