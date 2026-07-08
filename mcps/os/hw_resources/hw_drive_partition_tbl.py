@@ -467,3 +467,30 @@ def analyze_windows_diskdrive_output(output, part_table_info):
     except Exception as e:
         logger.error(f'解析Windows diskdrive输出失败: {e}')
         return part_table_info
+def render_partitions_info(partitions):
+    """
+    格式化分区信息
+
+    参数:
+        partitions: 分区信息字典
+
+    返回:
+        格式化的分区信息字符串
+    """
+    try:
+        output = []
+        for device, parts in partitions.items():
+            output.append(f"磁盘 {device}:")
+            for part in parts:
+                output.append(f"  分区 {part.get('number', 'Unknown')}:")
+                output.append(f"    起始: {part.get('start', 'Unknown')}")
+                output.append(f"    结束: {part.get('end', 'Unknown')}")
+                output.append(f"    大小: {part.get('size', 'Unknown')}")
+                output.append(f"    类型: {part.get('type', 'Unknown')}")
+                output.append(f"    文件系统: {part.get('file_system', 'Unknown')}")
+                if part.get('flags'):
+                    output.append(f"    标志: {part.get('flags')}")
+        return '\n'.join(output)
+    except Exception as e:
+        logger.error(f'格式化分区信息失败: {e}')
+        return "格式化分区信息失败"
