@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param
 
+
 def show_branches(directory=None):
     """
     列出 Git 仓库的所有本地和远程分支
@@ -134,7 +135,7 @@ def show_branches(directory=None):
             "is_repo": False
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "show_branches",
     "function": show_branches,
