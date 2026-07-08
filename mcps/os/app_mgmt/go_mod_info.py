@@ -158,3 +158,24 @@ def fetch_go_module_info():
     except Exception as e:
         logger.error(f'获取Go模块信息失败: {e}')
         return {'go_version': fetch_go_version(), 'module': '获取模块信息失败', 'dependencies': []}
+def fetch_go_version():
+    """
+    获取Go版本
+
+    返回:
+        Go版本字符串
+    """
+    try:
+        output = subprocess.run(['go', 'version'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            output = output.stdout.strip()
+            # 解析版本号
+            parts = output.split(' ')
+            if len(parts) >= 3:
+                return parts[2]
+
+        return 'Unknown'
+
+    except Exception:
+        return 'Unknown'
