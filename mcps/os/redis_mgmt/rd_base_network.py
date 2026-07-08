@@ -523,3 +523,140 @@ def fetch_firewall_info(pid):
         logger.error(f'获取防火墙规则失败: {e}')
 
     return firewall_info
+def fetch_whitelist_info(pid):
+    """
+    获取白名单配置
+    """
+    whitelist_info = {}
+
+    try:
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'bind'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'bind' and i + 1 < len(lines):
+                    bind_address = lines[i + 1].strip()
+                    whitelist_info['绑定地址(白名单)'] = bind_address
+
+                    if bind_address == '*':
+                        whitelist_info['访问限制'] = '无限制（所有地址）'
+                    elif bind_address == '127.0.0.1':
+                        whitelist_info['访问限制'] = '仅本地访问'
+                    else:
+                        whitelist_info['访问限制'] = f'仅指定地址: {bind_address}'
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'protected-mode'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'protected-mode' and i + 1 < len(lines):
+                    protected_mode = lines[i + 1].strip()
+                    whitelist_info['保护模式'] = '启用' if protected_mode == 'yes' else '禁用'
+
+                    if protected_mode == 'yes':
+                        whitelist_info['保护模式说明'] = '启用保护模式时，Redis只接受来自本地回环地址的连接'
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'requirepass'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'requirepass' and i + 1 < len(lines):
+                    password = lines[i + 1].strip()  # NOSONAR
+                    if password:  # NOSONAR
+                        whitelist_info['密码认证'] = '已设置'
+                    else:
+                        whitelist_info['密码认证'] = '未设置'
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'rename-command'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            renamed_commands = [lines[i + 1].strip() for i in range(0, len(lines) - 1) if lines[i].strip() == 'rename-command' and i + 1 < len(lines)]
+
+            if renamed_commands:
+                whitelist_info['重命名命令'] = ', '.join(renamed_commands)
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'rename-command CONFIG'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'rename-command' and i + 1 < len(lines):
+                    renamed_config = lines[i + 1].strip()
+                    if renamed_config and renamed_config != '':
+                        whitelist_info['CONFIG命令'] = f'已重命名为: {renamed_config}'
+                    else:
+                        whitelist_info['CONFIG命令'] = '未重命名（安全风险）'
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'rename-command FLUSHALL'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'rename-command' and i + 1 < len(lines):
+                    renamed_flushall = lines[i + 1].strip()
+                    if renamed_flushall and renamed_flushall != '':
+                        whitelist_info['FLUSHALL命令'] = f'已重命名为: {renamed_flushall}'
+                    else:
+                        whitelist_info['FLUSHALL命令'] = '未重命名（安全风险）'
+                    break
+
+        output = subprocess.run(
+            ['redis-cli', 'CONFIG', 'GET', 'rename-command FLUSHDB'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'rename-command' and i + 1 < len(lines):
+                    renamed_flushdb = lines[i + 1].strip()
+                    if renamed_flushdb and renamed_flushdb != '':
+                        whitelist_info['FLUSHDB命令'] = f'已重命名为: {renamed_flushdb}'
+                    else:
+                        whitelist_info['FLUSHDB命令'] = '未重命名（安全风险）'
+                    break
+
+    except Exception as e:
+        logger.error(f'获取白名单配置失败: {e}')
+
+    return whitelist_info
