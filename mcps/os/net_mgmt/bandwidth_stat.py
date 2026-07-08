@@ -259,3 +259,46 @@ def fetch_total_bandwidth(interfaces):
         logger.error(f'获取总带宽失败: {e}')
 
     return total
+def verify_bandwidth_status(interfaces):
+    """
+    检查带宽状态
+    """
+    state = []
+
+    try:
+        for interface in interfaces:
+            # 获取带宽信息
+            bandwidth_info = fetch_interface_bandwidth(interface)
+            # 获取速率信息
+            rate_info = fetch_interface_rate(interface)
+
+            if bandwidth_info and rate_info:
+                max_bandwidth = bandwidth_info.get('最大带宽', '未知')
+                if max_bandwidth != '未知' and 'Gbps' in max_bandwidth:
+                    max_rate = float(max_bandwidth.split()[0]) * 1000  # 转换为Mbps
+
+                    if '总速率' in rate_info:
+                        current_rate = float(rate_info['总速率'].split()[0])
+                        usage_percent = (current_rate / max_rate) * 100
+
+                        if usage_percent > 80:
+                            state.append(f"警告: 网卡 {interface} 带宽使用率过高 ({usage_percent:.2f}%)")
+                        elif usage_percent > 50:
+                            state.append(f"注意: 网卡 {interface} 带宽使用率较高 ({usage_percent:.2f}%)")
+
+    except Exception as e:
+        logger.error(f'检查带宽状态失败: {e}')
+
+    return state
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_bandwidth",
+    "function": fetch_net_bandwidth,
+    "description": "采集网卡带宽（网卡最大带宽/当前使用率/收发速率/峰值带宽）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
