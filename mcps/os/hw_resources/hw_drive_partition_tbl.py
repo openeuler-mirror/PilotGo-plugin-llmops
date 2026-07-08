@@ -216,3 +216,73 @@ def fetch_partition_table_details():
             'partitions': {},
             'part_types': {}
         }
+def analyze_parted_output(output, device, part_table_info):
+    """
+    解析parted命令输出
+
+    参数:
+        output: parted命令输出
+        device: 设备路径
+        part_table_info: 分区表信息字典
+
+    返回:
+        更新后的分区表信息字典
+    """
+    try:
+        lines = output.split('\n')
+        current_device = device
+        partitions = []
+
+        for line in lines:
+            line = line.strip()
+            if 'Partition Table:' in line:
+                table_type = line.split(':', 1)[1].strip()
+                part_table_info['table_types'][current_device] = table_type
+            elif 'Disk identifier:' in line:
+                identifier = line.split(':', 1)[1].strip()
+                part_table_info['identifiers'][current_device] = identifier
+            elif 'Disk Flags:' in line:
+                flags = line.split(':', 1)[1].strip()
+                part_table_info['flags'] = flags
+            elif line and line[0].isdigit():
+                # 分区信息行
+                parts = line.split()
+                if len(parts) >= 7:
+                    # parted输出格式：Number Start End Size File system Name Flags
+                    # 最后一列是flags
+                    partition = {
+                        'number': parts[0],
+                        'start': parts[1],
+                        'end': parts[2],
+                        'size': parts[3],
+                        'type': 'Unknown',  # parted输出中没有明确的类型列
+                        'file_system': parts[4],  # 第5列是文件系统
+                        'flags': parts[-1] if len(parts) > 6 else ''  # 最后一列是标志
+                    }
+                    partitions.append(partition)
+                elif len(parts) >= 5:
+                    # 至少有基本信息的情况
+                    partition = {
+                        'number': parts[0],
+                        'start': parts[1],
+                        'end': parts[2],
+                        'size': parts[3],
+                        'type': 'Unknown',
+                        'file_system': parts[4] if len(parts) > 4 else 'Unknown',
+                        'flags': ''
+                    }
+                    partitions.append(partition)
+
+        # 确保设备在partitions字典中存在
+        if current_device not in part_table_info['partitions']:
+            part_table_info['partitions'][current_device] = []
+
+        # 如果有分区数据，则更新
+        if partitions:
+            part_table_info['partitions'][current_device] = partitions
+
+        return part_table_info
+
+    except Exception as e:
+        logger.error(f'解析parted输出失败: {e}')
+        return part_table_info
