@@ -219,3 +219,43 @@ def fetch_interface_stats(interface):
         logger.error(f'获取网卡统计失败: {e}')
 
     return stats
+def fetch_total_bandwidth(interfaces):
+    """
+    获取总带宽信息
+    """
+    total = {}
+
+    try:
+        total_rx_bytes = 0
+        total_tx_bytes = 0
+        total_rate = 0
+
+        for interface in interfaces:
+            # 获取速率
+            rate_info = fetch_interface_rate(interface)
+            if rate_info:
+                # 提取速率值
+                if '总速率' in rate_info:
+                    rate_str = rate_info['总速率']
+                    rate = float(rate_str.split()[0])
+                    total_rate += rate
+
+            # 获取统计
+            stats_info = fetch_interface_stats(interface)
+            if stats_info:
+                if '接收字节数' in stats_info:
+                    rx_bytes = int(stats_info['接收字节数'].split()[0].replace(',', ''))
+                    total_rx_bytes += rx_bytes
+                if '发送字节数' in stats_info:
+                    tx_bytes = int(stats_info['发送字节数'].split()[0].replace(',', ''))
+                    total_tx_bytes += tx_bytes
+
+        total['总速率'] = f"{total_rate:.2f} Mbps"
+        total['总接收字节数'] = f"{total_rx_bytes} 字节"
+        total['总发送字节数'] = f"{total_tx_bytes} 字节"
+        total['总传输字节数'] = f"{total_rx_bytes + total_tx_bytes} 字节"
+
+    except Exception as e:
+        logger.error(f'获取总带宽失败: {e}')
+
+    return total
