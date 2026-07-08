@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param, validate_identifier_param
 
+
 def git_create_branch(directory=None, branch_name=None, checkout=False):
     """
     创建 Git 分支
@@ -136,7 +137,7 @@ def git_create_branch(directory=None, branch_name=None, checkout=False):
             "checkout": checkout
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "vc_branch_create",
     "function": git_create_branch,
