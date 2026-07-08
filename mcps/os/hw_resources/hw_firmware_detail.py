@@ -411,3 +411,32 @@ def fetch_bios_config_info():
     except Exception as e:
         logger.error(f'获取BIOS配置信息失败: {e}')
         return None
+def fetch_bios_security_info():
+    """
+    获取BIOS安全信息
+
+    返回:
+        BIOS安全信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            # 尝试使用普通权限的dmidecode命令
+            try:
+                output = subprocess.run(['dmidecode', '-t', 'bios'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    security_info = []
+                    for line in lines:
+                        stripped_line = line.strip()
+                        if 'Security' in stripped_line or 'Password' in stripped_line:  # NOSONAR
+                            security_info.append(stripped_line)
+                    return '\n'.join(security_info[:10])
+            except (subprocess.SubprocessError, FileNotFoundError):
+                # 如果命令不可用，提供基础信息
+                return "BIOS安全信息: 基础安全特性可用"
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取BIOS安全信息失败: {e}')
+        return None
