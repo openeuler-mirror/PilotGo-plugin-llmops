@@ -287,3 +287,72 @@ def examine_cgroup_memory_stats() -> List[Dict[str, Any]]:
         stats.append({'error': str(e)})
 
     return stats
+def examine_cgroup_v2_memory() -> List[Dict[str, Any]]:
+    """分析cgroup v2内存"""
+    stats = []
+
+    try:
+        cgroup_base = '/sys/fs/cgroup'
+        if not os.path.exists(cgroup_base):
+            return stats
+
+        # 获取所有cgroup
+        for item in os.listdir(cgroup_base):
+            cgroup_path = os.path.join(cgroup_base, item)
+            if not os.path.isdir(cgroup_path):
+                continue
+
+            stat = {'cgroup': item}
+
+            # 读取memory.current
+            current_file = os.path.join(cgroup_path, 'memory.current')
+            if os.path.exists(current_file):
+                try:
+                    with open(current_file, 'r') as f:
+                        stat['memory_current'] = f.read().strip()
+                except Exception:
+                    pass
+
+            # 读取memory.max
+            max_file = os.path.join(cgroup_path, 'memory.max')
+            if os.path.exists(max_file):
+                try:
+                    with open(max_file, 'r') as f:
+                        max_val = f.read().strip()
+                        stat['memory_max'] = max_val
+                        if max_val != 'max' and 'memory_current' in stat:
+                            try:
+                                current = int(stat['memory_current'])
+                                max_bytes = int(max_val)
+                                if max_bytes > 0:
+                                    stat['usage_percent'] = round(current / max_bytes * 100, 2)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            # 读取memory.events
+            events_file = os.path.join(cgroup_path, 'memory.events')
+            if os.path.exists(events_file):
+                try:
+                    with open(events_file, 'r') as f:
+                        stat['events'] = f.read().strip()
+                except Exception:
+                    pass
+
+            # 读取memory.stat
+            stat_file = os.path.join(cgroup_path, 'memory.stat')
+            if os.path.exists(stat_file):
+                try:
+                    with open(stat_file, 'r') as f:
+                        stat['stat'] = f.read().strip()
+                except Exception:
+                    pass
+
+            if len(stat) > 1:
+                stats.append(stat)
+
+    except Exception as e:
+        stats.append({'error': str(e)})
+
+    return stats
