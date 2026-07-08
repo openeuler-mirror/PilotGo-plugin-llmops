@@ -294,3 +294,64 @@ def determine_file_type(filename: str) -> str:
     except Exception as e:
         logger.error(f'确定文件类型失败: {e}')
         return '未知类型'
+
+def fetch_backup_metadata(backup_file: str) -> Dict[str, Union[str, int, float, datetime.datetime]]:
+    """
+    获取备份文件的元数据
+
+    参数:
+        backup_file: 备份文件路径
+
+    返回:
+        dict: 备份文件元数据
+    """
+    metadata = {
+        'file_info': None,
+        'config_diff': None,
+        'backup_reason': None,
+        'backup_method': None
+    }
+
+    try:
+        # 获取文件信息
+        metadata['file_info'] = fetch_backup_file_info(backup_file)
+
+        # 尝试读取备份元数据文件
+        metadata_file = backup_file + '.meta'
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                try:
+                    metadata.update(json.load(f))
+                except json.JSONDecodeError:
+                    logger.warning(f'无法解析备份元数据文件: {metadata_file}')
+
+        # 尝试从文件名推断备份原因
+        filename = os.path.basename(backup_file)
+        if 'pre-upgrade' in filename.lower():
+            metadata['backup_reason'] = '升级前备份'
+        elif 'pre-update' in filename.lower():
+            metadata['backup_reason'] = '更新前备份'
+        elif 'pre-deploy' in filename.lower():
+            metadata['backup_reason'] = '部署前备份'
+        elif 'emergency' in filename.lower():
+            metadata['backup_reason'] = '紧急备份'
+        elif 'scheduled' in filename.lower():
+            metadata['backup_reason'] = '计划备份'
+        elif not metadata.get('backup_reason'):
+            metadata['backup_reason'] = '未知原因'
+
+        # 尝试从文件名推断备份方法
+        if 'manual' in filename.lower():
+            metadata['backup_method'] = '手动备份'
+        elif 'auto' in filename.lower():
+            metadata['backup_method'] = '自动备份'
+        elif 'cron' in filename.lower():
+            metadata['backup_method'] = '定时备份'
+        elif not metadata.get('backup_method'):
+            metadata['backup_method'] = '未知方法'
+
+        return metadata
+
+    except Exception as e:
+        logger.error(f'获取备份元数据失败: {e}')
+        return metadata
