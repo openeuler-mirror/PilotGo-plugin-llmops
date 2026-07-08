@@ -213,3 +213,61 @@ def fetch_bios_details():
             'uefi': 'Unknown',
             'smbios': 'Unknown'
         }
+def analyze_dmidecode_bios(output, bios_info):
+    """
+    解析dmidecode BIOS输出
+
+    参数:
+        output: dmidecode输出
+        bios_info: BIOS信息字典
+
+    返回:
+        更新后的BIOS信息字典
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Vendor:'):
+                bios_info['vendor'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Version:'):
+                bios_info['ver'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Release Date:'):
+                bios_info['date'] = line.split(':', 1)[1].strip()
+            elif line.startswith('SMBIOS Version:'):
+                bios_info['smbios'] = line.split(':', 1)[1].strip()
+
+        return bios_info
+
+    except Exception as e:
+        logger.error(f'解析dmidecode BIOS输出失败: {e}')
+        return bios_info
+def analyze_lshw_bios(output, bios_info):
+    """
+    解析lshw BIOS输出
+
+    参数:
+        output: lshw输出
+        bios_info: BIOS信息字典
+
+    返回:
+        更新后的BIOS信息字典
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            stripped_line = line.strip()
+            if stripped_line.startswith('vendor:'):
+                bios_info['vendor'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('ver:'):
+                bios_info['ver'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('date:'):
+                bios_info['date'] = stripped_line.split(':', 1)[1].strip()
+
+        return bios_info
+
+    except Exception as e:
+        logger.error(f'解析lshw BIOS输出失败: {e}')
+        return bios_info
