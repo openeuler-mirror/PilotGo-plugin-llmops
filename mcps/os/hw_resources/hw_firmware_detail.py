@@ -347,3 +347,36 @@ def analyze_windows_bios(output, bios_info):
     except Exception as e:
         logger.error(f'解析Windows BIOS输出失败: {e}')
         return bios_info
+def fetch_bios_extended_info():
+    """
+    获取BIOS扩展信息
+
+    返回:
+        BIOS扩展信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            # 尝试使用普通权限的dmidecode命令
+            try:
+                output = subprocess.run(['dmidecode', '-t', 'bios'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    extended_info = []
+                    for line in lines:
+                        stripped_line = line.strip()
+                        if stripped_line.startswith('BIOS Revision:') or \
+                           stripped_line.startswith('Firmware Revision:') or \
+                           stripped_line.startswith('Address:') or \
+                           stripped_line.startswith('Runtime Size:') or \
+                           stripped_line.startswith('ROM Size:'):
+                            extended_info.append(stripped_line)
+                    return '\n'.join(extended_info[:10])
+            except (subprocess.SubprocessError, FileNotFoundError):
+                # 如果命令不可用，提供基础信息
+                return "BIOS扩展信息: 基础版本信息可用"
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取BIOS扩展信息失败: {e}')
+        return None
