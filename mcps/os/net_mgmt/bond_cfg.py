@@ -137,3 +137,62 @@ def fetch_bond_interfaces():
         logger.error(f'获取bond接口失败: {e}')
 
     return interfaces
+def fetch_bond_info(interface):
+    """
+    获取 bond 详细信息
+    """
+    bond_info = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return bond_info
+
+        # 检查/sys/class/net目录
+        bond_dir = f'/sys/class/net/{interface}/bonding'
+        if os.path.exists(bond_dir):
+            # 获取绑定模式
+            mode_file = os.path.join(bond_dir, 'mode')
+            if os.path.exists(mode_file):
+                with open(mode_file, 'r') as f:
+                    mode = f.read().strip()
+                    bond_info['绑定模式'] = mode
+
+            # 获取活跃网卡
+            active_file = os.path.join(bond_dir, 'active_slave')
+            if os.path.exists(active_file):
+                with open(active_file, 'r') as f:
+                    active = f.read().strip()
+                    if active:
+                        bond_info['活跃网卡'] = active
+                    else:
+                        bond_info['活跃网卡'] = '无'
+
+            # 获取 MII 监控间隔
+            mii_file = os.path.join(bond_dir, 'miimon')
+            if os.path.exists(mii_file):
+                with open(mii_file, 'r') as f:
+                    miimon = f.read().strip()
+                    bond_info['MII 监控间隔'] = f"{miimon} ms"
+
+            # 获取 ARP 监控间隔
+            arp_file = os.path.join(bond_dir, 'arp_interval')
+            if os.path.exists(arp_file):
+                with open(arp_file, 'r') as f:
+                    arp_interval = f.read().strip()
+                    if arp_interval != '0':
+                        bond_info['ARP 监控间隔'] = f"{arp_interval} ms"
+
+            # 获取故障转移延迟
+            failover_file = os.path.join(bond_dir, 'fail_over_mac')
+            if os.path.exists(failover_file):
+                with open(failover_file, 'r') as f:
+                    failover = f.read().strip()
+                    bond_info['故障转移 MAC'] = failover
+
+    except Exception as e:
+        logger.error(f'获取 bond 信息失败：{e}')
+
+    return bond_info
