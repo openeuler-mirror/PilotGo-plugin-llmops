@@ -363,3 +363,47 @@ def fetch_default_values(item_name: str) -> Optional[Dict[str, Union[str, int]]]
     }
 
     return defaults.get(item_name)
+
+def fetch_nginx_config_item(config_type: str, item_name: str, site_name: str = None, context: str = None) -> Dict:
+    """
+    获取指定配置项的取值
+
+    参数:
+        config_type: 配置类型 (main/site/module)
+        item_name: 配置项名称
+        site_name: 站点名称 (当config_type为site时使用)
+        context: 上下文 (http/server/location等)
+
+    返回:
+        dict: 包含配置项值的字典
+    """
+    return fetch_config_item(config_type, item_name, site_name, context)
+
+TOOL_CONFIG = {
+    "name": "fetch_nginx_config_item",
+    "description": "获取指定配置项取值（支持主配置/站点配置/模块配置精准查询）",
+    "function": fetch_nginx_config_item,
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "config_type": {
+                "type": "string",
+                "description": "配置类型 (main/site/module)",
+                "enum": ["main", "site", "module"]
+            },
+            "item_name": {
+                "type": "string",
+                "description": "配置项名称"
+            },
+            "site_name": {
+                "type": "string",
+                "description": "站点名称 (当config_type为site时使用)"
+            },
+            "context": {
+                "type": "string",
+                "description": "上下文 (http/server/location等)"
+            }
+        },
+        "required": ["config_type", "item_name"]
+    }
+}
