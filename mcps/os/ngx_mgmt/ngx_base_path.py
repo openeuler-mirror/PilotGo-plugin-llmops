@@ -118,3 +118,204 @@ def fetch_nginx_base_path():
     except Exception as e:
         logger.error(f'获取Nginx路径信息失败: {e}')
         return f'获取Nginx路径信息失败: {e}'
+
+def fetch_config_paths():
+    """获取配置路径信息"""
+    try:
+        cfg_state = {
+            'config_root': 'Unknown',
+            'main_config': 'Unknown',
+            'vhosts_dir': 'Unknown',
+            'conf_d_dir': 'Unknown'
+        }
+
+        # 常见配置路径
+        common_config_paths = [
+            '/etc/nginx/nginx.conf',
+            '/usr/local/nginx/conf/nginx.conf',
+            '/usr/local/etc/nginx/nginx.conf',
+            '/opt/nginx/conf/nginx.conf'
+        ]
+
+        # 检查nginx -t输出获取配置文件路径
+        try:
+            output = subprocess.run(['nginx', '-t'], capture_output=True, text=True, stderr=subprocess.STDOUT)
+            if output.returncode == 0 or output.returncode == 1:  # 0成功，1可能有配置错误但仍显示路径
+                output = output.stdout.strip()
+                # 从输出中提取配置文件路径
+                config_match = re.search(r'file ([^\s]+) test', output)  # NOSONAR
+                if config_match:
+                    config_file = config_match.group(1)
+                    cfg_state['main_config'] = config_file
+                    cfg_state['config_root'] = os.path.dirname(config_file)
+        except Exception:
+            pass
+
+        # 如果通过nginx -t没有获取到，检查常见路径
+        if cfg_state['main_config'] == 'Unknown':
+            for config_path in common_config_paths:
+                if os.path.exists(config_path):
+                    cfg_state['main_config'] = config_path
+                    cfg_state['config_root'] = os.path.dirname(config_path)
+                    break
+
+        # 如果找到了配置根目录，检查子目录
+        if cfg_state['config_root'] != 'Unknown':
+            config_root = cfg_state['config_root']
+
+            # 检查sites-enabled/sites-available (Debian/Ubuntu风格)
+            if os.path.exists(os.path.join(config_root, 'sites-enabled')):
+                cfg_state['vhosts_dir'] = os.path.join(config_root, 'sites-enabled')
+            elif os.path.exists(os.path.join(config_root, 'conf.d')):
+                cfg_state['vhosts_dir'] = os.path.join(config_root, 'conf.d')
+
+            # 检查conf.d目录
+            if os.path.exists(os.path.join(config_root, 'conf.d')):
+                cfg_state['conf_d_dir'] = os.path.join(config_root, 'conf.d')
+
+        return cfg_state
+
+    except Exception as e:
+        logger.error(f'获取配置路径信息失败: {e}')
+        return {
+            'config_root': '获取失败',
+            'main_config': '获取失败',
+            'vhosts_dir': '获取失败',
+            'conf_d_dir': '获取失败'
+        }
+
+def fetch_module_paths():
+    """获取模块路径信息"""
+    try:
+        mod_info = {
+            'builtin_modules': '内置在nginx二进制中',
+            'dynamic_modules_dir': 'Unknown',
+            'available_modules': []
+        }
+
+        # 常见模块路径
+        common_module_paths = [
+            '/usr/lib/nginx/modules',
+            '/usr/lib64/nginx/modules',
+            '/usr/local/nginx/modules',
+            '/etc/nginx/modules',
+            '/usr/share/nginx/modules'
+        ]
+
+        # 查找动态模块目录
+        for module_path in common_module_paths:
+            if os.path.exists(module_path):
+                mod_info['dynamic_modules_dir'] = module_path
+
+                # 列出可用的动态模块
+                try:
+                    for item in os.listdir(module_path):
+                        if item.endswith('.so'):
+                            mod_info['available_modules'].append(item)
+                except Exception:
+                    pass
+                break
+
+        return mod_info
+
+    except Exception as e:
+        logger.error(f'获取模块路径信息失败: {e}')
+        return {
+            'builtin_modules': '获取失败',
+            'dynamic_modules_dir': '获取失败',
+            'available_modules': []
+        }
+
+def fetch_log_paths():
+    """获取日志路径信息"""
+    try:
+        log_info = {
+            'access_log': 'Unknown',
+            'error_log': 'Unknown',
+            'log_dir': 'Unknown'
+        }
+
+        # 常见日志路径
+        common_log_paths = [
+            '/var/log/nginx',
+            '/usr/local/nginx/logs',
+            '/var/log/httpd',
+            '/var/log'
+        ]
+
+        # 查找日志目录
+        for log_path in common_log_paths:
+            if os.path.exists(log_path):
+                log_info['log_dir'] = log_path
+
+                # 检查具体的日志文件
+                access_log_path = os.path.join(log_path, 'access.log')
+                error_log_path = os.path.join(log_path, 'error.log')
+
+                if os.path.exists(access_log_path):
+                    log_info['access_log'] = access_log_path
+                elif os.path.exists(os.path.join(log_path, 'access_log')):
+                    log_info['access_log'] = os.path.join(log_path, 'access_log')
+
+                if os.path.exists(error_log_path):
+                    log_info['error_log'] = error_log_path
+                elif os.path.exists(os.path.join(log_path, 'error_log')):
+                    log_info['error_log'] = os.path.join(log_path, 'error_log')
+
+                # 如果找到了日志文件，就使用这个目录
+                if log_info['access_log'] != 'Unknown' or log_info['error_log'] != 'Unknown':
+                    break
+
+        return log_info
+
+    except Exception as e:
+        logger.error(f'获取日志路径信息失败: {e}')
+        return {
+            'access_log': '获取失败',
+            'error_log': '获取失败',
+            'log_dir': '获取失败'
+        }
+
+def fetch_runtime_paths():
+    """获取运行时路径信息"""
+    try:
+        runtime_info = {
+            'pid_file': 'Unknown',
+            'lock_file': 'Unknown'
+        }
+
+        # 常见PID文件路径
+        common_pid_paths = [
+            '/var/run/nginx.pid',
+            '/var/run/nginx/nginx.pid',
+            '/usr/local/nginx/logs/nginx.pid',
+            '/etc/nginx/nginx.pid'
+        ]
+
+        # 查找PID文件
+        for pid_path in common_pid_paths:
+            if os.path.exists(pid_path):
+                runtime_info['pid_file'] = pid_path
+                break
+
+        # 常见锁文件路径
+        common_lock_paths = [
+            '/var/lock/nginx.lock',
+            '/var/lock/subsys/nginx',
+            '/run/lock/nginx.lock'  # NOSONAR
+        ]
+
+        # 查找锁文件
+        for lock_path in common_lock_paths:
+            if os.path.exists(lock_path):
+                runtime_info['lock_file'] = lock_path
+                break
+
+        return runtime_info
+
+    except Exception as e:
+        logger.error(f'获取运行时路径信息失败: {e}')
+        return {
+            'pid_file': '获取失败',
+            'lock_file': '获取失败'
+        }
