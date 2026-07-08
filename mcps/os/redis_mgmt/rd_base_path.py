@@ -130,3 +130,93 @@ def locate_redis_config_paths():
         logger.error(f'查找Redis配置文件失败: {str(e)}')
 
     return config_paths
+def analyze_redis_config(cfg_filepath):
+    """
+    解析Redis配置文件
+    """
+    cfg_state = {}
+
+    try:
+        if not os.path.exists(cfg_filepath):
+            return cfg_state
+
+        with open(cfg_filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+
+            if '=' in line:
+                key, val = line.split('=', 1)
+                key = key.strip()
+                val = val.strip()
+
+                if key in ['dir', 'dbfilename', 'appendfilename', 'logfile', 'pidfile', 'unixsocket']:
+                    cfg_state[key] = val
+
+            elif ' ' in line:
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    key, val = parts
+                    key = key.strip()
+                    val = val.strip()
+
+                    if key in ['dir', 'dbfilename', 'appendfilename', 'logfile', 'pidfile', 'unixsocket']:
+                        cfg_state[key] = val
+
+    except Exception as e:
+        logger.error(f'解析Redis配置文件失败: {str(e)}')
+
+    return cfg_state
+def fetch_redis_install_path(pid):
+    """
+    获取Redis安装路径
+    """
+    install_info = {}
+
+    try:
+        exe_path = f'/proc/{pid}/exe'
+        if os.path.exists(exe_path):
+            output = subprocess.run(['readlink', '-f', exe_path], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                install_info['可执行文件'] = output.stdout.strip()
+
+                redis_dir = os.path.dirname(output.stdout.strip())
+                install_info['安装目录'] = redis_dir
+
+                redis_root = os.path.dirname(redis_dir)
+                install_info['根目录'] = redis_root
+
+        cwd_path = f'/proc/{pid}/cwd'
+        if os.path.exists(cwd_path):
+            output = subprocess.run(['readlink', '-f', cwd_path], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                install_info['工作目录'] = output.stdout.strip()
+
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', 'dir'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'dir' and i + 1 < len(lines):
+                    install_info['数据目录'] = lines[i + 1].strip()
+                    break
+
+        output = subprocess.run(['which', 'redis-server'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            install_info['命令路径'] = output.stdout.strip()
+
+        output = subprocess.run(['which', 'redis-cli'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            install_info['CLI路径'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取Redis安装路径失败: {str(e)}')
+
+    return install_info
