@@ -111,3 +111,20 @@ def fetch_app_go_mod(mod_info=None):
     except Exception as e:
         logger.error(f'获取Go模块信息失败: {e}')
         return f'获取Go模块信息失败: {e}'
+def is_go_available():
+    """
+    检查系统是否安装了go
+
+    返回:
+        bool: 是否安装了go
+    """
+    try:
+        # 检查是否存在go命令
+        output = subprocess.run(['which', 'go'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return True
+
+        return False
+
+    except Exception:
+        return False
