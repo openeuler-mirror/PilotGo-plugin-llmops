@@ -494,3 +494,23 @@ def render_partitions_info(partitions):
     except Exception as e:
         logger.error(f'格式化分区信息失败: {e}')
         return "格式化分区信息失败"
+def render_part_types_info(part_types):
+    """
+    格式化分区类型信息
+
+    参数:
+        part_types: 分区类型信息字典
+
+    返回:
+        格式化的分区类型信息字符串
+    """
+    try:
+        output = []
+        for device, types in part_types.items():
+            output.append(f"磁盘 {device}:")
+            for part_num, part_type in types.items():
+                output.append(f"  分区 {part_num}: {part_type}")
+        return '\n'.join(output)
+    except Exception as e:
+        logger.error(f'格式化分区类型信息失败: {e}')
+        return "格式化分区类型信息失败"
