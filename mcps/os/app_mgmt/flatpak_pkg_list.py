@@ -146,3 +146,20 @@ def fetch_app_flatpak_list(flatpak_info=None):
     except Exception as e:
         logger.error(f'获取Flatpak包信息失败: {e}')
         return f'获取Flatpak包信息失败: {e}'
+def is_flatpak_available():
+    """
+    检查系统是否安装了Flatpak
+
+    返回:
+        bool: 是否安装了Flatpak
+    """
+    try:
+        # 检查是否存在flatpak命令
+        output = subprocess.run(['which', 'flatpak'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return True
+
+        return False
+
+    except Exception:
+        return False
