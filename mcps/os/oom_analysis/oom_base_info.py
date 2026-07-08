@@ -158,3 +158,46 @@ def gather_oom_config() -> Dict[str, Any]:
         settings['error'] = str(e)
 
     return settings
+def gather_oom_logs() -> List[Dict[str, Any]]:
+    """收集OOM相关的日志"""
+    oom_logs = []
+
+    try:
+        # 从dmesg获取OOM日志
+        dmesg_result = execute_command(['dmesg', '--level=err,warn'])
+        if dmesg_result['success']:
+            for line in dmesg_result['stdout'].split('\n'):
+                if 'oom' in line.lower() or 'out of memory' in line.lower():
+                    oom_logs.append({
+                        'source': 'dmesg',
+                        'message': line.strip()
+                    })
+
+        # 从journalctl获取OOM日志
+        journal_result = execute_command([
+            'journalctl', '-k', '--since', '24 hours ago',
+            '--grep', 'oom|Out of memory', '-q', '--no-pager'
+        ])
+        if journal_result['success']:
+            for line in journal_result['stdout'].split('\n'):
+                if line.strip():
+                    oom_logs.append({
+                        'source': 'journalctl',
+                        'message': line.strip()
+                    })
+
+        # 去重
+        seen = set()
+        unique_logs = []
+        for log in oom_logs:
+            msg = log['message']
+            if msg not in seen:
+                seen.add(msg)
+                unique_logs.append(log)
+
+        oom_logs = unique_logs[:20]  # 限制数量
+
+    except Exception as e:
+        oom_logs.append({'source': 'error', 'message': str(e)})
+
+    return oom_logs
