@@ -115,3 +115,14 @@ def is_elf_file(file_path):
         return 'ELF' in output.stdout
     except Exception:
         return False
+def fetch_ldd_output(binary_path):
+    """
+    获取ldd命令输出
+    """
+    try:
+        output = subprocess.run(['ldd', binary_path], capture_output=True, text=True)
+        if output.returncode == 0:
+            return output.stdout
+        return None
+    except Exception:
+        return None
