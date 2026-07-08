@@ -201,3 +201,55 @@ def gather_oom_logs() -> List[Dict[str, Any]]:
         oom_logs.append({'source': 'error', 'message': str(e)})
 
     return oom_logs
+def gather_top_memory_processes() -> List[Dict[str, Any]]:
+    """收集内存使用最多的进程"""
+    processes = []
+
+    try:
+        # 使用ps获取内存使用最多的进程
+        ps_result = execute_command([
+            'ps', 'aux', '--sort=-%mem',
+            '--no-headers'
+        ])
+
+        if ps_result['success']:
+            lines = ps_result['stdout'].strip().split('\n')
+            for line in lines[:10]:  # 取前10个
+                parts = line.split()
+                if len(parts) >= 11:
+                    processes.append({
+                        'user': parts[0],
+                        'pid': parts[1],
+                        'cpu_percent': parts[2],
+                        'mem_percent': parts[3],
+                        'vsz': parts[4],
+                        'rss': parts[5],
+                        'command': ' '.join(parts[10:])
+                    })
+
+        # 获取进程oom_score
+        for proc in processes:
+            try:
+                pid = proc['pid']
+                oom_score_path = f'/proc/{pid}/oom_score'
+                if os.path.exists(oom_score_path):
+                    with open(oom_score_path, 'r') as f:
+                        proc['oom_score'] = f.read().strip()
+
+                oom_adj_path = f'/proc/{pid}/oom_score_adj'
+                if os.path.exists(oom_adj_path):
+                    with open(oom_adj_path, 'r') as f:
+                        proc['oom_score_adj'] = f.read().strip()
+            except Exception:
+                pass
+
+    except Exception as e:
+        processes.append({'error': str(e)})
+
+    return processes
+
+
+if __name__ == '__main__':
+    # 测试
+    output = oom_basic_info()
+    print(json.dumps(output, indent=2, ensure_ascii=False))
