@@ -146,3 +146,88 @@ def fetch_pid_info(pid):
         logger.error(f'获取进程ID信息失败: {e}')
 
     return pid_info
+def fetch_user_group_info(pid):
+    """
+    获取用户/组信息
+    """
+    user_info = {}
+
+    try:
+        if os.path.exists(f'/proc/{pid}/status'):
+            with open(f'/proc/{pid}/status', 'r') as f:
+                status_lines = f.readlines()
+
+            for line in status_lines:
+                if line.startswith('Uid:'):
+                    uid_parts = line.split()
+                    if len(uid_parts) >= 2:
+                        real_uid = uid_parts[1]
+                        effective_uid = uid_parts[2]
+                        user_info['用户ID(真实)'] = real_uid
+                        user_info['用户ID(有效)'] = effective_uid
+
+                        try:
+                            user = pwd.getpwuid(int(real_uid))
+                            user_info['用户名'] = user.pw_name
+                            user_info['用户主目录'] = user.pw_dir
+                            user_info['用户Shell'] = user.pw_shell
+                        except Exception:
+                            pass
+
+                elif line.startswith('Gid:'):
+                    gid_parts = line.split()
+                    if len(gid_parts) >= 2:
+                        real_gid = gid_parts[1]
+                        effective_gid = gid_parts[2]
+                        user_info['组ID(真实)'] = real_gid
+                        user_info['组ID(有效)'] = effective_gid
+
+                        try:
+                            group = grp.getgrgid(int(real_gid))
+                            user_info['组名'] = group.gr_name
+                        except Exception:
+                            pass
+
+                elif line.startswith('Groups:'):
+                    groups = line.split()[1:]
+                    user_info['附加组'] = ', '.join(groups)
+
+                    group_names = []
+                    for gid in groups:
+                        try:
+                            group = grp.getgrgid(int(gid))
+                            group_names.append(group.gr_name)
+                        except Exception:
+                            pass
+                    if group_names:
+                        user_info['附加组名'] = ', '.join(group_names)
+
+        output = subprocess.run(['ps', '-p', pid, '-o', 'user,group'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split()
+                if len(parts) >= 2:
+                    user_info['运行用户'] = parts[0]
+                    user_info['运行组'] = parts[1]
+
+        if os.path.exists(f'/proc/{pid}'):
+            stat_path = f'/proc/{pid}/stat'
+            if os.path.exists(stat_path):
+                with open(stat_path, 'r') as f:
+                    stat_data = f.read().split()
+
+                if len(stat_data) > 8:
+                    uid = stat_data[8]
+                    user_info['文件系统用户ID'] = uid
+
+        output = subprocess.run(['id'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            user_info['当前用户信息'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取用户/组信息失败: {e}')
+
+    return user_info
