@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param, validate_identifier_param
 
+
 def git_push(directory=None, remote=None, branch=None, force=False, tags=False):
     """
     推送 Git 仓库中的更改到远程仓库
@@ -205,7 +206,7 @@ def git_push(directory=None, remote=None, branch=None, force=False, tags=False):
             "tags": tags
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "vc_repo_push",
     "function": git_push,
