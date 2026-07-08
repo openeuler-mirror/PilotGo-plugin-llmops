@@ -406,3 +406,36 @@ def fetch_bond_stats_summary(bond_interfaces):
         logger.error(f'获取bond统计摘要失败: {e}')
 
     return stats
+def verify_bond_status(bond_interfaces):
+    """
+    检查bond状态
+    """
+    checks = []
+
+    try:
+        for interface in bond_interfaces:
+            # 检查bond状态
+            state = fetch_bond_status(interface)
+            if state.get('状态') == 'DOWN':
+                checks.append(f"bond接口 {interface} 状态为DOWN")
+            if state.get('运行状态') == '未运行':
+                checks.append(f"bond接口 {interface} 未运行")
+
+            # 检查成员网卡
+            slaves = fetch_bond_slaves(interface)
+            if not slaves:
+                checks.append(f"bond接口 {interface} 无成员网卡")
+            else:
+                # 检查成员网卡状态
+                active_slaves = 0
+                for slave in slaves:
+                    slave_status = fetch_slave_status(slave, interface)
+                    if 'active' in slave_status.lower():
+                        active_slaves += 1
+                if active_slaves == 0:
+                    checks.append(f"bond接口 {interface} 无活跃成员网卡")
+
+    except Exception as e:
+        logger.error(f'检查bond状态失败: {e}')
+
+    return checks
