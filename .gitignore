@@ -11,4 +11,11 @@
 *.log
 # 本地运行时目录（Go/MinIO 二进制、数据、日志）
 .runtime/
-*.trae  
+*.trae
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/  
