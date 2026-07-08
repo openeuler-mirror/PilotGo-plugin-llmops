@@ -286,3 +286,184 @@ def analyze_parted_output(output, device, part_table_info):
     except Exception as e:
         logger.error(f'解析parted输出失败: {e}')
         return part_table_info
+def analyze_fdisk_output(output, device, part_table_info):
+    """
+    解析fdisk命令输出
+
+    参数:
+        output: fdisk命令输出
+        device: 设备路径
+        part_table_info: 分区表信息字典
+
+    返回:
+        更新后的分区表信息字典
+    """
+    try:
+        lines = output.split('\n')
+        current_device = device
+        partitions = []
+
+        for line in lines:
+            line = line.strip()
+            if 'Disk label type:' in line or 'Disklabel type:' in line:
+                table_type = line.split(':', 1)[1].strip()
+                if current_device not in part_table_info['table_types']:
+                    part_table_info['table_types'][current_device] = table_type
+            elif 'Disk identifier:' in line:
+                identifier = line.split(':', 1)[1].strip()
+                if current_device not in part_table_info['identifiers']:
+                    part_table_info['identifiers'][current_device] = identifier
+            elif line.startswith('/dev/') and device in line:
+                # 分区信息行
+                parts = line.split()
+                if len(parts) >= 6:
+                    # 提取分区号（从/dev/sda1中提取1）
+                    partition_number = ''.join(filter(str.isdigit, parts[0].replace(device, '')))
+                    if not partition_number:
+                        partition_number = '1'  # 默认值
+
+                    # 提取分区类型（从第5列开始的所有内容）
+                    partition_type = ' '.join(parts[5:]) if len(parts) > 5 else 'Unknown'
+
+                    partition = {
+                        'number': partition_number,
+                        'start': parts[1],
+                        'end': parts[2],
+                        'size': parts[3],
+                        'type': partition_type,
+                        'file_system': 'Unknown',
+                        'flags': '*' if '*' in line else ''
+                    }
+                    partitions.append(partition)
+
+        if partitions and current_device not in part_table_info['partitions']:
+            part_table_info['partitions'][current_device] = partitions
+
+        return part_table_info
+
+    except Exception as e:
+        logger.error(f'解析fdisk输出失败: {e}')
+        return part_table_info
+def analyze_macos_diskutil_output(output, part_table_info):
+    """
+    解析macOS diskutil输出
+
+    参数:
+        output: diskutil命令输出
+        part_table_info: 分区表信息字典
+
+    返回:
+        更新后的分区表信息字典
+    """
+    try:
+        lines = output.split('\n')
+        current_device = None
+        partitions = []
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith('/dev/') and 'disk' in line:
+                if current_device and partitions:
+                    part_table_info['partitions'][current_device] = partitions
+
+                # 提取设备名（去除后面的信息）
+                device_name = line.split()[0] if ' ' in line else line
+                current_device = device_name
+                part_table_info['devices'].append(current_device)
+                part_table_info['table_types'][current_device] = 'GPT'  # macOS默认使用GPT
+                partitions = []
+            elif current_device and line and not line.startswith('\t'):
+                # 分区信息行
+                # 提取纯数字的分区号（去除冒号）
+                partition_number = line.split(':')[0].strip()
+                # 检查是否是分区行（数字开头，且不是表头行和磁盘类型行）
+                is_partition = (partition_number.isdigit() and
+                               not line.startswith('#:') and
+                               'partition_scheme' not in line.lower() and
+                               partition_number != '0')  # 排除0号分区（通常是磁盘类型）
+                if is_partition:
+                    # 重新解析行，正确分割字段
+                    # 格式: "1:                  EFI EFI                     209.7 MB disk0s1"
+                    parts = line.split()
+                    if len(parts) >= 6:
+                        # 分区类型只取第一个单词
+                        full_type = ' '.join(parts[1:-3])
+                        type_parts = full_type.split()
+                        partition_type = type_parts[0] if type_parts else 'Unknown'
+
+                        partition = {
+                            'number': partition_number,
+                            'start': 'Unknown',  # macOS diskutil不提供起始扇区
+                            'end': 'Unknown',    # macOS diskutil不提供结束扇区
+                            'size': parts[-2],   # 倒数第二个是大小
+                            'type': partition_type,
+                            'file_system': 'Unknown',
+                            'flags': ''
+                        }
+                        partitions.append(partition)
+
+        # 处理最后一个设备
+        if current_device and partitions:
+            part_table_info['partitions'][current_device] = partitions
+
+        return part_table_info
+
+    except Exception as e:
+        logger.error(f'解析macOS diskutil输出失败: {e}')
+        return part_table_info
+def analyze_windows_diskdrive_output(output, part_table_info):
+    """
+    解析Windows diskdrive输出
+
+    参数:
+        output: wmic命令输出
+        part_table_info: 分区表信息字典
+
+    返回:
+        更新后的分区表信息字典
+    """
+    try:
+        lines = output.strip().split('\n')[1:]
+
+        for line in lines:
+            if line.strip():
+                parts = [part.strip() for part in line.split() if part.strip()]
+                if len(parts) >= 3:
+                    device = parts[0]
+                    partitions = parts[1]
+                    signature = parts[2]
+
+                    part_table_info['devices'].append(device)
+                    part_table_info['table_types'][device] = 'MBR'  # 默认假设为MBR
+                    part_table_info['identifiers'][device] = signature
+
+                    # 尝试获取分区详细信息
+                    try:
+                        output = subprocess.run(['wmic', 'partition', 'where', f"DiskIndex='{device.split('#')[1].split(',')[0]}'", 'get', 'DeviceID,Size,Type'], capture_output=True, text=True)
+                        if output.returncode == 0:
+                            part_info = []
+                            part_lines = output.stdout.strip().split('\n')[1:]
+                            for part_line in part_lines:
+                                if part_line.strip():
+                                    part_parts = [p.strip() for p in part_line.split() if p.strip()]
+                                    if len(part_parts) >= 3:
+                                        part = {
+                                            'number': part_parts[0].split('Partition')[1],
+                                            'size': f"{int(part_parts[1]) / 1024 / 1024 / 1024:.2f} GB",
+                                            'type': part_parts[2],
+                                            'start': 'Unknown',
+                                            'end': 'Unknown',
+                                            'file_system': 'Unknown',
+                                            'flags': ''
+                                        }
+                                        part_info.append(part)
+                            if part_info:
+                                part_table_info['partitions'][device] = part_info
+                    except Exception:
+                        pass
+
+        return part_table_info
+
+    except Exception as e:
+        logger.error(f'解析Windows diskdrive输出失败: {e}')
+        return part_table_info
