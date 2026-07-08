@@ -220,3 +220,51 @@ def fetch_redis_install_path(pid):
         logger.error(f'获取Redis安装路径失败: {str(e)}')
 
     return install_info
+def fetch_redis_config_path(pid):
+    """
+    获取Redis配置文件路径
+    """
+    cfg_state = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', '*'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for i in range(0, len(lines) - 1):
+                if lines[i].strip() == 'config_file' and i + 1 < len(lines):
+                    cfg_filepath = lines[i + 1].strip()
+                    cfg_state['配置文件'] = cfg_filepath
+
+                    if os.path.exists(cfg_filepath):
+                        cfg_state['配置文件状态'] = '存在'
+                        cfg_state['配置文件大小'] = f"{os.path.getsize(cfg_filepath)} 字节"
+
+                        stat_info = os.stat(cfg_filepath)
+                        mtime = datetime.fromtimestamp(stat_info.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                        cfg_state['修改时间'] = mtime
+                    else:
+                        cfg_state['配置文件状态'] = '不存在'
+                    break
+
+        cmdline_path = f'/proc/{pid}/cmdline'
+        if os.path.exists(cmdline_path):
+            with open(cmdline_path, 'r') as f:
+                cmdline = f.read().replace('\x00', ' ')
+
+            config_match = re.search(r'--?\s*config\s+file\s*=?\s*([^\s]+)', cmdline)  # NOSONAR
+            if config_match:
+                cfg_state['命令行配置文件'] = config_match.group(1)
+
+        output = subprocess.run(['ps', '-p', pid, '-o', 'args='], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            cmdline = output.stdout.strip()
+            config_match = re.search(r'--?\s*config\s+file\s*=?\s*([^\s]+)', cmdline)  # NOSONAR
+            if config_match:
+                cfg_state['进程配置文件'] = config_match.group(1)
+
+    except Exception as e:
+        logger.error(f'获取Redis配置文件路径失败: {str(e)}')
+
+    return cfg_state
