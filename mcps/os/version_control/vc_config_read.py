@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param
 
+
 def git_get_user_info(scope="local", directory=None):
     """
     获取Git用户信息（name和email）
@@ -131,7 +132,7 @@ def git_get_user_info(scope="local", directory=None):
             "output": ""
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "git_get_user_info",
     "function": git_get_user_info,
