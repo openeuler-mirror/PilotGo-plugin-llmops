@@ -439,3 +439,47 @@ def verify_bond_status(bond_interfaces):
         logger.error(f'检查bond状态失败: {e}')
 
     return checks
+def examine_bond_config(bond_interfaces):
+    """
+    分析bond配置
+    """
+    analysis = []
+
+    try:
+        # 检查bond数量
+        if len(bond_interfaces) > 5:
+            analysis.append(f"bond接口数量较多 ({len(bond_interfaces)} 个)")
+
+        # 检查每个bond的成员网卡数量
+        for interface in bond_interfaces:
+            slaves = fetch_bond_slaves(interface)
+            if len(slaves) < 2:
+                analysis.append(f"bond接口 {interface} 成员网卡数量不足（至少需要2个）")
+            elif len(slaves) > 8:
+                analysis.append(f"bond接口 {interface} 成员网卡数量较多 ({len(slaves)} 个)")
+
+        # 检查绑定模式
+        for interface in bond_interfaces:
+            bond_info = fetch_bond_info(interface)
+            mode = bond_info.get('绑定模式', '')
+            if 'balance' in mode.lower():
+                analysis.append(f"bond接口 {interface} 使用负载均衡模式: {mode}")
+            elif 'active-backup' in mode.lower():
+                analysis.append(f"bond接口 {interface} 使用主备模式: {mode}")
+
+    except Exception as e:
+        logger.error(f'分析bond配置失败: {e}')
+
+    return analysis
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_bond",
+    "function": fetch_net_bond,
+    "description": "采集网卡绑定（bond接口/绑定模式/成员网卡/IP配置/运行状态/故障转移）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
