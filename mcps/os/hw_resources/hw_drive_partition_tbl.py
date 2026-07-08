@@ -514,3 +514,42 @@ def render_part_types_info(part_types):
     except Exception as e:
         logger.error(f'格式化分区类型信息失败: {e}')
         return "格式化分区类型信息失败"
+def fetch_partition_types():
+    """
+    获取分区类型映射
+
+    返回:
+        分区类型映射字典
+    """
+    return {
+        '83': 'Linux',
+        '82': 'Linux swap',
+        'ef': 'EFI System',
+        '07': 'NTFS',
+        'af': 'Apple HFS+',
+        '0b': 'W95 FAT32',
+        '0c': 'W95 FAT32 (LBA)',
+        'fd': 'Linux raid',
+        '8e': 'Linux LVM',
+        '51': 'EF02',
+        '52': 'BIOS boot',
+        '53': 'Apple Core Storage'
+    }
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_hw_disk_part_table",
+    "function": fetch_hw_disk_part_table,
+    "description": "采集磁盘分区表信息，包括MBR/GPT/分区类型/分区标识/分区表版本",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "part_table_type": {
+                "type": "string",
+                "description": "信息类型，可选值：type（分区表类型）、partitions（分区信息）、identifier（分区表标识）、version（分区表版本）、part_types（分区类型），不指定则获取所有信息",
+                "enum": ["type", "partitions", "identifier", "version", "part_types"]
+            }
+        },
+        "required": []
+    }
+}
