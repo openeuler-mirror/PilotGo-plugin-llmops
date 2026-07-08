@@ -169,3 +169,31 @@ def fetch_interface_rate(interface):
         logger.error(f'获取网卡速率失败: {e}')
 
     return rate
+def fetch_dev_stats(interface):
+    """
+    从/proc/net/dev获取网卡统计
+    """
+    stats = {}
+
+    try:
+        with open('/proc/net/dev', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines[2:]:
+                if interface in line:
+                    parts = line.split(':')[1].strip().split()
+                    if len(parts) >= 16:
+                        stats['rx_bytes'] = int(parts[0])
+                        stats['rx_packets'] = int(parts[1])
+                        stats['rx_errors'] = int(parts[2])
+                        stats['rx_dropped'] = int(parts[3])
+                        stats['tx_bytes'] = int(parts[8])
+                        stats['tx_packets'] = int(parts[9])
+                        stats['tx_errors'] = int(parts[10])
+                        stats['tx_dropped'] = int(parts[11])
+                    break
+
+    except Exception as e:
+        logger.error(f'获取网卡统计失败: {e}')
+
+    return stats
