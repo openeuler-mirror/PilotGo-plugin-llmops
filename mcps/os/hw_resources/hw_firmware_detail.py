@@ -299,3 +299,51 @@ def analyze_macos_bios(output, bios_info):
     except Exception as e:
         logger.error(f'解析macOS BIOS输出失败: {e}')
         return bios_info
+def analyze_windows_bios(output, bios_info):
+    """
+    解析Windows BIOS输出
+
+    参数:
+        output: wmic输出
+        bios_info: BIOS信息字典
+
+    返回:
+        更新后的BIOS信息字典
+    """
+    try:
+        lines = output.strip().split('\n')
+
+        if len(lines) >= 2:  # 确保有标题行和数据行
+            # 分析标题行来确定列的位置
+            header = lines[0].strip()
+            data_line = lines[1].strip()
+
+            # 使用正则表达式来正确分割包含空格的字段
+            # 匹配连续的非空白字符作为字段
+            fields = re.findall(r'\S+', header)
+            values = re.findall(r'\S+', data_line)
+
+            # 创建字段到值的映射
+            field_mapping = {}
+            value_index = 0
+
+            for i, field in enumerate(fields):
+                if value_index < len(values):
+                    field_mapping[field] = values[value_index]
+                    value_index += 1
+
+            # 根据字段名映射值
+            if 'Manufacturer' in field_mapping:
+                bios_info['vendor'] = field_mapping['Manufacturer']
+            if 'Version' in field_mapping:
+                bios_info['ver'] = field_mapping['Version']
+            if 'ReleaseDate' in field_mapping:
+                bios_info['date'] = field_mapping['ReleaseDate']
+            if 'SMBIOSBIOSVersion' in field_mapping:
+                bios_info['smbios'] = field_mapping['SMBIOSBIOSVersion']
+
+        return bios_info
+
+    except Exception as e:
+        logger.error(f'解析Windows BIOS输出失败: {e}')
+        return bios_info
