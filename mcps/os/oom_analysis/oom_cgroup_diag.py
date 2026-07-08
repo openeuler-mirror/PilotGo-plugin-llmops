@@ -232,3 +232,42 @@ def derive_cgroup_from_context(body: str, position: int) -> str:
     except Exception:
         pass
     return 'unknown'
+def verify_cgroup_v2_events() -> List[Dict[str, Any]]:
+    """检查cgroup v2事件"""
+    events = []
+
+    try:
+        # 遍历cgroup v2层次结构
+        cgroup_base = '/sys/fs/cgroup'
+        if not os.path.exists(cgroup_base):
+            return events
+
+        for root, dirs, files in os.walk(cgroup_base):
+            # 检查memory.events文件
+            events_file = os.path.join(root, 'memory.events')
+            if os.path.exists(events_file):
+                try:
+                    with open(events_file, 'r') as f:
+                        body = f.read()
+
+                    for line in body.split('\n'):
+                        if line.startswith('oom_kill') or line.startswith('oom'):
+                            parts = line.split()
+                            if len(parts) >= 2 and int(parts[1]) > 0:
+                                events.append({
+                                    'cgroup': root.replace(cgroup_base, '') or '/',
+                                    'event_type': parts[0],
+                                    'count': int(parts[1]),
+                                    'source': 'memory.events'
+                                })
+                except Exception:
+                    pass
+
+            # 限制遍历深度
+            if root.count('/') - cgroup_base.count('/') >= 3:
+                dirs[:] = []
+
+    except Exception as e:
+        events.append({'error': str(e)})
+
+    return events
