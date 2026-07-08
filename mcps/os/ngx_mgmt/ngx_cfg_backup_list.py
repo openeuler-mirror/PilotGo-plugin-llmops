@@ -355,3 +355,72 @@ def fetch_backup_metadata(backup_file: str) -> Dict[str, Union[str, int, float, 
     except Exception as e:
         logger.error(f'获取备份元数据失败: {e}')
         return metadata
+
+def nginx_config_backup_list() -> Dict:
+    """
+    获取所有配置备份文件列表、备份时间、备份版本备注
+
+    返回:
+        dict: 包含备份文件信息的字典
+    """
+    try:
+        # 检查Nginx安装状态
+        nginx_status = check_nginx_installation()
+        if not nginx_status.get('installed', False):
+            return {
+                'error': 'Nginx未安装',
+                'suggestion': nginx_status.get('suggestion', '请安装Nginx')
+            }
+
+        # 获取主配置文件路径
+        cfg_state = get_nginx_config_info()
+        main_config_path = cfg_state.get('config_file', '/etc/nginx/nginx.conf')
+        config_dir = os.path.dirname(main_config_path)
+
+        # 查找备份目录
+        backup_dirs = locate_config_backup_dirs(config_dir)
+
+        # 查找备份文件
+        backup_files = locate_config_backup_files(config_dir, backup_dirs)
+
+        # 获取每个备份文件的详细信息
+        detailed_backups = []
+        for backup_file in backup_files:
+            backup_path = backup_file['path']
+            metadata = fetch_backup_metadata(backup_path)
+
+            # 合并信息
+            detailed_backup = backup_file.copy()
+            detailed_backup.update(metadata)
+            detailed_backups.append(detailed_backup)
+
+        # 统计信息
+        stats = {
+            'total_backups': len(detailed_backups),
+            'backup_dirs_found': len(backup_dirs),
+            'backup_dirs': backup_dirs,
+            'file_types': {}
+        }
+
+        # 统计文件类型
+        for backup in detailed_backups:
+            file_type = backup.get('file_type', '未知类型')
+            if file_type not in stats['file_types']:
+                stats['file_types'][file_type] = 0
+            stats['file_types'][file_type] += 1
+
+        # 按备份时间排序（最新的在前）
+        detailed_backups.sort(key=lambda x: x.get('backup_time', ''), reverse=True)
+
+        return {
+            'config_dir': config_dir,
+            'backup_files': detailed_backups,
+            'statistics': stats,
+            'backup_recommendations': fetch_backup_recommendations(len(detailed_backups), backup_dirs)
+        }
+
+    except Exception as e:
+        logger.error(f'获取配置备份列表失败: {e}')
+        return {
+            'error': f'获取配置备份列表失败: {e}'
+        }
