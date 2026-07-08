@@ -196,3 +196,104 @@ def fetch_bond_info(interface):
         logger.error(f'获取 bond 信息失败：{e}')
 
     return bond_info
+def fetch_bond_slaves(interface):
+    """
+    获取成员网卡
+    """
+    slaves = []
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return slaves
+
+        # 检查/sys/class/net目录
+        slaves_file = f'/sys/class/net/{interface}/bonding/slaves'
+        if os.path.exists(slaves_file):
+            with open(slaves_file, 'r') as f:
+                slaves = f.read().strip().split()
+
+        # 使用ip命令获取成员网卡
+        if not slaves:
+            output = subprocess.run(['ip', 'link', 'show', interface], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                lines = output.stdout.strip().split('\n')
+                for line in lines:
+                    if 'slave' in line:
+                        parts = line.split()
+                        if parts:
+                            slave = parts[0]
+                            slaves.append(slave)
+
+    except Exception as e:
+        logger.error(f'获取成员网卡失败: {e}')
+
+    return slaves
+def fetch_slave_status(slave, bond_interface):
+    """
+    获取成员网卡状态
+    """
+    try:
+        # 安全校验：验证 slave 参数
+        is_valid, error_msg = validate_identifier_param(slave, allow_slash=False)
+        if not is_valid:
+            logger.error(f'成员网卡名称不合法：{error_msg}')
+            return '未知'
+
+        # 安全校验：验证 bond_interface 参数
+        is_valid, error_msg = validate_identifier_param(bond_interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'bond 接口名称不合法：{error_msg}')
+            return '未知'
+
+        # 检查/sys/class/net目录
+        slave_dir = f'/sys/class/net/{slave}/bonding_slave'
+        if os.path.exists(slave_dir):
+            state_file = os.path.join(slave_dir, 'state')
+            if os.path.exists(state_file):
+                with open(state_file, 'r') as f:
+                    state = f.read().strip()
+                    return state
+
+        return '未知'
+
+    except Exception as e:
+        logger.error(f'获取成员网卡状态失败: {e}')
+        return '未知'
+def fetch_bond_ip(interface):
+    """
+    获取 bond IP配置
+    """
+    bond_ip = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return bond_ip
+
+        # 使用ip命令获取IP信息
+        output = subprocess.run(['ip', 'addr', 'show', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if 'inet ' in line:
+                    # 提取IPv4地址
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        bond_ip['IPv4地址'] = parts[1]
+                elif 'inet6 ' in line and 'fe80::' not in line:
+                    # 提取IPv6地址
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        bond_ip['IPv6地址'] = parts[1]
+
+    except Exception as e:
+        logger.error(f'获取bond IP配置失败: {e}')
+
+    return bond_ip
