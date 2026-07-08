@@ -271,3 +271,31 @@ def analyze_lshw_bios(output, bios_info):
     except Exception as e:
         logger.error(f'解析lshw BIOS输出失败: {e}')
         return bios_info
+def analyze_macos_bios(output, bios_info):
+    """
+    解析macOS BIOS输出
+
+    参数:
+        output: system_profiler输出
+        bios_info: BIOS信息字典
+
+    返回:
+        更新后的BIOS信息字典
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            stripped_line = line.strip()
+            if stripped_line.startswith('Boot ROM Version:'):
+                bios_info['ver'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('SMC Version:'):
+                bios_info['smbios'] = stripped_line.split(':', 1)[1].strip()
+
+        bios_info['vendor'] = 'Apple'
+
+        return bios_info
+
+    except Exception as e:
+        logger.error(f'解析macOS BIOS输出失败: {e}')
+        return bios_info
