@@ -380,3 +380,34 @@ def fetch_bios_extended_info():
     except Exception as e:
         logger.error(f'获取BIOS扩展信息失败: {e}')
         return None
+def fetch_bios_config_info():
+    """
+    获取BIOS配置信息
+
+    返回:
+        BIOS配置信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            # 尝试使用普通权限的dmidecode命令
+            try:
+                output = subprocess.run(['dmidecode', '-t', 'bios'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    cfg_state = []
+                    for line in lines:
+                        stripped_line = line.strip()
+                        if stripped_line.startswith('Characteristics:') or \
+                           stripped_line.startswith('BIOS Characteristics:') or \
+                           stripped_line.startswith('BIOS Characteristics Extension:'):
+                            cfg_state.append(stripped_line)
+                    return '\n'.join(cfg_state[:10])
+            except (subprocess.SubprocessError, FileNotFoundError):
+                # 如果命令不可用，提供基础信息
+                return "BIOS配置信息: 基础特性信息可用"
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取BIOS配置信息失败: {e}')
+        return None
