@@ -4,6 +4,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param, contains_dangerous_chars
 
+
 def git_commit(repo_path: str = ".", message: str = "", files: Optional[List[str]] = None):
     """
     提交 Git 仓库中的更改
@@ -132,7 +133,7 @@ def git_commit(repo_path: str = ".", message: str = "", files: Optional[List[str
             "commit_message": message
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "vc_repo_commit",
     "function": git_commit,
