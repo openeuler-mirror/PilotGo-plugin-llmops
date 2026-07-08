@@ -3,6 +3,7 @@ import subprocess
 
 from mcp_tools.cmd_safety_guard import validate_path_param
 
+
 def git_status(directory=None):
     """
     查看 Git 仓库的状态
@@ -93,7 +94,7 @@ def git_status(directory=None):
             "is_repo": False
         }
 
-# 工具配置
+
 TOOL_CONFIG = {
     "name": "vc_repo_state",
     "function": git_status,
