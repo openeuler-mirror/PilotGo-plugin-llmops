@@ -202,3 +202,34 @@ def fetch_build_time(file_path):
     except Exception:
         pass
     return None
+def fetch_file_hash(file_path):
+    """
+    获取文件哈希值
+    """
+    try:
+        hasher = hashlib.sha512()
+        with open(file_path, 'rb') as f:
+            buf = f.read(65536)
+            while buf:
+                hasher.update(buf)
+                buf = f.read(65536)
+        return hasher.hexdigest()
+    except Exception:
+        return None
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_binary_info",
+    "function": fetch_app_binary_info,
+    "description": "采集可执行程序信息（程序路径/编译架构/依赖库/编译时间/权限）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "binary_path": {
+                "type": "string",
+                "description": "可执行程序路径"
+            }
+        },
+        "required": ["binary_path"]
+    }
+}
