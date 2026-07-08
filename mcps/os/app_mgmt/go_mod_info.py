@@ -128,3 +128,33 @@ def is_go_available():
 
     except Exception:
         return False
+def fetch_go_module_info():
+    """
+    获取Go模块信息
+
+    返回:
+        Go模块信息字典
+    """
+    try:
+        details = {}
+
+        # 获取Go版本
+        go_version = fetch_go_version()
+        if go_version:
+            details['go_version'] = go_version
+
+        # 检查当前目录是否有go.mod文件
+        if os.path.exists('go.mod'):
+            # 获取模块信息
+            mod_info = fetch_module_info()
+            if mod_info:
+                details.update(mod_info)
+        else:
+            details['module'] = '当前目录不是Go项目（无go.mod文件）'
+            details['dependencies'] = []
+
+        return details
+
+    except Exception as e:
+        logger.error(f'获取Go模块信息失败: {e}')
+        return {'go_version': fetch_go_version(), 'module': '获取模块信息失败', 'dependencies': []}
