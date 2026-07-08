@@ -322,3 +322,41 @@ def analyze_timeout_config(upstream_content: str) -> Dict[str, Any]:
         logger.error(f"解析超时配置失败: {e}")
     
     return timeout_config
+
+def analyze_retry_config(upstream_content: str) -> Dict[str, Any]:
+    """
+    解析重试机制配置
+    
+    参数:
+        upstream_content: upstream块内容
+        
+    返回:
+        dict: 重试配置信息
+    """
+    retry_config = {
+        'proxy_next_upstream': None,
+        'proxy_next_upstream_timeout': None,
+        'proxy_next_upstream_tries': None,
+        'retry_on': None,
+        'retry_timeout': None,
+        'retry_interval': None
+    }
+    
+    try:
+        # 解析重试相关配置
+        retry_patterns = {
+            'proxy_next_upstream': r'proxy_next_upstream\s+([^;]+);',
+            'proxy_next_upstream_timeout': r'proxy_next_upstream_timeout\s+([^;]+);',
+            'proxy_next_upstream_tries': r'proxy_next_upstream_tries\s+([^;]+);',
+            'retry_on': r'retry_on\s+([^;]+);'
+        }
+        
+        for key, pattern in retry_patterns.items():
+            match = re.search(pattern, upstream_content)  # NOSONAR
+            if match:
+                retry_config[key] = match.group(1).strip()
+        
+    except Exception as e:
+        logger.error(f"解析重试配置失败: {e}")
+    
+    return retry_config
