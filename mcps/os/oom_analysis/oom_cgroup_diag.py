@@ -97,3 +97,25 @@ def oom_cgroup_analysis() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def spot_cgroup_version() -> str:
+    """检测cgroup版本"""
+    try:
+        # 检查cgroup2文件系统
+        if os.path.exists('/sys/fs/cgroup/cgroup.controllers'):
+            return 'cgroup2'
+
+        # 检查cgroup v1
+        if os.path.exists('/sys/fs/cgroup/memory'):
+            return 'cgroup1'
+
+        # 检查混合模式
+        output = execute_command(['stat', '-fc', '%T', '/sys/fs/cgroup/'])
+        if output['success'] and 'cgroup2fs' in output['stdout']:
+            return 'cgroup2'
+        elif output['success'] and 'tmpfs' in output['stdout']:
+            return 'cgroup1'
+
+    except Exception as e:
+        logger.error(f'检测cgroup版本失败: {e}')
+
+    return 'unknown'
