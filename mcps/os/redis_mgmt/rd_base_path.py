@@ -97,3 +97,36 @@ def fetch_redis_base_path(path_type=None):
     except Exception as e:
         logger.error(f'获取Redis路径信息失败: {str(e)}')
         return f'获取Redis路径信息失败: {str(e)}'
+def locate_redis_config_paths():
+    """
+    查找Redis配置文件路径
+    """
+    config_paths = []
+
+    try:
+        common_paths = [
+            '/etc/redis/redis.conf',
+            '/etc/redis.conf',
+            '/usr/local/etc/redis.conf',
+            '/usr/local/redis/redis.conf',
+            '/opt/redis/redis.conf',
+            '/home/redis/redis.conf',
+            '/var/lib/redis/redis.conf'
+        ]
+
+        for path in common_paths:
+            if os.path.exists(path):
+                config_paths.append(path)
+
+        output = subprocess.run(['find', '/', '-name', 'redis.conf', '-type', 'f', '2>/dev/null'], capture_output=True, text=True, timeout=30)
+
+        if output.returncode == 0:
+            found_paths = [line.strip() for line in output.stdout.split('\n') if line.strip()]
+            config_paths.extend(found_paths)
+
+        config_paths = sorted(set(config_paths))
+
+    except Exception as e:
+        logger.error(f'查找Redis配置文件失败: {str(e)}')
+
+    return config_paths
