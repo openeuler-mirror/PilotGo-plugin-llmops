@@ -366,3 +366,43 @@ def fetch_bond_stats(interface):
         logger.error(f'获取bond统计失败: {e}')
 
     return stats
+def fetch_bond_stats_summary(bond_interfaces):
+    """
+    获取bond统计摘要
+    """
+    stats = {}
+
+    try:
+        # 统计bond数量
+        stats['bond接口数量'] = len(bond_interfaces)
+
+        # 统计成员网卡总数
+        total_slaves = 0
+        for interface in bond_interfaces:
+            slaves = fetch_bond_slaves(interface)
+            total_slaves += len(slaves)
+        stats['成员网卡总数'] = total_slaves
+
+        # 统计不同绑定模式
+        modes = {}
+        for interface in bond_interfaces:
+            bond_info = fetch_bond_info(interface)
+            if '绑定模式' in bond_info:
+                mode = bond_info['绑定模式']
+                modes[mode] = modes.get(mode, 0) + 1
+        if modes:
+            stats['绑定模式统计'] = modes
+
+        # 统计UP状态的bond
+        up_count = 0
+        for interface in bond_interfaces:
+            state = fetch_bond_status(interface)
+            if state.get('状态') == 'UP':
+                up_count += 1
+        stats['UP状态的bond数量'] = up_count
+        stats['DOWN状态的bond数量'] = len(bond_interfaces) - up_count
+
+    except Exception as e:
+        logger.error(f'获取bond统计摘要失败: {e}')
+
+    return stats
