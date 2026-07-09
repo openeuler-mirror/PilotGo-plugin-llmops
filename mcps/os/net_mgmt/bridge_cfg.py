@@ -134,3 +134,39 @@ def fetch_bridge_interfaces():
         logger.error(f'获取网桥接口失败: {e}')
 
     return interfaces
+def fetch_bridge_info(interface):
+    """
+    获取网桥详细信息
+    """
+    bridge_info = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return bridge_info
+
+        # 使用brctl命令获取网桥信息
+        output = subprocess.run(['brctl', 'show', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split()
+                if len(parts) >= 4:
+                    bridge_info['网桥ID'] = parts[1]
+                    bridge_info['STP'] = parts[2]
+                    bridge_info['转发延迟'] = parts[3]
+
+        # 检查/sys/class/net目录获取MTU
+        mtu_file = f'/sys/class/net/{interface}/mtu'
+        if os.path.exists(mtu_file):
+            with open(mtu_file, 'r') as f:
+                mtu = f.read().strip()
+                bridge_info['MTU'] = mtu
+
+    except Exception as e:
+        logger.error(f'获取网桥信息失败: {e}')
+
+    return bridge_info
