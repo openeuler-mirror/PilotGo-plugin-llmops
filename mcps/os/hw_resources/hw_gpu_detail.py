@@ -250,3 +250,72 @@ def fetch_video_details():
             'video_cards': [],
             'monitors': []
         }
+def analyze_lspci_video(output):
+    """
+    解析lspci命令输出中的显卡信息
+
+    参数:
+        output: lspci命令输出
+
+    返回:
+        显卡信息列表
+    """
+    try:
+        video_cards = []
+        current_card = {}
+
+        lines = output.split('\n')
+        for line in lines:
+            if line.strip():
+                if ':' in line:
+                    key, val = line.split(':', 1)
+                    key = key.strip()
+                    val = val.strip()
+
+                    if key == 'Slot':
+                        if current_card:
+                            video_cards.append(current_card)
+                        current_card = {
+                            'model': 'Unknown',
+                            'vendor': 'Unknown',
+                            'memory': 'Unknown',
+                            'driver': 'Unknown',
+                            'interface': 'Unknown',
+                            'pci_address': val,
+                            'device_id': 'Unknown',
+                            'driver_date': 'Unknown',
+                            'status': 'Unknown'
+                        }
+                    elif key == 'Vendor':
+                        current_card['vendor'] = val
+                    elif key == 'Device':
+                        current_card['model'] = val
+                    elif key == 'Driver':
+                        current_card['driver'] = val
+            elif current_card:
+                video_cards.append(current_card)
+                current_card = {}
+
+        if current_card:
+            video_cards.append(current_card)
+
+        # 补充显存信息
+        for card in video_cards:
+            pci_address = card.get('pci_address')
+            if pci_address:
+                try:
+                    # 尝试从/sys获取显存大小
+                    if os.path.exists(f'/sys/bus/pci/devices/{pci_address}/resource'):
+                        with open(f'/sys/bus/pci/devices/{pci_address}/resource', 'r') as f:
+                            lines = f.readlines()
+                            if lines:
+                                # 简单估算显存大小
+                                card['memory'] = 'Unknown'
+                except Exception:
+                    pass
+
+        return video_cards
+
+    except Exception as e:
+        logger.error(f'解析lspci显卡输出失败: {e}')
+        return []
