@@ -265,3 +265,50 @@ def fetch_log_file_info(log_path, log_type):
     except Exception as e:
         logger.error(f'获取日志文件信息失败: {e}')
         return None
+
+def estimate_file_time_range(log_path, mtime):
+    """
+    估算日志文件的时间范围
+
+    参数:
+        log_path: 文件路径
+        mtime: 修改时间
+
+    返回:
+        str: 时间范围描述
+    """
+    try:
+        filename = os.path.basename(log_path)
+
+        # 检查是否包含日期信息
+        date_pattern = r'(\d{4}-\d{2}-\d{2})|(\d{8})|\.(\d+)'  # NOSONAR
+        matches = re.findall(date_pattern, filename)  # NOSONAR
+
+        if matches:
+            for match in matches:
+                date_str = ''.join([g for g in match if g])
+                if len(date_str) == 8:  # YYYYMMDD
+                    try:
+                        file_date = datetime.strptime(date_str, '%Y%m%d')
+                        return f"{file_date.strftime('%Y-%m-%d')} (估算)"
+                    except Exception:
+                        pass
+                elif len(date_str) == 10:  # YYYY-MM-DD
+                    try:
+                        file_date = datetime.strptime(date_str, '%Y-%m-%d')
+                        return f"{file_date.strftime('%Y-%m-%d')} (估算)"
+                    except Exception:
+                        pass
+
+        # 如果没有日期信息，基于修改时间估算
+        if 'access.log' in filename or 'error.log' in filename:
+            # 主日志文件，包含当前时间
+            return f"{mtime.strftime('%Y-%m-%d')} - 当前"
+        else:
+            # 轮转文件，假设包含一天的数据
+            file_date = mtime.date()
+            return f"{file_date.strftime('%Y-%m-%d')} (估算)"
+
+    except Exception as e:
+        logger.error(f'估算文件时间范围失败: {e}')
+        return "时间范围未知"
