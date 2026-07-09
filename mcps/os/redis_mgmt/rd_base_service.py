@@ -192,3 +192,206 @@ def fetch_service_status():
         logger.error(f'获取服务状态失败: {e}')
 
     return status_info
+def fetch_autostart_status():
+    """
+    获取开机自启状态
+    """
+    autostart_info = {}
+
+    try:
+        service_names = ['redis.service', 'redis-server.service', 'redis']
+
+        for service_name in service_names:
+            output = subprocess.run(['systemctl', 'is-enabled', service_name], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                autostart_info['Systemd自启状态'] = '启用'
+                autostart_info['Systemd服务名称'] = service_name
+                break
+            elif output.returncode == 1:
+                autostart_info['Systemd自启状态'] = '禁用'
+                autostart_info['Systemd服务名称'] = service_name
+                break
+
+        output = subprocess.run(
+            ['systemctl', 'list-unit-files', '|', 'grep', '-i', 'redis'],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            redis_units = output.stdout.strip().split('\n')
+            autostart_info['Redis服务单元'] = f"{len(redis_units)} 个"
+            for unit in redis_units:
+                if 'enabled' in unit:
+                    autostart_info['已启用单元'] = unit.strip()
+
+        output = subprocess.run(
+            ['chkconfig', '--list', '|', 'grep', '-i', 'redis'],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            autostart_info['SysV自启状态'] = output.stdout.strip()
+
+        output = subprocess.run(
+            ['ls', '/etc/rc*.d/', '|', 'grep', '-i', 'redis'],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            autostart_info['启动脚本'] = output.stdout.strip()
+
+        output = subprocess.run(['update-rc.d', '-n', 'redis', 'defaults', '2>&1'], capture_output=True, text=True)
+
+        if output.returncode == 0 or 'already exists' in output.stderr:
+            autostart_info['Update-rc.d状态'] = '已配置'
+
+        output = subprocess.run(['systemctl', 'get-default'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            autostart_info['系统默认运行级别'] = output.stdout.strip()
+
+        output = subprocess.run(['runlevel'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            autostart_info['当前运行级别'] = output.stdout.strip()
+
+        output = subprocess.run(['systemctl', 'is-system-running'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            autostart_info['系统运行状态'] = output.stdout.strip()
+
+        output = subprocess.run(['systemd-analyze', 'blame', '|', 'grep', '-i', 'redis'], capture_output=True, text=True)
+
+        if output.returncode == 0 and output.stdout.strip():
+            autostart_info['启动耗时'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取开机自启状态失败: {e}')
+
+    return autostart_info
+def fetch_service_script():
+    """
+    获取服务管理脚本路径
+    """
+    script_info = {}
+
+    try:
+        output = subprocess.run(['systemctl', 'cat', 'redis.service'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            script_info['Systemd服务文件'] = '已找到'
+
+            for line in output.stdout.split('\n'):
+                if line.startswith('Description='):
+                    script_info['服务描述'] = line.split('=', 1)[1]
+                elif line.startswith('ExecStart='):
+                    script_info['启动命令'] = line.split('=', 1)[1]
+                elif line.startswith('ExecStop='):
+                    script_info['停止命令'] = line.split('=', 1)[1]
+                elif line.startswith('ExecReload='):
+                    script_info['重载命令'] = line.split('=', 1)[1]
+                elif line.startswith('PIDFile='):
+                    script_info['PID文件'] = line.split('=', 1)[1]
+
+        output = subprocess.run(['systemctl', 'cat', 'redis-server.service'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            script_info['Redis-Server服务文件'] = '已找到'
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'FragmentPath'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            fragment_path = output.stdout.strip()
+            if fragment_path:
+                script_info['服务文件路径'] = fragment_path
+
+        output = subprocess.run(['systemctl', 'show', 'redis-server.service', '-p', 'FragmentPath'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            fragment_path = output.stdout.strip()
+            if fragment_path:
+                script_info['Redis-Server文件路径'] = fragment_path
+
+        common_init_paths = [
+            '/etc/init.d/redis',
+            '/etc/init.d/redis-server',
+            '/etc/rc.d/init.d/redis',
+            '/etc/rc.d/init.d/redis-server'
+        ]
+
+        for init_path in common_init_paths:
+            if os.path.exists(init_path):
+                script_info['SysV初始化脚本'] = init_path
+                script_info['SysV脚本状态'] = '存在'
+                break
+
+        output = subprocess.run(['which', 'redis-server'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            script_info['Redis可执行文件'] = output.stdout.strip()
+
+        output = subprocess.run(['which', 'redis-cli'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            script_info['Redis CLI工具'] = output.stdout.strip()
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'ExecStart'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            exec_start = output.stdout.strip()
+            if exec_start:
+                script_info['ExecStart配置'] = exec_start
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'ExecStartPre'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            exec_start_pre = output.stdout.strip()
+            if exec_start_pre:
+                script_info['ExecStartPre配置'] = exec_start_pre
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'ExecStartPost'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            exec_start_post = output.stdout.strip()
+            if exec_start_post:
+                script_info['ExecStartPost配置'] = exec_start_post
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'ExecStop'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            exec_stop = output.stdout.strip()
+            if exec_stop:
+                script_info['ExecStop配置'] = exec_stop
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'ExecStopPost'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            exec_stop_post = output.stdout.strip()
+            if exec_stop_post:
+                script_info['ExecStopPost配置'] = exec_stop_post
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'ExecReload'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            exec_reload = output.stdout.strip()
+            if exec_reload:
+                script_info['ExecReload配置'] = exec_reload
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'Restart'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            restart = output.stdout.strip()
+            if restart:
+                script_info['重启配置'] = restart
+
+    except Exception as e:
+        logger.error(f'获取服务管理脚本路径失败: {e}')
+
+    return script_info
