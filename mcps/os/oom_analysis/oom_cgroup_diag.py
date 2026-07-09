@@ -425,3 +425,61 @@ def examine_cgroup_v1_memory() -> List[Dict[str, Any]]:
         stats.append({'error': str(e)})
 
     return stats
+def examine_container_oom() -> List[Dict[str, Any]]:
+    """分析容器OOM"""
+    containers = []
+
+    try:
+        # 检查Docker容器
+        docker_result = execute_command(['docker', 'ps', '-a', '--format', '{{json .}}'])
+        if docker_result['success']:
+            for line in docker_result['stdout'].strip().split('\n'):
+                if not line:
+                    continue
+                try:
+                    ctr = json.loads(line)
+                    container_id = ctr.get('ID', '')
+
+                    # 获取容器OOM统计
+                    inspect_result = execute_command([
+                        'docker', 'inspect', '-f',
+                        '{{.State.OOMKilled}}|{{.HostConfig.Memory}}|{{.HostConfig.MemorySwap}}',
+                        container_id
+                    ])
+
+                    if inspect_result['success']:
+                        parts = inspect_result['stdout'].strip().split('|')
+                        if len(parts) >= 3:
+                            containers.append({
+                                'type': 'docker',
+                                'id': container_id[:12],
+                                'name': ctr.get('Names', ''),
+                                'oom_killed': parts[0] == 'true',
+                                'memory_limit': parts[1],
+                                'swap_limit': parts[2],
+                                'status': ctr.get('Status', '')
+                            })
+                except Exception:
+                    pass
+
+        # 检查systemd服务cgroup
+        systemd_result = execute_command(['systemctl', 'list-units', '--type=service', '--state=running', '--no-legend'])
+        if systemd_result['success']:
+            for line in systemd_result['stdout'].strip().split('\n')[:20]:  # 限制数量
+                parts = line.split()
+                if parts:
+                    service_name = parts[0]
+                    cgroup_result = execute_command(['systemctl', 'show', service_name, '--property=ControlGroup'])
+                    if cgroup_result['success'] and 'ControlGroup=' in cgroup_result['stdout']:
+                        cgroup = cgroup_result['stdout'].strip().split('=')[1]
+                        if cgroup:
+                            containers.append({
+                                'type': 'systemd',
+                                'name': service_name,
+                                'cgroup': cgroup
+                            })
+
+    except Exception as e:
+        containers.append({'error': str(e)})
+
+    return containers
