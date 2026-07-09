@@ -185,3 +185,37 @@ def fetch_npm_packages(scope=None):
     except Exception as e:
         logger.error(f'获取NPM包列表失败: {e}')
         return []
+def fetch_global_npm_packages():
+    """
+    获取全局NPM包
+
+    返回:
+        全局NPM包信息列表
+    """
+    try:
+        packages = []
+
+        # 使用npm命令获取全局包
+        output = subprocess.run(['npm', 'list', '-g', '--json', '--depth=0'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            try:
+                payload = json.loads(output.stdout)
+                if 'dependencies' in payload:
+                    for name, info in payload['dependencies'].items():
+                        pkg_info = {
+                            'name': name,
+                            'version': info.get('version', 'Unknown'),
+                            'scope': 'global',
+                            'location': info.get('resolved', 'Unknown'),
+                            'dependencies': info.get('dependencies', {})
+                        }
+                        packages.append(pkg_info)
+            except json.JSONDecodeError:
+                pass
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取全局NPM包失败: {e}')
+        return []
