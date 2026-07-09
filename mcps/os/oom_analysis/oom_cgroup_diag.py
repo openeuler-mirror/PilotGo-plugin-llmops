@@ -483,3 +483,42 @@ def examine_container_oom() -> List[Dict[str, Any]]:
         containers.append({'error': str(e)})
 
     return containers
+def produce_cgroup_summary(oom_events: List[Dict], memory_stats: List[Dict]) -> Dict[str, Any]:
+    """生成cgroup分析总结"""
+    summary = {
+        'cgroup_oom_risk': 'low',
+        'affected_cgroups': [],
+        'high_usage_cgroups': [],
+        'total_oom_events': len(oom_events)
+    }
+
+    try:
+        # 收集受影响的cgroup
+        affected = set()
+        for event in oom_events:
+            if 'cgroup' in event:
+                affected.add(event['cgroup'])
+        summary['affected_cgroups'] = list(affected)
+
+        # 找出高使用率的cgroup
+        high_usage = []
+        for stat in memory_stats:
+            usage = stat.get('usage_percent', 0)
+            if isinstance(usage, (int, float)) and usage > 80:
+                high_usage.append({
+                    'cgroup': stat.get('cgroup', 'unknown'),
+                    'usage_percent': usage
+                })
+
+        summary['high_usage_cgroups'] = sorted(high_usage, key=lambda x: x['usage_percent'], reverse=True)[:10]
+
+        # 评估风险等级
+        if len(oom_events) > 3 or len(high_usage) > 5:
+            summary['cgroup_oom_risk'] = 'critical'
+        elif len(oom_events) > 0 or len(high_usage) > 2:
+            summary['cgroup_oom_risk'] = 'warning'
+
+    except Exception as e:
+        summary['error'] = str(e)
+
+    return summary
