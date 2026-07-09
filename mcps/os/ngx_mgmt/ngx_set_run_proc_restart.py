@@ -289,3 +289,48 @@ def wait_for_stable_processes(wait_time, max_wait_time, check_interval):
 
     except Exception as e:
         return {"status": "error", "error": f"等待进程稳定异常: {e}"}
+
+def perform_force_restart():
+    """执行强制重启"""
+    start_time = time.time()
+
+    try:
+        # 强制杀死所有Nginx进程
+        subprocess.run(['pkill', '-9', 'nginx'], timeout=30)
+        time.sleep(2)
+
+        # 启动Nginx服务
+        start_result = subprocess.run(['systemctl', 'start', 'nginx'],
+                                    capture_output=True, text=True, timeout=30)
+
+        if start_result.returncode != 0:
+            # 尝试使用service命令
+            start_result = subprocess.run(['service', 'nginx', 'start'],
+                                        capture_output=True, text=True, timeout=30)
+
+        if start_result.returncode == 0:
+            # 等待服务启动
+            time.sleep(5)
+            proc_info = get_nginx_process_info()
+            if proc_info['status'] == '运行中':
+                return {
+                    "status": "success",
+                    "duration": time.time() - start_time
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": "服务启动但状态异常",
+                    "duration": time.time() - start_time
+                }
+        else:
+            return {
+                "status": "error",
+                "error": f"强制启动失败: {start_result.stderr}",
+                "duration": time.time() - start_time
+            }
+
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "error": "强制重启超时", "duration": time.time() - start_time}
+    except Exception as e:
+        return {"status": "error", "error": f"强制重启异常: {e}", "duration": time.time() - start_time}
