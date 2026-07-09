@@ -231,3 +231,37 @@ def fetch_rotated_log_files(log_type):
     except Exception as e:
         logger.error(f'获取轮转日志文件失败: {e}')
         return []
+
+def fetch_log_file_info(log_path, log_type):
+    """
+    获取日志文件详细信息
+
+    参数:
+        log_path: 文件路径
+        log_type: 日志类型
+
+    返回:
+        dict: 文件信息字典
+    """
+    try:
+        if not os.path.exists(log_path):
+            return None
+
+        stat_info = os.stat(log_path)
+        mtime = datetime.fromtimestamp(stat_info.st_mtime)
+
+        # 估算文件时间范围（基于文件名和修改时间）
+        time_range = estimate_file_time_range(log_path, mtime)
+
+        return {
+            'path': log_path,
+            'type': log_type,
+            'size': render_file_size(stat_info.st_size),
+            'mtime': mtime.strftime('%Y-%m-%d %H:%M:%S'),
+            'mtime_timestamp': stat_info.st_mtime,
+            'time_range': time_range
+        }
+
+    except Exception as e:
+        logger.error(f'获取日志文件信息失败: {e}')
+        return None
