@@ -310,3 +310,96 @@ def modify_cache_config(cfg_filepath, params, cache_method):
     except Exception as e:
         logger.error(f'更新缓存配置失败: {e}')
         return {'success': False, 'error': str(e)}
+
+def activate_cache_config(body, params, cache_method):
+    """启用缓存配置"""
+    lines = body.split('\n')
+    updated_lines = []
+
+    # 查找http块位置
+    http_block_start = -1
+    http_block_end = -1
+    brace_count = 0
+    in_http_block = False
+
+    for i, line in enumerate(lines):
+        if 'http' in line and '{' in line:
+            in_http_block = True
+            http_block_start = i
+            brace_count = 1
+        elif in_http_block:
+            if '{' in line:
+                brace_count += 1
+            if '}' in line:
+                brace_count -= 1
+                if brace_count == 0:
+                    http_block_end = i
+                    break
+
+    if http_block_start == -1 or http_block_end == -1:
+        # 如果没有http块，在文件末尾添加
+        lines.append('http {')
+        lines.append('}')
+        http_block_start = len(lines) - 2
+        http_block_end = len(lines) - 1
+
+    # 构建缓存路径配置
+    cache_config_lines = []
+
+    if cache_method == "proxy":
+        # proxy缓存配置
+        cache_path = params.get('cache_path', '/var/cache/nginx')
+        cache_size = params.get('cache_size', '100m')
+        cache_inactive = params.get('cache_inactive', '60m')
+        cache_levels = params.get('cache_levels', '1:2')
+        cache_keys_zone = params.get('cache_keys_zone', 'proxy_cache:10m')
+
+        cache_config_lines.append(f"    proxy_cache_path {cache_path} keys_zone={cache_keys_zone}")
+        cache_config_lines.append(f"                         levels={cache_levels}")
+        cache_config_lines.append(f"                         inactive={cache_inactive}")
+        cache_config_lines.append(f"                         max_size={cache_size};")
+
+        # 添加proxy_cache指令
+        proxy_cache = params.get('proxy_cache', 'proxy_cache')
+        cache_config_lines.append(f"    proxy_cache {proxy_cache};")
+        cache_config_lines.append("    proxy_cache_valid 200 302 10m;")
+        cache_config_lines.append("    proxy_cache_valid 404 1m;")
+
+    else:
+        # fastcgi缓存配置
+        cache_path = params.get('cache_path', '/var/cache/nginx')
+        cache_size = params.get('cache_size', '100m')
+        cache_inactive = params.get('cache_inactive', '60m')
+        cache_levels = params.get('cache_levels', '1:2')
+        cache_keys_zone = params.get('cache_keys_zone', 'fastcgi_cache:10m')
+
+        cache_config_lines.append(f"    fastcgi_cache_path {cache_path} keys_zone={cache_keys_zone}")
+        cache_config_lines.append(f"                           levels={cache_levels}")
+        cache_config_lines.append(f"                           inactive={cache_inactive}")
+        cache_config_lines.append(f"                           max_size={cache_size};")
+
+        # 添加fastcgi_cache指令
+        fastcgi_cache = params.get('fastcgi_cache', 'fastcgi_cache')
+        cache_config_lines.append(f"    fastcgi_cache {fastcgi_cache};")
+        cache_config_lines.append("    fastcgi_cache_valid 200 302 10m;")
+        cache_config_lines.append("    fastcgi_cache_valid 404 1m;")
+
+    # 在http块内插入缓存配置
+    insert_pos = http_block_start + 1
+
+    # 查找已有缓存配置的位置
+    for i in range(http_block_start + 1, http_block_end):
+        if any(cache_keyword in lines[i] for cache_keyword in [
+            'proxy_cache_path', 'fastcgi_cache_path', 'proxy_cache', 'fastcgi_cache'
+        ]):
+            # 替换现有配置
+            lines[i] = cache_config_lines[0]
+            for j in range(1, len(cache_config_lines)):
+                lines.insert(i + j, cache_config_lines[j])
+            break
+    else:
+        # 没有找到现有配置，插入新配置
+        for i, config_line in enumerate(cache_config_lines):
+            lines.insert(insert_pos + i, config_line)
+
+    return '\n'.join(lines)
