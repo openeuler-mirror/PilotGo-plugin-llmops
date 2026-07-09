@@ -336,3 +336,133 @@ def fetch_time_info(pid):
         logger.error(f'获取时间信息失败: {e}')
 
     return time_info
+def fetch_status_info(pid):
+    """
+    获取进程状态信息
+    """
+    status_info = {}
+
+    try:
+        if os.path.exists(f'/proc/{pid}/status'):
+            with open(f'/proc/{pid}/status', 'r') as f:
+                status_lines = f.readlines()
+
+            for line in status_lines:
+                if line.startswith('Name:'):
+                    status_info['进程名'] = line.split(':')[1].strip()
+                elif line.startswith('State:'):
+                    status_info['进程状态'] = line.split(':')[1].strip()
+                elif line.startswith('Threads:'):
+                    status_info['线程数'] = line.split(':')[1].strip()
+                elif line.startswith('VmPeak:'):
+                    status_info['虚拟内存峰值'] = line.split(':')[1].strip()
+                elif line.startswith('VmSize:'):
+                    status_info['虚拟内存大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmRSS:'):
+                    status_info['物理内存使用'] = line.split(':')[1].strip()
+                elif line.startswith('VmData:'):
+                    status_info['数据段大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmStk:'):
+                    status_info['栈大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmExe:'):
+                    status_info['代码段大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmLib:'):
+                    status_info['库大小'] = line.split(':')[1].strip()
+                elif line.startswith('SigQ:'):
+                    status_info['信号队列'] = line.split(':')[1].strip()
+                elif line.startswith('SigPnd:'):
+                    status_info['挂起信号'] = line.split(':')[1].strip()
+                elif line.startswith('ShdPnd:'):
+                    status_info['共享挂起信号'] = line.split(':')[1].strip()
+                elif line.startswith('CapInh:'):
+                    status_info['继承能力'] = line.split(':')[1].strip()
+                elif line.startswith('CapPrm:'):
+                    status_info['允许能力'] = line.split(':')[1].strip()
+                elif line.startswith('CapEff:'):
+                    status_info['有效能力'] = line.split(':')[1].strip()
+
+        if os.path.exists(f'/proc/{pid}/stat'):
+            with open(f'/proc/{pid}/stat', 'r') as f:
+                stat_data = f.read().split()
+
+            if len(stat_data) > 2:
+                state = stat_data[2]
+                state_map = {
+                    'R': '运行中',
+                    'S': '可中断睡眠',
+                    'D': '不可中断睡眠',
+                    'T': '已停止',
+                    't': '跟踪中',
+                    'Z': '僵尸进程',
+                    'X': '已死亡',
+                    'x': '已死亡',
+                    'K': '已杀死',
+                    'W': '换页中',
+                    'P': '换页中'
+                }
+                status_info['进程状态(原始)'] = state
+                status_info['进程状态(描述)'] = state_map.get(state, '未知')
+
+        output = subprocess.run(['ps', '-p', pid, '-o', 'state,s'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split()
+                if len(parts) >= 2:
+                    status_info['PS状态'] = parts[0]
+                    status_info['PS状态描述'] = parts[1]
+
+        output = subprocess.run(['top', '-b', '-n', '1', '-p', pid], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            for line in lines:
+                if pid in line and 'redis-server' in line:
+                    parts = line.split()
+                    if len(parts) >= 12:
+                        status_info['CPU使用率'] = f"{parts[8]}%"
+                        status_info['内存使用率'] = parts[9]
+                    break
+
+        output = subprocess.run(['redis-cli', 'INFO', 'server'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('redis_version:'):
+                    status_info['Redis版本'] = line.split(':')[1]
+                elif line.startswith('tcp_port:'):
+                    status_info['监听端口'] = line.split(':')[1]
+                elif line.startswith('mode:'):
+                    status_info['运行模式'] = line.split(':')[1]
+
+        output = subprocess.run(['redis-cli', 'PING'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            status_info['Redis响应'] = output.stdout.strip()
+            status_info['Redis状态'] = '正常'
+        else:
+            status_info['Redis状态'] = '异常'
+
+    except Exception as e:
+        logger.error(f'获取进程状态信息失败: {e}')
+
+    return status_info
+
+TOOL_CONFIG = {
+    "name": "fetch_redis_base_pid",
+    "function": fetch_redis_base_pid,
+    "description": "采集Redis主进程PID、进程归属用户/组、进程启动时间、运行时长",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "pid_type": {
+                "type": "string",
+                "description": "指定要采集的进程信息类型，可选值：pid（进程ID信息）、user（用户/组信息）、time（时间信息）、status（进程状态信息）、all（所有进程信息）",
+                "enum": ["pid", "user", "time", "status", "all"]
+            }
+        },
+        "required": []
+    }
+}
