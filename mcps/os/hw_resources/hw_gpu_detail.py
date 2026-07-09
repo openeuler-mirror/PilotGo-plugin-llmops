@@ -348,3 +348,72 @@ def analyze_glxinfo(output):
     except Exception as e:
         logger.error(f'解析glxinfo输出失败: {e}')
         return {}
+def fetch_video_info_from_sys(card_name):
+    """
+    从/sys获取显卡信息
+
+    参数:
+        card_name: 显卡名称
+
+    返回:
+        显卡信息字典
+    """
+    try:
+        card_info = {
+            'model': card_name,
+            'vendor': 'Unknown',
+            'memory': 'Unknown',
+            'driver': 'Unknown',
+            'interface': 'Unknown',
+            'pci_address': 'Unknown',
+            'device_id': 'Unknown',
+            'driver_date': 'Unknown',
+            'status': 'Unknown'
+        }
+
+        card_path = f'/sys/class/drm/{card_name}/device'
+        if os.path.exists(card_path):
+            # 获取PCI地址
+            try:
+                pci_address = os.path.basename(os.path.realpath(card_path))
+                card_info['pci_address'] = pci_address
+            except Exception:
+                pass
+
+            # 获取厂商和设备ID
+            try:
+                with open(f'{card_path}/vendor', 'r') as f:
+                    vendor_id = f.read().strip()
+                    card_info['vendor'] = vendor_id
+            except Exception:
+                pass
+
+            try:
+                with open(f'{card_path}/device', 'r') as f:
+                    device_id = f.read().strip()
+                    card_info['device_id'] = device_id
+            except Exception:
+                pass
+
+            # 获取驱动信息
+            try:
+                if os.path.exists(f'{card_path}/driver'):
+                    driver_link = os.readlink(f'{card_path}/driver')
+                    driver_name = os.path.basename(driver_link)
+                    card_info['driver'] = driver_name
+            except Exception:
+                pass
+
+            # 获取状态
+            try:
+                with open(f'{card_path}/enable', 'r') as f:
+                    enable = f.read().strip()
+                    card_info['status'] = 'Enabled' if enable == '1' else 'Disabled'
+            except Exception:
+                pass
+
+        return card_info
+
+    except Exception as e:
+        logger.error(f'从/sys获取显卡信息失败: {e}')
+        return None
