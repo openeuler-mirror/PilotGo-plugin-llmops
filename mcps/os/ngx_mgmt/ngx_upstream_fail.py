@@ -306,3 +306,69 @@ def fetch_nginx_error_log_path() -> Optional[str]:
     except Exception as e:
         logger.error(f"获取Nginx错误日志路径失败: {e}")
         return None
+
+def examine_error_logs(upstream_name: str, hours: int = 24) -> Dict[str, Any]:
+    """
+    分析错误日志中的失败信息
+    
+    参数:
+        upstream_name: upstream名称
+        hours: 分析最近多少小时的数据
+        
+    返回:
+        dict: 错误日志分析结果
+    """
+    error_analysis = {
+        'upstream_name': upstream_name,
+        'analysis_period_hours': hours,
+        'total_errors': 0,
+        'connection_errors': 0,
+        'timeout_errors': 0,
+        'http_errors': 0,
+        'error_timeline': [],
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    try:
+        error_log_path = fetch_nginx_error_log_path()
+        if not error_log_path or not os.path.exists(error_log_path):
+            error_analysis['error'] = '无法找到错误日志文件'
+            return error_analysis
+        
+        # 计算时间范围
+        cutoff_time = datetime.now() - timedelta(hours=hours)
+        
+        # 读取错误日志
+        with open(error_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                try:
+                    # 解析日志时间戳
+                    log_time = analyze_log_timestamp(line)
+                    if log_time and log_time < cutoff_time:
+                        continue
+                    
+                    # 分析错误类型
+                    error_info = examine_error_line(line, upstream_name)
+                    if error_info:
+                        error_analysis['total_errors'] += 1
+                        
+                        if 'connection' in error_info['error_type']:
+                            error_analysis['connection_errors'] += 1
+                        elif 'timeout' in error_info['error_type']:
+                            error_analysis['timeout_errors'] += 1
+                        elif 'http' in error_info['error_type']:
+                            error_analysis['http_errors'] += 1
+                        
+                        error_analysis['error_timeline'].append(error_info)
+                        
+                except Exception as e:
+                    continue
+        
+        # 按时间排序错误时间线
+        error_analysis['error_timeline'].sort(key=lambda x: x['timestamp'])
+        
+    except Exception as e:
+        logger.error(f"分析错误日志失败: {e}")
+        error_analysis['error'] = f"分析失败: {e}"
+    
+    return error_analysis
