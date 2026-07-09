@@ -522,3 +522,45 @@ def produce_cgroup_summary(oom_events: List[Dict], memory_stats: List[Dict]) -> 
         summary['error'] = str(e)
 
     return summary
+def produce_cgroup_recommendations(oom_events: List[Dict], memory_stats: List[Dict]) -> List[str]:
+    """生成cgroup相关建议"""
+    recommendations = []
+
+    try:
+        # 基于OOM事件的建议
+        if oom_events:
+            recommendations.append('检测到cgroup OOM事件，建议检查相关容器的内存限制配置')
+
+            # 分析受影响的cgroup
+            cgroups = set()
+            for event in oom_events:
+                if 'cgroup' in event:
+                    cgroups.add(event['cgroup'])
+
+            for cgroup in cgroups:
+                recommendations.append(f'cgroup {cgroup} 发生过OOM，建议增加其内存限制或优化应用内存使用')
+
+        # 基于内存使用率的建议
+        high_usage = [s for s in memory_stats if s.get('usage_percent', 0) > 90]
+        if high_usage:
+            recommendations.append(f'发现 {len(high_usage)} 个cgroup内存使用率超过90%，建议调整内存限制')
+
+        # 基于cgroup版本的建议
+        cgroup_version = spot_cgroup_version()
+        if cgroup_version == 'cgroup1':
+            recommendations.append('当前使用cgroup v1，建议考虑升级到cgroup v2以获得更好的资源管理')
+
+        # 通用建议
+        if not recommendations:
+            recommendations.append('cgroup内存管理状况良好，建议持续监控')
+
+    except Exception as e:
+        recommendations.append(f'生成建议时出错: {e}')
+
+    return recommendations
+
+
+if __name__ == '__main__':
+    # 测试
+    output = oom_cgroup_analysis()
+    print(json.dumps(output, indent=2, ensure_ascii=False))
