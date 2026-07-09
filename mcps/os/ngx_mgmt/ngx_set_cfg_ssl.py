@@ -361,3 +361,66 @@ def set_ssl_ciphers(config_file_path, original_content, ciphers=None):
     except Exception as e:
         logger.error(f'设置SSL加密套件失败: {e}')
         return {'success': False, 'message': f'设置SSL加密套件失败: {e}'}
+
+def set_security_policy(config_file_path, original_content, hsts_max_age=31536000,
+                       hsts_include_subdomains=True, hsts_preload=False,
+                       enable_ocsp_stapling=True, enable_dhparam=True):
+    """设置安全策略"""
+    try:
+        # 安全验证：验证 config_file_path 路径参数（允许绝对路径）
+        valid, error_msg = validate_path_param(config_file_path, allow_absolute=True)
+        if not valid:
+            logger.error(f"set_security_policy: config_file_path 路径验证失败：{error_msg}")
+            return {'success': False, 'message': f'配置文件路径不安全：{error_msg}'}
+
+        body = Path(config_file_path).read_text(encoding='utf-8')
+
+        security_directives = []
+
+        # HSTS头设置
+        hsts_directive = f'max-age={hsts_max_age}'
+        if hsts_include_subdomains:
+            hsts_directive += '; includeSubDomains'
+        if hsts_preload:
+            hsts_directive += '; preload'
+
+        security_directives.append(f'add_header Strict-Transport-Security "{hsts_directive}";')
+
+        # 其他安全头
+        security_directives.extend([
+            'add_header X-Frame-Options "SAMEORIGIN";',
+            'add_header X-Content-Type-Options "nosniff";',
+            'add_header X-XSS-Protection "1; mode=block";',
+            'add_header Referrer-Policy "strict-origin-when-cross-origin";'
+        ])
+
+        # OCSP装订
+        if enable_ocsp_stapling:
+            security_directives.extend([
+                'ssl_stapling on;',
+                'ssl_stapling_verify on;',
+                'resolver 8.8.8.8 8.8.4.4 valid=300s;',
+                'resolver_timeout 5s;'
+            ])
+
+        # 写入安全配置
+        security_config = '\n    '.join(security_directives)
+        updated_content = body
+
+        # 在server块内添加安全配置
+        if 'listen 443 ssl;' in updated_content:
+            updated_content = updated_content.replace('listen 443 ssl;',
+                                                    f'listen 443 ssl;\n    {security_config}')
+        else:
+            # 添加到server块末尾
+            updated_content = updated_content.replace('}', f'    {security_config}\n}}')
+
+        # 写入修改后的配置
+        with open(config_file_path, 'w', encoding='utf-8') as f:
+            f.write(updated_content)
+
+        return {'success': True, 'message': '安全策略已设置'}
+
+    except Exception as e:
+        logger.error(f'设置安全策略失败: {e}')
+        return {'success': False, 'message': f'设置安全策略失败: {e}'}
