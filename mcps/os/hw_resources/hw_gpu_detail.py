@@ -319,3 +319,32 @@ def analyze_lspci_video(output):
     except Exception as e:
         logger.error(f'解析lspci显卡输出失败: {e}')
         return []
+def analyze_glxinfo(output):
+    """
+    解析glxinfo命令输出
+
+    参数:
+        output: glxinfo命令输出
+
+    返回:
+        OpenGL信息字典
+    """
+    try:
+        glx_info = {}
+
+        lines = output.split('\n')
+        for line in lines:
+            if 'OpenGL renderer string:' in line:
+                glx_info['renderer'] = line.split(':', 1)[1].strip()
+            elif 'OpenGL vendor string:' in line:
+                glx_info['vendor'] = line.split(':', 1)[1].strip()
+            elif 'OpenGL version string:' in line:
+                glx_info['version'] = line.split(':', 1)[1].strip()
+            elif 'OpenGL driver version:' in line:
+                glx_info['driver'] = line.split(':', 1)[1].strip()
+
+        return glx_info
+
+    except Exception as e:
+        logger.error(f'解析glxinfo输出失败: {e}')
+        return {}
