@@ -205,3 +205,37 @@ def fetch_bridge_ports(interface):
         logger.error(f'获取桥接网卡失败: {e}')
 
     return ports
+def fetch_bridge_ip(interface):
+    """
+    获取网桥 IP配置
+    """
+    bridge_ip = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return bridge_ip
+
+        # 使用ip命令获取IP信息
+        output = subprocess.run(['ip', 'addr', 'show', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if 'inet ' in line:
+                    # 提取IPv4地址
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        bridge_ip['IPv4地址'] = parts[1]
+                elif 'inet6 ' in line and 'fe80::' not in line:
+                    # 提取IPv6地址
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        bridge_ip['IPv6地址'] = parts[1]
+
+    except Exception as e:
+        logger.error(f'获取网桥IP配置失败: {e}')
+
+    return bridge_ip
