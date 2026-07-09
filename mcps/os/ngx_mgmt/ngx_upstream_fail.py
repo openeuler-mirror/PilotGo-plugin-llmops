@@ -263,3 +263,46 @@ def analyze_retry_config(upstream_content: str) -> Dict[str, Any]:
         logger.error(f"解析重试配置失败: {e}")
     
     return retry_config
+
+def fetch_nginx_error_log_path() -> Optional[str]:
+    """
+    获取Nginx错误日志路径
+    
+    返回:
+        str: 错误日志文件路径
+    """
+    try:
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            return None
+        
+        body = load_nginx_config(cfg_filepath)
+        
+        # 查找error_log配置
+        error_log_pattern = r'error_log\s+([^;]+)\s+([^;]+);'  # NOSONAR
+        error_log_matches = re.finditer(error_log_pattern, body)  # NOSONAR
+        
+        for match in error_log_matches:
+            log_path = match.group(1).strip()
+            # 处理相对路径
+            if not log_path.startswith('/'):
+                config_dir = os.path.dirname(cfg_filepath)
+                log_path = os.path.join(config_dir, log_path)
+            return log_path
+        
+        # 默认错误日志路径
+        default_paths = [
+            '/var/log/nginx/error.log',
+            '/usr/local/nginx/logs/error.log',
+            '/opt/nginx/logs/error.log'
+        ]
+        
+        for path in default_paths:
+            if os.path.exists(path):
+                return path
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"获取Nginx错误日志路径失败: {e}")
+        return None
