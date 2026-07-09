@@ -103,3 +103,34 @@ def fetch_net_bridge():
     except Exception as e:
         logger.error(f'获取网桥配置失败: {e}')
         return f'获取网桥配置失败: {e}'
+def fetch_bridge_interfaces():
+    """
+    获取网桥接口列表
+    """
+    interfaces = []
+
+    try:
+        # 使用brctl命令获取网桥列表
+        output = subprocess.run(['brctl', 'show'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines[1:]:  # 跳过标题行
+                if line:
+                    parts = line.split()
+                    if parts:
+                        interface = parts[0]
+                        interfaces.append(interface)
+        else:
+            # 如果brctl不可用，检查/sys/class/net目录
+            net_dir = '/sys/class/net'
+            if os.path.exists(net_dir):
+                for interface in os.listdir(net_dir):
+                    bridge_dir = os.path.join(net_dir, interface, 'bridge')
+                    if os.path.exists(bridge_dir):
+                        interfaces.append(interface)
+
+    except Exception as e:
+        logger.error(f'获取网桥接口失败: {e}')
+
+    return interfaces
