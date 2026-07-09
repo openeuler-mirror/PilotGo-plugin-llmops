@@ -219,3 +219,62 @@ def fetch_global_npm_packages():
     except Exception as e:
         logger.error(f'获取全局NPM包失败: {e}')
         return []
+def fetch_local_npm_packages():
+    """
+    获取项目级NPM包
+
+    返回:
+        项目级NPM包信息列表
+    """
+    try:
+        packages = []
+
+        # 检查当前目录是否有package.json文件
+        if os.path.exists('package.json'):
+            # 使用npm命令获取项目级包
+            output = subprocess.run(['npm', 'list', '--json', '--depth=0'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                try:
+                    payload = json.loads(output.stdout)
+                    if 'dependencies' in payload:
+                        for name, info in payload['dependencies'].items():
+                            pkg_info = {
+                                'name': name,
+                                'version': info.get('version', 'Unknown'),
+                                'scope': 'local',
+                                'location': info.get('resolved', 'Unknown'),
+                                'dependencies': info.get('dependencies', {})
+                            }
+                            packages.append(pkg_info)
+                except json.JSONDecodeError:
+                    pass
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取项目级NPM包失败: {e}')
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_npm_list",
+    "function": fetch_app_npm_list,
+    "description": "采集Node.js NPM包（全局/项目级NPM已安装包/版本/依赖/安装路径）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "npm_info": {
+                "type": "string",
+                "description": "信息类型，可选值：all（所有已安装NPM包）、version（版本信息）、dependencies（依赖信息）、path（安装路径），不指定则获取所有信息",
+                "enum": ["all", "version", "dependencies", "path"]
+            },
+            "scope": {
+                "type": "string",
+                "description": "作用域，可选值：global（全局NPM包）、local（项目级NPM包），不指定则获取所有NPM包",
+                "enum": ["global", "local"]
+            }
+        },
+        "required": []
+    }
+}
