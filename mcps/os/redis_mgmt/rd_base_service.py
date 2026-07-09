@@ -76,3 +76,119 @@ def fetch_redis_base_service(service_type=None):
     except Exception as e:
         logger.error(f'获取Redis服务信息失败: {e}')
         return f'获取Redis服务信息失败: {e}'
+def fetch_service_status():
+    """
+    获取服务状态
+    """
+    status_info = {}
+
+    try:
+        redis_pid = find_redis_pid()
+
+        if redis_pid:
+            status_info['进程状态'] = '运行中'
+            status_info['进程PID'] = redis_pid
+        else:
+            status_info['进程状态'] = '未运行'
+
+        service_names = ['redis', 'redis-server', 'redis_6379', 'redis.service']
+
+        for service_name in service_names:
+            output = subprocess.run(['systemctl', 'is-active', service_name], capture_output=True, text=True)
+
+            if output.returncode == 0 or output.returncode == 3:
+                status_info['Systemd服务状态'] = output.stdout.strip()
+                status_info['Systemd服务名称'] = service_name
+                break
+
+        for service_name in service_names:
+            output = subprocess.run(['service', service_name, 'status'], capture_output=True, text=True)
+
+            if output.returncode == 0 or output.returncode == 3:
+                status_info['SysV服务状态'] = '已配置'
+                status_info['SysV服务名称'] = service_name
+                break
+
+        output = subprocess.run(['systemctl', 'is-enabled', 'redis.service'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            status_info['Systemd启用状态'] = output.stdout.strip()
+        elif output.returncode == 1:
+            status_info['Systemd启用状态'] = 'disabled'
+
+        output = subprocess.run(['systemctl', 'is-enabled', 'redis-server.service'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            status_info['Redis-Server启用状态'] = output.stdout.strip()
+        elif output.returncode == 1:
+            status_info['Redis-Server启用状态'] = 'disabled'
+
+        output = subprocess.run(['systemctl', 'status', 'redis.service'], capture_output=True, text=True)
+
+        if output.returncode == 0 or output.returncode == 3:
+            output = output.stdout
+            if 'Active: active (running)' in output:
+                status_info['详细状态'] = '运行中'
+            elif 'Active: inactive (dead)' in output:
+                status_info['详细状态'] = '已停止'
+            elif 'Active: failed' in output:
+                status_info['详细状态'] = '失败'
+            else:
+                status_info['详细状态'] = '未知'
+
+            if 'Loaded: loaded' in output:
+                match = re.search(r'Loaded: loaded \(([^;]+);', output)  # NOSONAR
+                if match:
+                    status_info['服务单元文件'] = match.group(1)
+
+            if 'Main PID:' in output:
+                match = re.search(r'Main PID: (\d+)', output)  # NOSONAR
+                if match:
+                    status_info['主进程PID'] = match.group(1)
+
+        output = subprocess.run(
+            ['systemctl', 'list-units', '--type=service', '|', 'grep', '-i', 'redis'],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            redis_services = output.stdout.strip().split('\n')
+            status_info['Redis相关服务'] = f"{len(redis_services)} 个"
+            for i, service in enumerate(redis_services, 1):
+                status_info[f'服务{i}'] = service.strip()
+
+        output = subprocess.run(
+            ['ps', 'aux', '|', 'grep', 'redis-server', '|', 'grep', '-v', 'grep'],
+            capture_output=True,
+            text=True,
+            shell=True
+        )
+
+        if output.returncode == 0 and output.stdout.strip():
+            redis_processes = output.stdout.strip().split('\n')
+            status_info['Redis进程数'] = str(len(redis_processes))
+
+            for i, process in enumerate(redis_processes, 1):
+                parts = process.split()
+                if len(parts) >= 2:
+                    status_info[f'进程{i}'] = f"PID: {parts[1]}, 用户: {parts[0]}"
+
+        output = subprocess.run(
+            ['redis-cli', 'PING'],
+            capture_output=True,
+            text=True,
+            deadline=5
+        )
+
+        if output.returncode == 0:
+            status_info['Redis响应'] = output.stdout.strip()
+            status_info['Redis服务'] = '正常'
+        else:
+            status_info['Redis服务'] = '异常或未运行'
+
+    except Exception as e:
+        logger.error(f'获取服务状态失败: {e}')
+
+    return status_info
