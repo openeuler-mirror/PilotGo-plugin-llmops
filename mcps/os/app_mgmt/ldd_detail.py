@@ -186,3 +186,57 @@ def verify_library_versions(dependencies):
                 pass
 
     return ver_data
+def fetch_system_lib_paths():
+    """
+    获取系统库路径
+    """
+    lib_paths = []
+
+    try:
+        # 从/etc/ld.so.conf获取
+        if os.path.exists('/etc/ld.so.conf'):
+            with open('/etc/ld.so.conf', 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        if os.path.exists(line):
+                            lib_paths.append(line)
+
+        # 从LD_LIBRARY_PATH环境变量获取
+        if 'LD_LIBRARY_PATH' in os.environ:
+            for path in os.environ['LD_LIBRARY_PATH'].split(':'):
+                if path and os.path.exists(path):
+                    lib_paths.append(path)
+
+        # 默认库路径
+        default_paths = ['/lib', '/usr/lib', '/lib64', '/usr/lib64']
+        for path in default_paths:
+            if os.path.exists(path) and path not in lib_paths:
+                lib_paths.append(path)
+
+    except Exception:
+        pass
+
+    return lib_paths
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_ldd_info",
+    "function": fetch_app_ldd_info,
+    "description": "采集程序动态链接库（指定程序的所有依赖so库/路径/版本/缺失检查）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "binary_path": {
+                "type": "string",
+                "description": "可执行程序路径"
+            },
+            "check_missing": {
+                "type": "boolean",
+                "description": "是否检查缺失的依赖库",
+                "default": True
+            }
+        },
+        "required": ["binary_path"]
+    }
+}
