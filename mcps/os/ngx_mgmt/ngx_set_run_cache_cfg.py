@@ -403,3 +403,19 @@ def activate_cache_config(body, params, cache_method):
             lines.insert(insert_pos + i, config_line)
 
     return '\n'.join(lines)
+
+def deactivate_cache_config(body, cache_method):
+    """禁用缓存配置"""
+    lines = body.split('\n')
+    updated_lines = []
+
+    cache_keywords = []
+    cache_keywords = ['proxy_cache_path', 'proxy_cache', 'proxy_cache_valid'] if cache_method == "proxy" else ['fastcgi_cache_path', 'fastcgi_cache', 'fastcgi_cache_valid']
+    for line in lines:
+        # 注释掉缓存相关的配置行
+        if any(keyword in line for keyword in cache_keywords) and not line.strip().startswith('#'):
+            updated_lines.append(f"# {line}")  # 注释掉该行
+        else:
+            updated_lines.append(line)
+
+    return '\n'.join(updated_lines)
