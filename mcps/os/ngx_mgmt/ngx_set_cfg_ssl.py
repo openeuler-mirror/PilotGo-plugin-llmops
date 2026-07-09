@@ -424,3 +424,44 @@ def set_security_policy(config_file_path, original_content, hsts_max_age=3153600
     except Exception as e:
         logger.error(f'设置安全策略失败: {e}')
         return {'success': False, 'message': f'设置安全策略失败: {e}'}
+
+def produce_ssl_config(cert_path, key_path, http2_enabled, protocols, ciphers, security_headers):
+    """生成SSL配置块"""
+    ssl_config = []
+
+    # 基本SSL配置
+    ssl_config.append('    listen 443 ssl;')
+    ssl_config.append('    listen [::]:443 ssl;')
+
+    if http2_enabled:
+        ssl_config.append('    http2 on;')
+
+    # 证书配置
+    if cert_path and key_path:
+        ssl_config.append(f'    ssl_certificate {cert_path};')
+        ssl_config.append(f'    ssl_certificate_key {key_path};')
+    else:
+        # 使用默认证书路径
+        ssl_config.append('    ssl_certificate /etc/ssl/certs/nginx.crt;')
+        ssl_config.append('    ssl_certificate_key /etc/ssl/private/nginx.key;')
+
+    # 协议和加密配置
+    ssl_config.append(f'    ssl_protocols {protocols};')
+
+    if ciphers:
+        ssl_config.append(f'    ssl_ciphers {ciphers};')
+    else:
+        ssl_config.append('    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;')
+
+    ssl_config.append('    ssl_prefer_server_ciphers on;')
+    ssl_config.append('    ssl_session_cache shared:SSL:10m;')
+    ssl_config.append('    ssl_session_timeout 10m;')
+
+    # 安全头
+    if security_headers:
+        ssl_config.append('    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;')
+        ssl_config.append('    add_header X-Frame-Options "SAMEORIGIN" always;')
+        ssl_config.append('    add_header X-Content-Type-Options "nosniff" always;')
+        ssl_config.append('    add_header X-XSS-Protection "1; mode=block" always;')
+
+    return ssl_config
