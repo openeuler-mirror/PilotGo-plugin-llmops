@@ -140,3 +140,20 @@ def fetch_app_npm_list(npm_info=None, scope=None):
     except Exception as e:
         logger.error(f'获取NPM包信息失败: {e}')
         return f'获取NPM包信息失败: {e}'
+def is_npm_available():
+    """
+    检查系统是否安装了npm
+
+    返回:
+        bool: 是否安装了npm
+    """
+    try:
+        # 检查是否存在npm命令
+        output = subprocess.run(['which', 'npm'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return True
+
+        return False
+
+    except Exception:
+        return False
