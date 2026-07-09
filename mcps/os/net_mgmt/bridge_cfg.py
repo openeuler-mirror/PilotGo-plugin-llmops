@@ -170,3 +170,38 @@ def fetch_bridge_info(interface):
         logger.error(f'获取网桥信息失败: {e}')
 
     return bridge_info
+def fetch_bridge_ports(interface):
+    """
+    获取桥接网卡
+    """
+    ports = []
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return ports
+
+        # 使用brctl命令获取桥接网卡
+        output = subprocess.run(['brctl', 'show', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines[2:]:  # 跳过标题和网桥行
+                if line:
+                    parts = line.split()
+                    if parts:
+                        port = parts[0]
+                        ports.append(port)
+        else:
+            # 如果brctl不可用，检查/sys/class/net目录
+            ports_dir = f'/sys/class/net/{interface}/brif'
+            if os.path.exists(ports_dir):
+                for port in os.listdir(ports_dir):
+                    ports.append(port)
+
+    except Exception as e:
+        logger.error(f'获取桥接网卡失败: {e}')
+
+    return ports
