@@ -231,3 +231,108 @@ def fetch_user_group_info(pid):
         logger.error(f'获取用户/组信息失败: {e}')
 
     return user_info
+def fetch_time_info(pid):
+    """
+    获取时间信息（启动时间/运行时长）
+    """
+    time_info = {}
+
+    try:
+        if os.path.exists(f'/proc/{pid}/stat'):
+            with open(f'/proc/{pid}/stat', 'r') as f:
+                stat_data = f.read().split()
+
+            if len(stat_data) > 21:
+                starttime_ticks = int(stat_data[21])
+
+                try:
+                    output = subprocess.run(['getconf', 'CLK_TCK'], capture_output=True, text=True)
+
+                    if output.returncode == 0:
+                        hz = int(output.stdout.strip())
+                        starttime_seconds = starttime_ticks / hz
+
+                        boot_time_result = subprocess.run(['cat', '/proc/stat'], capture_output=True, text=True)
+
+                        if boot_time_result.returncode == 0:
+                            for line in boot_time_result.stdout.split('\n'):
+                                if line.startswith('btime'):
+                                    btime = float(line.split()[1])
+                                    start_timestamp = btime + starttime_seconds
+                                    start_datetime = datetime.fromtimestamp(start_timestamp)
+
+                                    time_info['启动时间'] = start_datetime.strftime('%Y-%m-%d %H:%M:%S')
+                                    time_info['启动时间戳'] = str(start_timestamp)
+
+                                    current_time = time.time()
+                                    uptime_seconds = current_time - start_timestamp
+                                    uptime_days = int(uptime_seconds // 86400)
+                                    uptime_hours = int((uptime_seconds % 86400) // 3600)
+                                    uptime_minutes = int((uptime_seconds % 3600) // 60)
+                                    uptime_secs = int(uptime_seconds % 60)
+
+                                    if uptime_days > 0:
+                                        time_info['运行时长'] = f"{uptime_days}天 {uptime_hours}小时 {uptime_minutes}分钟"
+                                    elif uptime_hours > 0:
+                                        time_info['运行时长'] = f"{uptime_hours}小时 {uptime_minutes}分钟"
+                                    elif uptime_minutes > 0:
+                                        time_info['运行时长'] = f"{uptime_minutes}分钟 {uptime_secs}秒"
+                                    else:
+                                        time_info['运行时长'] = f"{uptime_secs}秒"
+
+                                    time_info['运行时长(秒)'] = f"{uptime_seconds:.2f}"
+                                    break
+                except Exception as e:
+                    logger.error(f'计算启动时间失败: {e}')
+
+        output = subprocess.run(['ps', '-p', pid, '-o', 'lstart,etime'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split(None, 1)
+                if len(parts) >= 2:
+                    time_info['进程启动时间'] = parts[0]
+                    time_info['进程运行时长'] = parts[1]
+
+        output = subprocess.run(['redis-cli', 'INFO', 'server'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('uptime_in_seconds:'):
+                    uptime_seconds = int(line.split(':')[1])
+                    uptime_days = uptime_seconds // 86400
+                    uptime_hours = (uptime_seconds % 86400) // 3600
+                    uptime_minutes = (uptime_seconds % 3600) // 60
+
+                    if uptime_days > 0:
+                        time_info['Redis运行时长'] = f"{uptime_days}天 {uptime_hours}小时 {uptime_minutes}分钟"
+                    elif uptime_hours > 0:
+                        time_info['Redis运行时长'] = f"{uptime_hours}小时 {uptime_minutes}分钟"
+                    else:
+                        time_info['Redis运行时长'] = f"{uptime_minutes}分钟"
+
+                    time_info['Redis运行时长(秒)'] = str(uptime_seconds)
+
+                elif line.startswith('uptime_in_days:'):
+                    time_info['Redis运行天数'] = line.split(':')[1]
+
+        if os.path.exists(f'/proc/{pid}'):
+            stat_path = f'/proc/{pid}/stat'
+            if os.path.exists(stat_path):
+                with open(stat_path, 'r') as f:
+                    stat_data = f.read().split()
+
+                if len(stat_data) > 13:
+                    utime = int(stat_data[13])
+                    stime = int(stat_data[14])
+                    total_cpu_time = utime + stime
+                    time_info['CPU时间(总计)'] = f"{total_cpu_time} jiffies"
+                    time_info['CPU时间(用户态)'] = f"{utime} jiffies"
+                    time_info['CPU时间(内核态)'] = f"{stime} jiffies"
+
+    except Exception as e:
+        logger.error(f'获取时间信息失败: {e}')
+
+    return time_info
