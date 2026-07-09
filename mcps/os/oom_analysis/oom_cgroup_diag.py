@@ -356,3 +356,72 @@ def examine_cgroup_v2_memory() -> List[Dict[str, Any]]:
         stats.append({'error': str(e)})
 
     return stats
+def examine_cgroup_v1_memory() -> List[Dict[str, Any]]:
+    """分析cgroup v1内存"""
+    stats = []
+
+    try:
+        memory_base = '/sys/fs/cgroup/memory'
+        if not os.path.exists(memory_base):
+            return stats
+
+        # 获取所有memory cgroup
+        for item in os.listdir(memory_base):
+            cgroup_path = os.path.join(memory_base, item)
+            if not os.path.isdir(cgroup_path):
+                continue
+
+            stat = {'cgroup': item}
+
+            # 读取memory.usage_in_bytes
+            usage_file = os.path.join(cgroup_path, 'memory.usage_in_bytes')
+            if os.path.exists(usage_file):
+                try:
+                    with open(usage_file, 'r') as f:
+                        stat['usage'] = f.read().strip()
+                except Exception:
+                    pass
+
+            # 读取memory.limit_in_bytes
+            limit_file = os.path.join(cgroup_path, 'memory.limit_in_bytes')
+            if os.path.exists(limit_file):
+                try:
+                    with open(limit_file, 'r') as f:
+                        limit = f.read().strip()
+                        stat['limit'] = limit
+                        if 'usage' in stat:
+                            try:
+                                usage = int(stat['usage'])
+                                limit_bytes = int(limit)
+                                if limit_bytes > 0 and limit_bytes < (1 << 63):  # 排除无限制值
+                                    stat['usage_percent'] = round(usage / limit_bytes * 100, 2)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            # 读取memory.failcnt
+            failcnt_file = os.path.join(cgroup_path, 'memory.failcnt')
+            if os.path.exists(failcnt_file):
+                try:
+                    with open(failcnt_file, 'r') as f:
+                        stat['failcnt'] = f.read().strip()
+                except Exception:
+                    pass
+
+            # 读取memory.stat
+            stat_file = os.path.join(cgroup_path, 'memory.stat')
+            if os.path.exists(stat_file):
+                try:
+                    with open(stat_file, 'r') as f:
+                        stat['stat'] = f.read().strip()
+                except Exception:
+                    pass
+
+            if len(stat) > 1:
+                stats.append(stat)
+
+    except Exception as e:
+        stats.append({'error': str(e)})
+
+    return stats
