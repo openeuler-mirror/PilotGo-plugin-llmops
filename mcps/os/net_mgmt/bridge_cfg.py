@@ -239,3 +239,37 @@ def fetch_bridge_ip(interface):
         logger.error(f'获取网桥IP配置失败: {e}')
 
     return bridge_ip
+def fetch_bridge_stp(interface):
+    """
+    获取网桥 STP状态
+    """
+    bridge_stp = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return bridge_stp
+
+        # 使用brctl命令获取STP状态
+        output = subprocess.run(['brctl', 'show', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split()
+                if len(parts) >= 3:
+                    bridge_stp['STP状态'] = '启用' if parts[2] == 'yes' else '禁用'
+
+        # 检查/sys/class/net目录获取STP状态
+        stp_file = f'/sys/class/net/{interface}/bridge/stp_state'
+        if os.path.exists(stp_file):
+            with open(stp_file, 'r') as f:
+                stp_state = f.read().strip()
+                bridge_stp['STP状态'] = '启用' if stp_state == '1' else '禁用'
+
+    except Exception as e:
+        logger.error(f'获取网桥STP状态失败: {e}')
+
+    return bridge_stp
