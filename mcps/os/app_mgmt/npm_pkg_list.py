@@ -157,3 +157,31 @@ def is_npm_available():
 
     except Exception:
         return False
+def fetch_npm_packages(scope=None):
+    """
+    获取所有已安装的NPM包
+
+    参数:
+        scope: 作用域，可选值：global, local, None
+
+    返回:
+        NPM包信息列表
+    """
+    try:
+        packages = []
+
+        # 获取全局包
+        if scope in [None, 'global']:
+            global_packages = fetch_global_npm_packages()
+            packages.extend(global_packages)
+
+        # 获取项目级包
+        if scope in [None, 'local']:
+            local_packages = fetch_local_npm_packages()
+            packages.extend(local_packages)
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取NPM包列表失败: {e}')
+        return []
