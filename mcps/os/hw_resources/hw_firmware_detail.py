@@ -479,3 +479,88 @@ def fetch_bios_boot_info():
     except Exception as e:
         logger.error(f'获取BIOS启动配置失败: {e}')
         return None
+def fetch_fallback_bios_info(bios_info):
+    """
+    获取备用BIOS信息（当特权命令不可用时）
+
+    参数:
+        bios_info: 原始BIOS信息字典
+
+    返回:
+        更新后的BIOS信息字典
+    """
+    try:
+        # 从/proc/version获取一些基本信息
+        if os.path.exists('/proc/ver'):
+            try:
+                with open('/proc/ver', 'r') as f:
+                    body = f.read()
+                    if 'Ubuntu' in body:
+                        bios_info['vendor'] = 'Ubuntu'
+                    elif 'CentOS' in body or 'Red Hat' in body:
+                        bios_info['vendor'] = 'Red Hat/CentOS'
+                    elif 'Debian' in body:
+                        bios_info['vendor'] = 'Debian'
+            except (PermissionError, IOError):
+                pass
+
+        # 从/sys/class/dmi/id/获取BIOS信息
+        dmi_path = '/sys/class/dmi/id/'
+        if os.path.exists(dmi_path):
+            try:
+                # BIOS厂商
+                vendor_path = os.path.join(dmi_path, 'bios_vendor')
+                if os.path.exists(vendor_path):
+                    with open(vendor_path, 'r') as f:
+                        vendor = f.read().strip()
+                        if vendor:
+                            bios_info['vendor'] = vendor
+
+                # BIOS版本
+                version_path = os.path.join(dmi_path, 'bios_version')
+                if os.path.exists(version_path):
+                    with open(version_path, 'r') as f:
+                        ver = f.read().strip()
+                        if ver:
+                            bios_info['ver'] = ver
+
+                # BIOS日期
+                date_path = os.path.join(dmi_path, 'bios_date')
+                if os.path.exists(date_path):
+                    with open(date_path, 'r') as f:
+                        date = f.read().strip()
+                        if date:
+                            bios_info['date'] = date
+
+            except (PermissionError, IOError):
+                # 权限不足时使用默认值
+                pass
+
+        # 默认值
+        if bios_info['vendor'] == 'Unknown':
+            bios_info['vendor'] = 'Generic BIOS'
+        if bios_info['ver'] == 'Unknown':
+            bios_info['ver'] = 'Unknown Version'
+
+        return bios_info
+    except Exception as e:
+        logger.warning(f'获取备用BIOS信息失败: {e}')
+        return bios_info
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_hw_bios_info",
+    "function": fetch_hw_bios_info,
+    "description": "采集BIOS/UEFI信息，包括版本、厂商、发布日期、BIOS模式和UEFI启动状态",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "bios_type": {
+                "type": "string",
+                "description": "信息类型，可选值：ver（BIOS版本）、vendor（BIOS厂商）、date（发布日期）、mode（BIOS模式）、uefi（UEFI启动状态）、smbios（SMBIOS版本），不指定则获取所有信息",
+                "enum": ["ver", "vendor", "date", "mode", "uefi", "smbios"]
+            }
+        },
+        "required": []
+    }
+}
