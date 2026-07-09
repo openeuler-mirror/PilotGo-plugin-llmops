@@ -334,3 +334,30 @@ def perform_force_restart():
         return {"status": "error", "error": "强制重启超时", "duration": time.time() - start_time}
     except Exception as e:
         return {"status": "error", "error": f"强制重启异常: {e}", "duration": time.time() - start_time}
+
+def fetch_detailed_process_info():
+    """获取详细的进程信息"""
+    processes = []
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'username', 'create_time',
+                                       'cpu_percent', 'memory_percent', 'status', 'ppid', 'connections']):
+            try:
+                if proc.info['name'] and 'nginx' in proc.info['name'].lower():
+                    processes.append({
+                        'pid': proc.info['pid'],
+                        'name': proc.info['name'],
+                        'cmdline': ' '.join(proc.info['cmdline']) if proc.info['cmdline'] else '',
+                        'username': proc.info['username'],
+                        'create_time': proc.info['create_time'],
+                        'cpu_percent': proc.info['cpu_percent'],
+                        'memory_percent': proc.info['memory_percent'],
+                        'status': proc.info['status'],
+                        'ppid': proc.info['ppid'],
+                        'connections': len(proc.info['connections']) if proc.info['connections'] else 0
+                    })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception as e:
+        logger.error(f'获取详细进程信息失败: {e}')
+
+    return processes
