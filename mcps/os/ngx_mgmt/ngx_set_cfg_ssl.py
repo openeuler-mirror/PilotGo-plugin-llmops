@@ -518,3 +518,32 @@ def save_config_file(config_file_path, site_name):
     except Exception as e:
         logger.error(f'备份配置文件失败：{e}')
         return None
+
+def recover_config_backup(config_file_path, site_name):
+    """恢复配置备份"""
+    try:
+        # 安全验证：验证 config_file_path 路径参数（允许绝对路径）
+        valid, error_msg = validate_path_param(config_file_path, allow_absolute=True)
+        if not valid:
+            logger.error(f"recover_config_backup: config_file_path 路径验证失败：{error_msg}")
+            return False
+
+        backup_dir = '/tmp/nginx_ssl_backups'  # NOSONAR
+        if not os.path.exists(backup_dir):
+            return False
+
+        backup_files = [f for f in os.listdir(backup_dir)
+                       if f.startswith(f"{site_name}_ssl_backup_") and f.endswith('.conf')]
+
+        if not backup_files:
+            return False
+
+        # 使用最新的备份文件
+        latest_backup = sorted(backup_files)[-1]
+        backup_path = os.path.join(backup_dir, latest_backup)
+
+        shutil.copy2(backup_path, config_file_path)
+        return True
+    except Exception as e:
+        logger.error(f'恢复配置备份失败：{e}')
+        return False
