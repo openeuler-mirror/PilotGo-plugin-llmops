@@ -444,3 +444,44 @@ def modify_specific_cache_config(body, params, cache_method):
         updated_lines.append(updated_line)
 
     return '\n'.join(updated_lines)
+
+def modify_cache_path_line(line, params, cache_type):
+    """更新缓存路径配置行"""
+    # 提取现有参数
+    existing_params = {}
+
+    # 解析路径
+    path_match = re.search(rf'{cache_type}\s+(\S+)', line)  # NOSONAR
+    if path_match:
+        existing_params['path'] = path_match.group(1)
+
+    # 解析其他参数
+    param_patterns = {
+        'keys_zone': r'keys_zone=([^:\s]+):(\d+[mM])',
+        'levels': r'levels=([^;\s]+)',
+        'inactive': r'inactive=([^;\s]+)',
+        'max_size': r'max_size=([^;\s]+)'
+    }
+
+    for param_name, pattern in param_patterns.items():
+        match = re.search(pattern, line)  # NOSONAR
+        if match:
+            if param_name == 'keys_zone':
+                existing_params[param_name] = f"{match.group(1)}:{match.group(2)}"
+            else:
+                existing_params[param_name] = match.group(1)
+
+    # 使用新参数或保持现有参数
+    new_path = params.get('cache_path', existing_params.get('path', '/var/cache/nginx'))
+    new_keys_zone = params.get('cache_keys_zone', existing_params.get('keys_zone', 'cache_zone:10m'))
+    new_levels = params.get('cache_levels', existing_params.get('levels', '1:2'))
+    new_inactive = params.get('cache_inactive', existing_params.get('inactive', '60m'))
+    new_max_size = params.get('cache_size', existing_params.get('max_size', '100m'))
+
+    # 构建新的配置行
+    new_line = f"{cache_type} {new_path} keys_zone={new_keys_zone}"
+    new_line += f" levels={new_levels}"
+    new_line += f" inactive={new_inactive}"
+    new_line += f" max_size={new_max_size};"
+
+    return new_line
