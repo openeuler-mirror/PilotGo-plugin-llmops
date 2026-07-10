@@ -130,3 +130,63 @@ def fetch_process_io(pid, interval):
         logger.error(f'获取指定进程的磁盘IO失败: {e}')
 
     return io_info
+def fetch_all_process_io(interval):
+    """
+    获取所有进程的磁盘IO
+    """
+    process_list = []
+
+    try:
+        # 第一次读取所有进程的IO
+        first_io_map = {}
+        for pid in fetch_all_pids():
+            io = load_process_io(pid)
+            if io:
+                first_io_map[pid] = io
+
+        # 等待指定间隔
+        time.sleep(interval)
+
+        # 第二次读取所有进程的IO
+        second_io_map = {}
+        for pid in fetch_all_pids():
+            io = load_process_io(pid)
+            if io:
+                second_io_map[pid] = io
+
+        # 计算每个进程的IO速率
+        for pid in first_io_map:
+            if pid in second_io_map:
+                first_io = first_io_map[pid]
+                second_io = second_io_map[pid]
+
+                # 计算差值
+                read_bytes = second_io['read_bytes'] - first_io['read_bytes']
+                write_bytes = second_io['write_bytes'] - first_io['write_bytes']
+
+                # 计算速率
+                read_speed = read_bytes / interval
+                write_speed = write_bytes / interval
+                total_speed = read_speed + write_speed
+
+                # 只添加有IO活动的进程
+                if total_speed > 0:
+                    proc_info = {
+                        'pid': pid,
+                        'comm': fetch_process_comm(pid) or 'unknown',
+                        'read_speed': render_bytes_speed(read_speed),
+                        'write_speed': render_bytes_speed(write_speed),
+                        'total_speed': render_bytes_speed(total_speed)
+                    }
+                    process_list.append(proc_info)
+
+        # 按总速率排序
+        process_list.sort(key=lambda x: analyze_speed(x['total_speed']), reverse=True)
+
+        # 限制返回数量
+        process_list = process_list[:10]  # 只返回前10个
+
+    except Exception as e:
+        logger.error(f'获取所有进程的磁盘IO失败: {e}')
+
+    return process_list
