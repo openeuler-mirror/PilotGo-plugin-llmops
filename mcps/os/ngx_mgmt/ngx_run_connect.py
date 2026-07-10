@@ -267,3 +267,22 @@ def fetch_nginx_estimated_connections():
     except Exception as e:
         logger.error(f'估算Nginx连接数失败: {e}')
         return 0
+
+def fetch_nginx_uptime():
+    """获取Nginx运行时间（秒）"""
+    try:
+        # 获取master进程的启动时间
+        for proc in psutil.process_iter(['pid', 'name', 'create_time']):
+            try:
+                if proc.details['name'] and 'nginx' in proc.details['name'].lower():
+                    cmdline = ' '.join(proc.cmdline()) if hasattr(proc, 'cmdline') else ''
+                    if 'master' in cmdline.lower():
+                        create_time = proc.details.get('create_time')
+                        if create_time:
+                            return int(time.time() - create_time)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return 0
+    except Exception as e:
+        logger.error(f'获取Nginx运行时间失败: {e}')
+        return 0
