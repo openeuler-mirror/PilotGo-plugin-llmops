@@ -388,3 +388,42 @@ def wait_for_reload_completion(timeout=60):
     except Exception as e:
         logger.error(f"等待重载完成失败: {e}")
         return {"success": False, "message": f"等待重载完成失败: {e}", "error": str(e)}
+
+def verify_worker_process_change(initial_pids, current_pids):
+    """
+    检查工作进程是否发生变化
+
+    Args:
+        initial_pids: 初始PID列表
+        current_pids: 当前PID列表
+
+    Returns:
+        bool: 工作进程是否发生变化
+    """
+    try:
+        # 获取工作进程PID（排除主进程）
+        def fetch_worker_pids(pids):
+            worker_pids = []
+            for pid in pids:
+                try:
+                    proc = psutil.Process(pid)
+                    cmdline = ' '.join(proc.cmdline()).lower() if proc.cmdline() else ''
+                    if 'nginx' in cmdline and 'worker' in cmdline:
+                        worker_pids.append(pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            return worker_pids
+
+        initial_workers = fetch_worker_pids(initial_pids)
+        current_workers = fetch_worker_pids(current_pids)
+
+        # 如果工作进程PID完全不同，说明已重新启动
+        if initial_workers and current_workers:
+            common_pids = set(initial_workers) & set(current_workers)
+            return len(common_pids) == 0  # 没有共同PID说明已完全重启
+
+        return False
+
+    except Exception as e:
+        logger.error(f"检查工作进程变化失败: {e}")
+        return False
