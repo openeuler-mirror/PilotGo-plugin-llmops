@@ -377,3 +377,54 @@ def verify_bridge_status(bridge_interfaces):
         logger.error(f'检查网桥状态失败: {e}')
 
     return checks
+def examine_bridge_config(bridge_interfaces):
+    """
+    分析网桥配置
+    """
+    analysis = []
+
+    try:
+        # 检查网桥数量
+        if len(bridge_interfaces) > 5:
+            analysis.append(f"网桥数量较多 ({len(bridge_interfaces)} 个)")
+
+        # 检查每个网桥的桥接网卡数量
+        for interface in bridge_interfaces:
+            ports = fetch_bridge_ports(interface)
+            if len(ports) > 10:
+                analysis.append(f"网桥 {interface} 桥接网卡数量较多 ({len(ports)} 个)")
+
+        # 检查是否有重复的桥接网卡
+        all_ports = []
+        for interface in bridge_interfaces:
+            ports = fetch_bridge_ports(interface)
+            all_ports.extend(ports)
+
+        # 检查重复
+        seen_ports = set()
+        duplicate_ports = set()
+        for port in all_ports:
+            if port in seen_ports:
+                duplicate_ports.add(port)
+            else:
+                seen_ports.add(port)
+
+        if duplicate_ports:
+            analysis.append(f"警告: 发现重复的桥接网卡: {', '.join(duplicate_ports)}")
+
+    except Exception as e:
+        logger.error(f'分析网桥配置失败: {e}')
+
+    return analysis
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_bridge",
+    "function": fetch_net_bridge,
+    "description": "采集网桥配置（网桥接口/桥接网卡/IP配置/STP状态/转发规则）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
