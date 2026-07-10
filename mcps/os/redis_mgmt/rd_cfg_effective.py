@@ -140,3 +140,53 @@ def fetch_runtime_config() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def compare_configs(file_config: Dict[str, Any],
+                   runtime_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    比较配置文件和运行时配置
+
+    参数:
+        file_config: 配置文件配置
+        runtime_config: 运行时配置
+
+    返回:
+        配置比较信息字典
+    """
+    output = {
+        'file_only': [],
+        'runtime_only': [],
+        'different': [],
+        'same': [],
+        'message': '比较配置文件和运行时配置'
+    }
+
+    try:
+        file_items = set(file_config['config'].keys())
+        runtime_items = set(runtime_config['config'].keys())
+
+        output['file_only'] = list(file_items - runtime_items)
+        output['runtime_only'] = list(runtime_items - file_items)
+
+        common_items = file_items & runtime_items
+
+        for item in common_items:
+            file_value = file_config['config'][item]['val']
+            runtime_value = runtime_config['config'][item]['val']
+
+            if file_value != runtime_value:
+                output['different'].append({
+                    'item': item,
+                    'file_value': file_value,
+                    'runtime_value': runtime_value,
+                    'source': 'runtime_modified'
+                })
+            else:
+                output['same'].append(item)
+
+        output['message'] = f'配置比较完成: 文件独有 {len(output["file_only"])}, 运行时独有 {len(output["runtime_only"])}, 不同 {len(output["different"])}, 相同 {len(output["same"])}'
+
+    except Exception as e:
+        output['message'] = f'比较配置时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
