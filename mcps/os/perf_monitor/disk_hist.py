@@ -293,3 +293,73 @@ def fetch_disk_stats(devices, interval):
         logger.error(f'获取磁盘性能数据失败: {e}')
 
     return stats
+def load_disk_stats(device):
+    """
+    读取磁盘统计信息
+    """
+    stats = {
+        'reads_completed': 0,
+        'reads_merged': 0,
+        'read_sectors': 0,
+        'read_time': 0,
+        'writes_completed': 0,
+        'writes_merged': 0,
+        'write_sectors': 0,
+        'write_time': 0,
+        'io_in_progress': 0,
+        'io_time': 0,
+        'weighted_io_time': 0
+    }
+
+    try:
+        # 读取/proc/diskstats
+        with open('/proc/diskstats', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 14:
+                    dev_name = parts[2]
+                    if dev_name == device:
+                        stats['reads_completed'] = int(parts[3])
+                        stats['reads_merged'] = int(parts[4])
+                        stats['read_sectors'] = int(parts[5])
+                        stats['read_time'] = int(parts[6])
+                        stats['writes_completed'] = int(parts[7])
+                        stats['writes_merged'] = int(parts[8])
+                        stats['write_sectors'] = int(parts[9])
+                        stats['write_time'] = int(parts[10])
+                        stats['io_in_progress'] = int(parts[11])
+                        stats['io_time'] = int(parts[12])
+                        stats['weighted_io_time'] = int(parts[13])
+                        break
+
+    except Exception as e:
+        logger.error(f'读取磁盘统计信息失败: {e}')
+
+    return stats
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_perf_disk_history",
+    "function": fetch_perf_disk_history,
+    "description": "采集磁盘历史性能（按时间粒度的IOPS/读写速率/峰值/平均响应时间）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "duration": {
+                "type": "string",
+                "description": "采集持续时间（秒），如 \"60\""
+            },
+            "interval": {
+                "type": "string",
+                "description": "采样间隔（秒），如 \"5\""
+            },
+            "device": {
+                "type": "string",
+                "description": "设备名称，如 \"sda\""
+            }
+        },
+        "required": []
+    }
+}
