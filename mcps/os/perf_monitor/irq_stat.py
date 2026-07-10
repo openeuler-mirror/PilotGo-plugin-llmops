@@ -122,3 +122,31 @@ def fetch_hardirq_stats(interval):
         logger.error(f'获取硬中断统计失败: {e}')
 
     return stats
+def fetch_softirq_stats(interval):
+    """
+    获取软中断统计
+    """
+    stats = {}
+
+    try:
+        # 第一次读取
+        first_softirqs = load_softirq_stats()
+
+        # 等待指定间隔
+        time.sleep(interval)
+
+        # 第二次读取
+        second_softirqs = load_softirq_stats()
+
+        # 计算软中断频率
+        for irq, count in second_softirqs.items():
+            if irq in first_softirqs:
+                diff = count - first_softirqs[irq]
+                if diff > 0:
+                    frequency = diff / interval
+                    stats[irq] = frequency
+
+    except Exception as e:
+        logger.error(f'获取软中断统计失败: {e}')
+
+    return stats
