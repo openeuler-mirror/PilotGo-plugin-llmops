@@ -267,3 +267,42 @@ def fetch_all_site_configs(main_config_path: str) -> List[str]:
     except Exception as e:
         logger.error(f'获取站点配置文件列表失败: {e}')
         return []
+
+def locate_site_config(main_config_path: str, site_name: str) -> Optional[str]:
+    """
+    查找指定站点的配置文件
+    
+    Args:
+        main_config_path: 主配置文件路径
+        site_name: 站点名称
+    
+    Returns:
+        str: 站点配置文件路径，如果未找到则返回None
+    """
+    try:
+        # 获取所有站点配置
+        site_configs = fetch_all_site_configs(main_config_path)
+        
+        # 查找匹配的站点配置
+        for config_path in site_configs:
+            with open(config_path, 'r', encoding='utf-8', errors='ignore') as f:
+                body = f.read()
+            
+            # 查找server_name指令
+            server_names = re.findall(r'server_name\s+([^;]+)', body)  # NOSONAR
+            for names in server_names:
+                name_list = [name.strip() for name in names.split()]
+                if site_name in name_list:
+                    return config_path
+        
+        # 如果没有找到，尝试根据文件名匹配
+        for config_path in site_configs:
+            filename = os.path.basename(config_path)
+            if site_name in filename:
+                return config_path
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f'查找站点配置失败: {e}')
+        return None
