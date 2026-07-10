@@ -247,3 +247,20 @@ def produce_basic_config():
         "        add_header Cache-Control \"public, immutable\";",
         "    }"
     ]
+
+def produce_php_config():
+    """生成PHP配置"""
+    return [
+        "    # PHP配置",
+        "    location ~ \\.php$ {",
+        "        include fastcgi_params;",
+        "        fastcgi_pass unix:/var/run/php/php-fpm.sock;",
+        "        fastcgi_index index.php;",
+        "        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;",
+        "    }",
+        "",
+        "    # 基础静态文件配置",
+        "    location / {",
+        "        try_files $uri $uri/ /index.php?$query_string;",
+        "    }"
+    ]
