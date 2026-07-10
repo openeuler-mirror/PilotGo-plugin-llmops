@@ -138,3 +138,49 @@ def fetch_system_info():
         return f"{distro[0]} {distro[1]}" if distro[0] else platform.platform()
     except Exception:
         return '未知'
+def fetch_apt_updates(check_security):
+    """
+    获取APT包管理器的可更新软件
+    """
+    updates = []
+
+    try:
+        # 更新包列表
+        subprocess.run(['apt-get', 'update', '-qq'], capture_output=True, text=True)
+
+        # 获取可更新包
+        cmd = ['apt-get', 'upgrade', '--dry-run', '-qq']
+        output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+
+        # 解析输出
+        lines = output.stdout.strip().split('\n')
+        for line in lines:
+            if line.startswith('Inst '):
+                parts = line.split()
+                if len(parts) >= 4:
+                    package_name = parts[1]
+                    current_version = parts[2].strip('()')
+                    available_version = parts[3].strip('()')
+
+                    # 检查是否是安全更新
+                    is_security = False
+                    if check_security:
+                        # 尝试获取安全更新信息
+                        sec_result = subprocess.run(['apt-cache', 'policy', package_name], capture_output=True, text=True)
+                        if 'security' in sec_result.stdout:
+                            is_security = True
+
+                    updates.append({
+                        'name': package_name,
+                        'current_version': current_version,
+                        'available_version': available_version,
+                        'is_security': is_security
+                    })
+    except Exception as e:
+        logger.error(f'获取APT更新失败: {e}')
+
+    return updates
