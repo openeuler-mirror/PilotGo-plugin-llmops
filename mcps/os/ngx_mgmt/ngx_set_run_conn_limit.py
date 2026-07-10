@@ -487,3 +487,26 @@ def modify_connection_settings(cfg_filepath: str,
     except Exception as e:
         logger.error(f"更新Nginx连接设置失败: {e}")
         return False, f"更新配置失败: {e}"
+
+def reload_nginx_gracefully() -> Tuple[bool, str]:
+    """
+    平滑重载Nginx配置
+    
+    返回:
+        tuple: (是否成功, 错误信息)
+    """
+    try:
+        # 查找Nginx主进程
+        output = subprocess.run(['pgrep', '-f', 'nginx.*master'], capture_output=True, text=True)
+        if output.returncode != 0:
+            return False, "Nginx主进程未找到"
+        
+        master_pid = output.stdout.strip().split('\n')[0]
+        
+        # 发送HUP信号给主进程
+        output = subprocess.run(['kill', '-HUP', master_pid], capture_output=True, text=True)
+        
+        return True, "Nginx配置已平滑重载" if output.returncode == 0 else False, f"重载失败: {output.stderr}"
+    except Exception as e:
+        logger.error(f"平滑重载Nginx失败: {e}")
+        return False, f"重载失败: {e}"
