@@ -77,3 +77,11 @@ def fetch_app_runtime_version(runtime_type=None):
     except Exception as e:
         logger.error(f'获取运行时版本信息失败: {e}')
         return f'获取运行时版本信息失败: {e}'
+def fetch_python_version():
+    """
+    获取Python版本
+    """
+    try:
+        return platform.python_version()
+    except Exception:
+        return '未检测到'
