@@ -86,3 +86,51 @@ def save_config_file(cfg_filepath: str) -> str:
     except Exception as e:
         logger.error(f"备份配置文件失败: {e}")
         raise
+
+def analyze_nginx_config(cfg_filepath: str) -> Dict[str, Any]:
+    """
+    解析Nginx配置文件，获取日志文件路径
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        
+    返回:
+        dict: 解析后的配置信息
+    """
+    settings = {
+        'log_files': [],
+        'error_logs': [],
+        'access_logs': []
+    }
+    
+    try:
+        if not os.path.exists(cfg_filepath):
+            return settings
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 移除注释
+        body = re.sub(r'#.*$', '', body, flags=re.MULTILINE)  # NOSONAR
+        
+        # 解析错误日志路径
+        error_log_pattern = r'error_log\s+([^;\s]+)'  # NOSONAR
+        error_logs = re.findall(error_log_pattern, body)  # NOSONAR
+        for log_path in error_logs:
+            if log_path not in ['stderr', 'syslog']:
+                settings['error_logs'].append(log_path.strip('"\''))
+        
+        # 解析访问日志路径
+        access_log_pattern = r'access_log\s+([^;\s]+)'  # NOSONAR
+        access_logs = re.findall(access_log_pattern, body)  # NOSONAR
+        for log_path in access_logs:
+            if log_path not in ['off']:
+                settings['access_logs'].append(log_path.strip('"\''))
+        
+        # 合并所有日志文件
+        settings['log_files'] = list(set(settings['error_logs'] + settings['access_logs']))
+        
+    except Exception as e:
+        logger.error(f"解析Nginx配置文件失败: {e}")
+    
+    return settings
