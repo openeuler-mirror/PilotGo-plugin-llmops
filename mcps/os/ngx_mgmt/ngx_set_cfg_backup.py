@@ -381,3 +381,62 @@ def produce_backup_report(backup_results: List[Dict], backup_dir: str) -> Dict:
         logger.error(f'生成备份报告失败: {e}')
 
     return report_data
+
+def verify_backup_integrity(backup_results: List[Dict], original_files: List[Dict]) -> Dict:
+    """验证备份完整性"""
+    integrity_check = {
+        'verified_files': 0,
+        'failed_verification': 0,
+        'verification_details': []
+    }
+
+    for backup_result in backup_results:
+        if not backup_result['success']:
+            integrity_check['verification_details'].append({
+                'file': backup_result['file'],
+                'status': 'failed',
+                'reason': '备份失败'
+            })
+            integrity_check['failed_verification'] += 1
+            continue
+
+        try:
+            # 检查备份文件是否存在
+            if not os.path.exists(backup_result['backup_path']):
+                integrity_check['verification_details'].append({
+                    'file': backup_result['file'],
+                    'status': 'failed',
+                    'reason': '备份文件不存在'
+                })
+                integrity_check['failed_verification'] += 1
+                continue
+
+            # 检查文件大小是否一致
+            original_size = os.path.getsize(backup_result['file'])
+            backup_size = os.path.getsize(backup_result['backup_path'])
+
+            if original_size == backup_size:
+                integrity_check['verification_details'].append({
+                    'file': backup_result['file'],
+                    'status': 'verified',
+                    'original_size': original_size,
+                    'backup_size': backup_size
+                })
+                integrity_check['verified_files'] += 1
+            else:
+                integrity_check['verification_details'].append({
+                    'file': backup_result['file'],
+                    'status': 'failed',
+                    'reason': f'文件大小不匹配: 原始{original_size}字节, 备份{backup_size}字节'
+                })
+                integrity_check['failed_verification'] += 1
+
+        except Exception as e:
+            integrity_check['verification_details'].append({
+                'file': backup_result['file'],
+                'status': 'failed',
+                'reason': f'验证失败: {e}'
+            })
+            integrity_check['failed_verification'] += 1
+
+    return integrity_check
