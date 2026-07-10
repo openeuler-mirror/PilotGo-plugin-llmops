@@ -186,3 +186,67 @@ def render_config_content(body):
     except Exception as e:
         logger.error(f'格式化配置内容失败: {e}')
         return body
+
+def examine_site_config(body):
+    """分析站点配置结构"""
+    try:
+        analysis = []
+
+        # 提取server块
+        server_blocks = derive_server_blocks(body)
+        for i, server_block in enumerate(server_blocks, 1):
+            analysis.append(f'服务器块 #{i}:')
+
+            # 提取listen指令
+            listen_directives = derive_directives(server_block, 'listen')
+            if listen_directives:
+                analysis.append(f'  监听端口: {", ".join(listen_directives)}')
+
+            # 提取server_name指令
+            server_name_directives = derive_directives(server_block, 'server_name')
+            if server_name_directives:
+                analysis.append(f'  服务器名称: {", ".join(server_name_directives)}')
+
+            # 提取root指令
+            root_directives = derive_directives(server_block, 'root')
+            if root_directives:
+                analysis.append(f'  根目录: {", ".join(root_directives)}')
+
+            # 提取index指令
+            index_directives = derive_directives(server_block, 'index')
+            if index_directives:
+                analysis.append(f'  默认首页: {", ".join(index_directives)}')
+
+            # 提取access_log指令
+            access_log_directives = derive_directives(server_block, 'access_log')
+            if access_log_directives:
+                analysis.append(f'  访问日志: {", ".join(access_log_directives)}')
+
+            # 提取error_log指令
+            error_log_directives = derive_directives(server_block, 'error_log')
+            if error_log_directives:
+                analysis.append(f'  错误日志: {", ".join(error_log_directives)}')
+
+            # 提取location块
+            location_blocks = derive_location_blocks(server_block)
+            if location_blocks:
+                analysis.append(f'  location块数量: {len(location_blocks)}')
+                for j, location in enumerate(location_blocks, 1):
+                    path_match = re.search(r'location\s+([^{]*)', location)  # NOSONAR
+                    filepath = path_match.group(1).strip() if path_match else '未知'
+                    analysis.append(f'    location #{j}: {filepath}')
+
+                    # 检查是否是代理配置
+                    proxy_pass = derive_directives(location, 'proxy_pass')
+                    if proxy_pass:
+                        analysis.append(f'      代理到: {", ".join(proxy_pass)}')
+
+                    # 检查是否是FastCGI配置
+                    fastcgi_pass = derive_directives(location, 'fastcgi_pass')
+                    if fastcgi_pass:
+                        analysis.append(f'      FastCGI到: {", ".join(fastcgi_pass)}')
+
+        return '\n'.join(analysis) if analysis else '无法分析配置结构'
+    except Exception as e:
+        logger.error(f'分析站点配置结构失败: {e}')
+        return f'分析站点配置结构失败: {e}'
