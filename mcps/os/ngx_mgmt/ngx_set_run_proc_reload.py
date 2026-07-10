@@ -240,3 +240,56 @@ def probe_nginx_config():
     except Exception as e:
         logger.error(f"测试Nginx配置语法失败: {e}")
         return {"success": False, "message": f"配置测试失败: {e}", "error": str(e)}
+
+def save_current_config():
+    """
+    备份当前Nginx配置
+
+    Returns:
+        dict: 备份结果
+    """
+    try:
+        output = {"success": False, "message": "", "backup_path": "", "error": ""}
+
+        # 获取Nginx配置信息
+        cfg_state = get_nginx_config_info()
+        config_file = cfg_state.get('config_file', '')
+
+        if not config_file or not os.path.exists(config_file):
+            output["error"] = "Nginx配置文件不存在或无法访问"
+            return output
+
+        # 创建备份目录
+        backup_dir = "/tmp/nginx_config_backups"  # NOSONAR
+        os.makedirs(backup_dir, exist_ok=True)
+
+        # 生成备份文件名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"nginx.conf.backup.{timestamp}"
+        backup_path = os.path.join(backup_dir, backup_filename)
+
+        # 备份配置文件
+        shutil.copy2(config_file, backup_path)
+
+        # 备份include文件（如果存在）
+        include_files = locate_include_files(config_file)
+        for include_file in include_files:
+            if os.path.exists(include_file):
+                include_backup_dir = os.path.join(backup_dir, "includes")
+                os.makedirs(include_backup_dir, exist_ok=True)
+                include_backup_path = os.path.join(include_backup_dir,
+                                                 f"{os.path.basename(include_file)}.{timestamp}")
+                shutil.copy2(include_file, include_backup_path)
+
+        output["success"] = True
+        output["message"] = f"配置备份完成，主配置文件备份至: {backup_path}"
+        output["backup_path"] = backup_path
+
+        if include_files:
+            output["message"] += f"，包含 {len(include_files)} 个include文件"
+
+        return output
+
+    except Exception as e:
+        logger.error(f"备份Nginx配置失败: {e}")
+        return {"success": False, "message": f"配置备份失败: {e}", "error": str(e)}
