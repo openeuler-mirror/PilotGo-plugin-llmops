@@ -134,3 +134,50 @@ def analyze_nginx_config(cfg_filepath: str) -> Dict[str, Any]:
         logger.error(f"解析Nginx配置文件失败: {e}")
     
     return settings
+
+def build_logrotate_config(log_files: List[str], rotation_type: str, 
+                          rotation_value: str, retention_days: int,
+                          compress: bool, postrotate_script: str) -> str:
+    """
+    创建logrotate配置文件内容
+    
+    参数:
+        log_files: 日志文件列表
+        rotation_type: 切割类型 (size/time)
+        rotation_value: 切割值 (如: 100M, daily, weekly)
+        retention_days: 保留天数
+        compress: 是否压缩
+        postrotate_script: 切割后执行的脚本
+        
+    返回:
+        str: logrotate配置内容
+    """
+    config_lines = []
+    
+    for log_file in log_files:
+        config_lines.append(f'"{log_file}" {{')
+        
+        if rotation_type == 'size':
+            config_lines.append(f'    size {rotation_value}')
+        else:  # time-based rotation
+            config_lines.append(f'    {rotation_value}')
+        
+        config_lines.append(f'    rotate {retention_days}')
+        config_lines.append(f'    copytruncate')
+        config_lines.append(f'    missingok')
+        config_lines.append(f'    notifempty')
+        config_lines.append(f'    create 644 nginx nginx')
+        
+        if compress:
+            config_lines.append(f'    compress')
+            config_lines.append(f'    delaycompress')
+        
+        if postrotate_script:
+            config_lines.append(f'    postrotate')
+            config_lines.append(f'        {postrotate_script}')
+            config_lines.append(f'    endscript')
+        
+        config_lines.append('}')
+        config_lines.append('')
+    
+    return '\n'.join(config_lines)
