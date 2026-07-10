@@ -190,3 +190,31 @@ def fetch_all_process_io(interval):
         logger.error(f'获取所有进程的磁盘IO失败: {e}')
 
     return process_list
+def load_process_io(pid):
+    """
+    读取进程的IO信息
+    """
+    io_info = {}
+
+    try:
+        # 读取/proc/{pid}/io
+        with open(f'/proc/{pid}/io', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split(':', 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value_str = parts[1].strip()
+
+                    try:
+                        val = int(value_str)
+                        io_info[key] = val
+                    except ValueError:
+                        pass
+
+    except Exception as e:
+        # 忽略权限错误等异常
+        pass
+
+    return io_info
