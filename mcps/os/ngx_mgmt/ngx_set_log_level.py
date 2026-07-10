@@ -87,3 +87,101 @@ def save_config_file(cfg_filepath: str) -> str:
     except Exception as e:
         logger.error(f"备份配置文件失败: {e}")
         raise
+
+def fetch_current_error_log_config(cfg_filepath: str) -> Dict[str, Any]:
+    """
+    获取当前错误日志配置
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        
+    返回:
+        dict: 当前错误日志配置信息
+    """
+    current_config = {
+        'main_level': 'error',  # 默认级别
+        'http_level': None,
+        'server_levels': [],
+        'error_log_directives': []
+    }
+    
+    try:
+        if not os.path.exists(cfg_filepath):
+            return current_config
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 移除注释
+        body = re.sub(r'#.*$', '', body, flags=re.MULTILINE)  # NOSONAR
+        
+        # 解析主配置块中的error_log指令
+        main_pattern = r'error_log\s+([^;\n]+);'  # NOSONAR
+        main_matches = re.findall(main_pattern, body)  # NOSONAR
+        
+        for match in main_matches:
+            log_config = match.strip()
+            # 解析日志级别
+            for level in SUPPORTED_LOG_LEVELS:
+                if f' {level}' in log_config or log_config.endswith(level):
+                    current_config['main_level'] = level
+                    break
+            
+            current_config['error_log_directives'].append({
+                'scope': 'main',
+                'config': log_config,
+                'level': current_config['main_level']
+            })
+        
+        # 解析http块中的error_log指令
+        http_pattern = r'http\s*\{[^}]*error_log\s+([^;\n]+);[^}]*\}'  # NOSONAR
+        http_matches = re.finditer(http_pattern, body, re.DOTALL)  # NOSONAR
+        
+        for match in http_matches:
+            http_content = match.group(0)
+            error_log_match = re.search(r'error_log\s+([^;\n]+);', http_content)  # NOSONAR
+            if error_log_match:
+                log_config = error_log_match.group(1).strip()
+                level = 'error'  # 默认
+                for lvl in SUPPORTED_LOG_LEVELS:
+                    if f' {lvl}' in log_config or log_config.endswith(lvl):
+                        level = lvl
+                        break
+                
+                current_config['http_level'] = level
+                current_config['error_log_directives'].append({
+                    'scope': 'http',
+                    'config': log_config,
+                    'level': level
+                })
+        
+        # 解析server块中的error_log指令
+        server_pattern = r'server\s*\{([^}]+)\}'  # NOSONAR
+        server_matches = re.finditer(server_pattern, body, re.DOTALL)  # NOSONAR
+        
+        for i, match in enumerate(server_matches):
+            server_content = match.group(1)
+            error_log_match = re.search(r'error_log\s+([^;\n]+);', server_content)  # NOSONAR
+            if error_log_match:
+                log_config = error_log_match.group(1).strip()
+                level = 'error'  # 默认
+                for lvl in SUPPORTED_LOG_LEVELS:
+                    if f' {lvl}' in log_config or log_config.endswith(lvl):
+                        level = lvl
+                        break
+                
+                current_config['server_levels'].append({
+                    'server_index': i,
+                    'level': level,
+                    'config': log_config
+                })
+                current_config['error_log_directives'].append({
+                    'scope': f'server_{i}',
+                    'config': log_config,
+                    'level': level
+                })
+        
+    except Exception as e:
+        logger.error(f"获取当前错误日志配置失败: {e}")
+    
+    return current_config
