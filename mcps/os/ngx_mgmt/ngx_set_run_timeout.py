@@ -311,3 +311,22 @@ def certify_nginx_config():
         return {'valid': True} if output.returncode == 0 else {'valid': False, 'error': output.stderr}
     except Exception as e:
         return {'valid': False, 'error': str(e)}
+
+def reload_nginx_config(method):
+    """重新加载Nginx配置"""
+    try:
+        if method == 'graceful':
+            # 平滑重载
+            output = subprocess.run(['nginx', '-s', 'reload'], capture_output=True, text=True)
+        elif method == 'restart':
+            # 重启服务
+            output = subprocess.run(['systemctl', 'restart', 'nginx'], capture_output=True, text=True)
+            if output.returncode != 0:
+                # 尝试使用service命令
+                output = subprocess.run(['service', 'nginx', 'restart'], capture_output=True, text=True)
+        else:
+            return {'success': False, 'error': f'不支持的重载方式: {method}'}
+
+        return {'success': True} if output.returncode == 0 else {'success': False, 'error': output.stderr}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
