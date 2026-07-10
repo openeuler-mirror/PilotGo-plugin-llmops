@@ -85,3 +85,16 @@ def fetch_python_version():
         return platform.python_version()
     except Exception:
         return '未检测到'
+def fetch_java_version():
+    """
+    获取Java版本
+    """
+    try:
+        output = subprocess.run(['java', '-ver'], capture_output=True, text=True)
+        if output.returncode == 0:
+            for line in output.stderr.split('\n'):
+                if 'ver' in line:
+                    return line.strip().split()[2].strip('"')
+        return '未检测到'
+    except Exception:
+        return '未检测到'
