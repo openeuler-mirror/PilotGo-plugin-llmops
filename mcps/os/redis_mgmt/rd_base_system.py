@@ -443,3 +443,99 @@ def fetch_dependencies_info():
         logger.error(f'获取依赖库版本失败: {e}')
 
     return dependencies_info
+def fetch_redis_resource_usage(pid):
+    """
+    获取Redis资源使用情况
+    """
+    resource_usage = {}
+
+    try:
+        if os.path.exists(f'/proc/{pid}/status'):
+            with open(f'/proc/{pid}/status', 'r') as f:
+                status_lines = f.readlines()
+
+            for line in status_lines:
+                if line.startswith('VmPeak:'):
+                    resource_usage['虚拟内存峰值'] = line.split(':')[1].strip()
+                elif line.startswith('VmSize:'):
+                    resource_usage['虚拟内存大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmRSS:'):
+                    resource_usage['物理内存使用'] = line.split(':')[1].strip()
+                elif line.startswith('VmData:'):
+                    resource_usage['数据段大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmStk:'):
+                    resource_usage['栈大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmExe:'):
+                    resource_usage['代码段大小'] = line.split(':')[1].strip()
+                elif line.startswith('VmLib:'):
+                    resource_usage['库大小'] = line.split(':')[1].strip()
+                elif line.startswith('Threads:'):
+                    resource_usage['线程数'] = line.split(':')[1].strip()
+
+        if os.path.exists(f'/proc/{pid}/stat'):
+            with open(f'/proc/{pid}/stat', 'r') as f:
+                stat_data = f.read().split()
+
+            if len(stat_data) > 13:
+                utime = int(stat_data[13])
+                stime = int(stat_data[14])
+                total_time = utime + stime
+                resource_usage['CPU时间(用户态)'] = f"{utime} jiffies"
+                resource_usage['CPU时间(内核态)'] = f"{stime} jiffies"
+                resource_usage['总CPU时间'] = f"{total_time} jiffies"
+
+        output = subprocess.run(['ps', '-p', pid, '-o', 'pcpu,rss,vsz,etime'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split()
+                if len(parts) >= 4:
+                    resource_usage['CPU使用率'] = f"{parts[0]}%"
+                    resource_usage['物理内存(KB)'] = parts[1]
+                    resource_usage['虚拟内存(KB)'] = parts[2]
+                    resource_usage['运行时长'] = parts[3]
+
+        output = subprocess.run(['redis-cli', 'INFO', 'memory'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('used_memory:'):
+                    resource_usage['已用内存(字节)'] = line.split(':')[1]
+                elif line.startswith('used_memory_human:'):
+                    resource_usage['已用内存'] = line.split(':')[1]
+                elif line.startswith('used_memory_rss:'):
+                    resource_usage['RSS内存(字节)'] = line.split(':')[1]
+                elif line.startswith('used_memory_rss_human:'):
+                    resource_usage['RSS内存'] = line.split(':')[1]
+                elif line.startswith('used_memory_peak:'):
+                    resource_usage['内存峰值(字节)'] = line.split(':')[1]
+                elif line.startswith('used_memory_peak_human:'):
+                    resource_usage['内存峰值'] = line.split(':')[1]
+                elif line.startswith('used_memory_lua:'):
+                    resource_usage['Lua内存(字节)'] = line.split(':')[1]
+                elif line.startswith('mem_fragmentation_ratio:'):
+                    resource_usage['内存碎片率'] = line.split(':')[1]
+
+    except Exception as e:
+        logger.error(f'获取Redis资源使用情况失败: {e}')
+
+    return resource_usage
+
+TOOL_CONFIG = {
+    "name": "fetch_redis_base_system",
+    "function": fetch_redis_base_system,
+    "description": "采集Redis运行环境（OS/内核版本、CPU/内存/磁盘信息）、系统依赖库版本",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "system_type": {
+                "type": "string",
+                "description": "指定要采集的系统信息类型，可选值：os（操作系统信息）、cpu（CPU信息）、memory（内存信息）、disk（磁盘信息）、dependencies（依赖库版本）、all（所有系统信息）",
+                "enum": ["os", "cpu", "memory", "disk", "dependencies", "all"]
+            }
+        },
+        "required": []
+    }
+}
