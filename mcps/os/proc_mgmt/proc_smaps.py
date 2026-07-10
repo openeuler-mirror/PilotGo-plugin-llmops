@@ -41,8 +41,6 @@ def fetch_proc_smaps(pid, summary=None):
         return '\n'.join(out)
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
-        return f'Permission denied reading /proc/{pid}/smaps'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
