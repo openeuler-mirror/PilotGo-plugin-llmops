@@ -14,28 +14,26 @@ def fetch_proc_cgroup(pid):
         Formatted cgroup information string
     """
     try:
-
-    if pid is not None:
-        try:
+        if pid is not None:
             pid = int(pid)
-            if pid <= 0: return f'Invalid PID: {pid}'
-        except (ValueError,TypeError): return f'PID must be integer'
-        pid = str(int(pid))
-        path = f'/proc/{pid}/cgroup'
-        if not os.path.exists(path):
-            return f'Error: process {pid} not found'
-        with open(path) as f:
-            content = f.read().strip()
-        if not content:
-            return 'No cgroup entries found.'
-        out = [f'=== Cgroups for PID {pid} ===']
-        for line in content.split('\n'):
-            parts = line.split(':', 2)
-            if len(parts) == 3:
-                out.append(f'Hierarchy {parts[0]:>2}  {parts[1]:<20}  {parts[2]}')
-            else:
-                out.append(line)
-        return '\n'.join(out)
+            if pid <= 0:
+                return f'Invalid PID: {pid}'
+            pid_path = f'/proc/{pid}/cgroup'
+            if not os.path.exists(pid_path):
+                return f'Error: process {pid} not found'
+            with open(pid_path) as f:
+                content = f.read().strip()
+            if not content:
+                return 'No cgroup entries found.'
+            out = [f'=== Cgroups for PID {pid} ===']
+            for line in content.split('\n'):
+                parts = line.split(':', 2)
+                if len(parts) == 3:
+                    out.append(f'Hierarchy {parts[0]:>2}  {parts[1]:<20}  {parts[2]}')
+                else:
+                    out.append(line)
+            return '\n'.join(out)
+        return 'Error: pid is required'
     except ValueError:
         return f'Error: invalid PID: {pid}'
     except PermissionError as e:
