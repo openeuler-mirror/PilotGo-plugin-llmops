@@ -181,3 +181,9 @@ def fetch_config_paths() -> Dict:
             'vhosts_dir': '获取失败',
             'conf_d_dir': '获取失败'
         }
+
+def build_default_backup_path() -> str:
+    """创建默认备份路径"""
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    default_path = f"/tmp/nginx_backup_{timestamp}"  # NOSONAR
+    return default_path
