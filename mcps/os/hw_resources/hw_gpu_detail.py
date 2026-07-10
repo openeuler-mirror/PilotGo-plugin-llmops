@@ -627,3 +627,52 @@ def analyze_macos_monitor(output):
     except Exception as e:
         logger.error(f'解析macOS显示器输出失败: {e}')
         return []
+def analyze_windows_video(output):
+    """
+    解析Windows wmic命令输出
+
+    参数:
+        output: wmic命令输出
+
+    返回:
+        显卡信息列表
+    """
+    try:
+        video_cards = []
+        lines = output.strip().split('\n')[1:]
+
+        for line in lines:
+            if line.strip():
+                parts = line.split()
+                if len(parts) >= 5:
+                    label = ' '.join(parts[:-4])
+                    memory = parts[-4]
+                    driver = parts[-3]
+                    driver_date = parts[-2]
+                    device_id = parts[-1]
+
+                    # 转换显存大小
+                    try:
+                        memory_mb = int(memory) // (1024 * 1024)
+                        memory_str = f"{memory_mb} MB"
+                    except Exception:
+                        memory_str = 'Unknown'
+
+                    card = {
+                        'model': label,
+                        'vendor': 'Unknown',
+                        'memory': memory_str,
+                        'driver': driver,
+                        'interface': 'Unknown',
+                        'pci_address': device_id,
+                        'device_id': device_id,
+                        'driver_date': driver_date,
+                        'status': 'Unknown'
+                    }
+                    video_cards.append(card)
+
+        return video_cards
+
+    except Exception as e:
+        logger.error(f'解析Windows显卡输出失败: {e}')
+        return []
