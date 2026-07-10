@@ -161,3 +161,38 @@ def fetch_cpu_usage(interval):
     except Exception as e:
         logger.error(f'获取CPU使用率失败: {e}')
         return {}
+def fetch_load_average():
+    """
+    获取系统负载
+    """
+    try:
+        # 读取/proc/loadavg
+        with open('/proc/loadavg', 'r') as f:
+            parts = f.read().strip().split()
+            if len(parts) >= 3:
+                return {
+                    '1分钟负载': parts[0],
+                    '5分钟负载': parts[1],
+                    '15分钟负载': parts[2]
+                }
+    except Exception:
+        pass
+
+    return {}
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_perf_cpu_real",
+    "function": fetch_perf_cpu_real,
+    "description": "采集CPU实时性能（每个CPU核心的使用率/空闲/系统/用户/软中断/硬中断占比）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "interval": {
+                "type": "string",
+                "description": "采样间隔（秒），如 \"1\""
+            }
+        },
+        "required": []
+    }
+}
