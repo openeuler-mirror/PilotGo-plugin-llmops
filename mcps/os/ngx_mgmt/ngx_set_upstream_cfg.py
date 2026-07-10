@@ -116,3 +116,82 @@ def locate_upstream_block(upstream_name: str, config_content: str) -> Tuple[Opti
     except Exception as e:
         logger.error(f"查找上游服务配置块失败: {e}")
         return None, -1, -1
+
+def analyze_existing_upstream_config(upstream_content: str) -> Dict[str, Any]:
+    """
+    解析现有的上游服务配置
+    
+    参数:
+        upstream_content: upstream块内容
+        
+    返回:
+        dict: 现有配置信息
+    """
+    settings = {
+        'servers': [],
+        'load_balancing': {},
+        'timeout_settings': {},
+        'retry_mechanism': {},
+        'health_check': {},
+        'other_configs': {}
+    }
+    
+    try:
+        # 解析服务器配置
+        server_pattern = r'server\s+([^;]+);'  # NOSONAR
+        server_matches = re.finditer(server_pattern, upstream_content)  # NOSONAR
+        
+        for match in server_matches:
+            server_config = match.group(1).strip()
+            settings['servers'].append(server_config)
+        
+        # 解析负载均衡策略
+        lb_methods = ['ip_hash', 'least_conn', 'hash', 'sticky']
+        for method in lb_methods:
+            if re.search(rf'\b{method}\b', upstream_content):  # NOSONAR
+                settings['load_balancing']['method'] = method
+                if method == 'hash':
+                    hash_match = re.search(r'hash\s+([^;]+);', upstream_content)  # NOSONAR
+                    if hash_match:
+                        settings['load_balancing']['hash_key'] = hash_match.group(1).strip()
+        
+        # 解析超时设置
+        timeout_patterns = {
+            'proxy_connect_timeout': r'proxy_connect_timeout\s+([^;]+);',
+            'proxy_send_timeout': r'proxy_send_timeout\s+([^;]+);',
+            'proxy_read_timeout': r'proxy_read_timeout\s+([^;]+);',
+            'keepalive_timeout': r'keepalive_timeout\s+([^;]+);'
+        }
+        
+        for key, pattern in timeout_patterns.items():
+            match = re.search(pattern, upstream_content)  # NOSONAR
+            if match:
+                settings['timeout_settings'][key] = match.group(1).strip()
+        
+        # 解析重试机制
+        retry_patterns = {
+            'proxy_next_upstream': r'proxy_next_upstream\s+([^;]+);',
+            'proxy_next_upstream_timeout': r'proxy_next_upstream_timeout\s+([^;]+);',
+            'proxy_next_upstream_tries': r'proxy_next_upstream_tries\s+([^;]+);'
+        }
+        
+        for key, pattern in retry_patterns.items():
+            match = re.search(pattern, upstream_content)  # NOSONAR
+            if match:
+                settings['retry_mechanism'][key] = match.group(1).strip()
+        
+        # 解析熔断阈值（服务器级别的）
+        for server_config in settings['servers']:
+            if 'max_fails=' in server_config:
+                max_fails_match = re.search(r'max_fails=(\d+)', server_config)  # NOSONAR
+                if max_fails_match:
+                    settings['other_configs']['max_fails'] = max_fails_match.group(1)
+            if 'fail_timeout=' in server_config:
+                fail_timeout_match = re.search(r'fail_timeout=([^\s]+)', server_config)  # NOSONAR
+                if fail_timeout_match:
+                    settings['other_configs']['fail_timeout'] = fail_timeout_match.group(1)
+        
+    except Exception as e:
+        logger.error(f"解析现有上游服务配置失败: {e}")
+    
+    return settings
