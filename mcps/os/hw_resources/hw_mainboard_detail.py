@@ -483,3 +483,35 @@ def fetch_mobo_extended_info():
     except Exception as e:
         logger.error(f'获取主板扩展信息失败: {e}')
         return None
+def fetch_mobo_interface_info():
+    """
+    获取主板接口信息
+
+    返回:
+        主板接口信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['dmidecode', '-t', 'baseboard'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    interface_info = []
+                    for line in lines:
+                        stripped_line = line.strip()
+                        if stripped_line.startswith('Board Type:') or \
+                           stripped_line.startswith('Board Version:') or \
+                           stripped_line.startswith('Board Serial Number:') or \
+                           stripped_line.startswith('Board Asset Tag:') or \
+                           stripped_line.startswith('Board Features:') or \
+                           stripped_line.startswith('Board Location In Chassis:'):
+                            interface_info.append(stripped_line)
+                    return '\n'.join(interface_info[:10])
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取主板接口信息失败: {e}')
+        return None
