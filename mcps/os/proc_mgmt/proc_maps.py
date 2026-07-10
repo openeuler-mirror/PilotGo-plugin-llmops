@@ -15,6 +15,8 @@ def fetch_proc_maps(pid):
     """
     try:
         pid = str(int(pid))
+        if int(pid) <= 0:
+            return f'Error: invalid PID {pid} (must be positive)'
         path = f'/proc/{pid}/maps'
         if not os.path.exists(path):
             return f'Error: process {pid} not found'
