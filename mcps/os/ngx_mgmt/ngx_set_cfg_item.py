@@ -595,3 +595,67 @@ def reload_nginx_config() -> Dict:
             "message": f"配置重载失败: {e}",
             "error": str(e)
         }
+
+def fetch_config_item_recommendations(item_name: str) -> Dict:
+    """
+    获取配置项推荐值
+    
+    Args:
+        item_name: 配置项名称
+    
+    Returns:
+        dict: 推荐值信息
+    """
+    try:
+        recommendations = {
+            'worker_processes': {
+                'description': '工作进程数',
+                'recommended': 'auto',
+                'explanation': '自动设置为CPU核心数，通常是最佳选择',
+                'alternatives': ['2', '4', '8']
+            },
+            'worker_connections': {
+                'description': '每个工作进程的最大连接数',
+                'recommended': '1024',
+                'explanation': '对于大多数应用足够，高并发场景可适当增加',
+                'alternatives': ['2048', '4096', '8192']
+            },
+            'keepalive_timeout': {
+                'description': '保持连接超时时间',
+                'recommended': '65',
+                'explanation': '平衡连接复用和资源占用',
+                'alternatives': ['30', '60', '120']
+            },
+            'client_max_body_size': {
+                'description': '客户端请求体最大大小',
+                'recommended': '10m',
+                'explanation': '适合大多数文件上传场景',
+                'alternatives': ['1m', '50m', '100m']
+            },
+            'sendfile': {
+                'description': '是否启用sendfile',
+                'recommended': 'on',
+                'explanation': '提高静态文件传输效率',
+                'alternatives': ['off']
+            }
+        }
+        
+        recommendation = recommendations.get(item_name)
+        if recommendation:
+            return {
+                "found": True,
+                "item_name": item_name,
+                "recommendation": recommendation
+            }
+        else:
+            return {
+                "found": False,
+                "message": f"未找到配置项 '{item_name}' 的推荐值"
+            }
+        
+    except Exception as e:
+        logger.error(f"获取配置项推荐值失败: {e}")
+        return {
+            "found": False,
+            "error": f"获取推荐值失败: {e}"
+        }
