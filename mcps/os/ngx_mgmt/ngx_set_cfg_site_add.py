@@ -317,3 +317,17 @@ def produce_ssl_config(site_name):
         "    ssl_session_cache shared:SSL:10m;",
         "    ssl_session_timeout 10m;"
     ]
+
+def produce_config_file_path(config_dir, site_name):
+    """生成配置文件路径"""
+    try:
+        # 确保目录存在
+        os.makedirs(config_dir, exist_ok=True)
+
+        # 生成文件名
+        filename = f"{site_name}.conf"
+        return os.path.join(config_dir, filename)
+
+    except Exception as e:
+        logger.error(f'生成配置文件路径失败: {str(e)}')
+        return None
