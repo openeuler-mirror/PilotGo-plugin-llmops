@@ -245,3 +245,13 @@ def examine_memory_pressure() -> Dict[str, Any]:
         pressure['error'] = str(e)
 
     return pressure
+def derive_pressure_value(line: str, key: str) -> float:
+    """从压力行中提取值"""
+    try:
+        pattern = rf'{key}=(\d+\.?\d*)'
+        match = re.search(pattern, line)
+        if match:
+            return float(match.group(1))
+    except Exception:
+        pass
+    return 0.0
