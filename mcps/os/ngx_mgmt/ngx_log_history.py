@@ -530,3 +530,83 @@ def analyze_log_time(log_line, log_type):
     except Exception as e:
         logger.error(f'解析日志时间失败: {e}')
         return None
+
+def produce_statistics(log_content, log_type):
+    """
+    生成统计信息
+
+    参数:
+        log_content: 日志内容
+        log_type: 日志类型
+
+    返回:
+        list: 统计信息列表
+    """
+    try:
+        stats = []
+
+        if log_type == 'access':
+            # 访问日志统计
+            status_codes = {}
+            ip_addresses = {}
+            urls = {}
+
+            for line in log_content:
+                # 解析状态码
+                status_match = re.search(r' (\d{3}) ', line)  # NOSONAR
+                if status_match:
+                    state = status_match.group(1)
+                    status_codes[state] = status_codes.get(state, 0) + 1
+
+                # 解析IP地址
+                ip_match = re.search(r'^[^\[]*\[[^\]]*\] (\S+)', line)  # NOSONAR
+                if ip_match:
+                    ip = ip_match.group(1)
+                    ip_addresses[ip] = ip_addresses.get(ip, 0) + 1
+
+                # 解析URL（简化版）
+                url_match = re.search(r'\"(GET|POST|PUT|DELETE) ([^\s]+)', line)  # NOSONAR
+                if url_match:
+                    url = url_match.group(2)
+                    urls[url] = urls.get(url, 0) + 1
+
+            # 添加统计信息
+            if status_codes:
+                stats.append("状态码分布:")
+                for code, count in sorted(status_codes.items(), key=lambda x: x[1], reverse=True)[:10]:
+                    stats.append(f"  {code}: {count} 次")
+
+            if ip_addresses:
+                stats.append("IP访问统计 (前10):")
+                for ip, count in sorted(ip_addresses.items(), key=lambda x: x[1], reverse=True)[:10]:
+                    stats.append(f"  {ip}: {count} 次")
+
+            if urls:
+                stats.append("URL访问统计 (前10):")
+                for url, count in sorted(urls.items(), key=lambda x: x[1], reverse=True)[:10]:
+                    stats.append(f"  {url}: {count} 次")
+
+        elif log_type == 'error':
+            # 错误日志统计
+            error_levels = {}
+
+            for line in log_content:
+                # 解析错误级别
+                level_match = re.search(r'\[(emerg|alert|crit|error|warn|notice|info|debug)\]', line)  # NOSONAR
+                if level_match:
+                    level = level_match.group(1)
+                    error_levels[level] = error_levels.get(level, 0) + 1
+
+            if error_levels:
+                stats.append("错误级别分布:")
+                for level, count in sorted(error_levels.items(), key=lambda x: x[1], reverse=True):
+                    stats.append(f"  {level}: {count} 次")
+
+        if not stats:
+            stats.append("无统计信息可用")
+
+        return stats
+
+    except Exception as e:
+        logger.error(f'生成统计信息失败: {e}')
+        return ["统计信息生成失败"]
