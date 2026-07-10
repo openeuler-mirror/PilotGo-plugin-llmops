@@ -91,3 +91,13 @@ def fetch_net_hosts():
     except Exception as e:
         logger.error(f'获取hosts配置失败: {e}')
         return f'获取hosts配置失败: {e}'
+def load_hosts_file():
+    """
+    读取/etc/hosts文件
+    """
+    try:
+        with open('/etc/hosts', 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f'读取hosts文件失败: {e}')
+        return None
