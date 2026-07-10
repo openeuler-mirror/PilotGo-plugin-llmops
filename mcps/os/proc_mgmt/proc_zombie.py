@@ -12,7 +12,7 @@ def fetch_proc_zombie():
         List of zombie processes or confirmation of none found.
     """
     try:
-        result = subprocess.run(['ps', 'aux', '--no-headers'], capture_output=True, text=True)
+        result = subprocess.run(['ps', '-eo', 'pid,ppid,stat,comm', '--no-headers'], capture_output=True, text=True)
         if result.returncode != 0:
             return f'Error: ps failed: {result.stderr}'
         out = ['=== Zombie Processes (defunct) ===']
@@ -20,16 +20,18 @@ def fetch_proc_zombie():
         for line in result.stdout.strip().split('\n'):
             if not line:
                 continue
-            parts = line.split(None, 10)
-            if len(parts) >= 8 and 'Z' in parts[7]:
-                ppid = parts[3]
+            parts = line.split(None, 3)
+            if len(parts) >= 3 and 'Z' in parts[2]:
+                pid = parts[0]
+                ppid = parts[1]
+                pname = parts[3][:50] if len(parts) > 3 else ''
                 ppname = ''
                 try:
                     with open(f'/proc/{ppid}/comm') as f:
                         ppname = f.read().strip()
                 except (OSError, FileNotFoundError):
                     ppname = '(exited)'
-                out.append(f'  PID:{parts[1]:>7}  PPID:{ppid:>7}({ppname})  {parts[10][:50] if len(parts)>10 else ""}')
+                out.append(f'  PID:{pid:>7}  PPID:{ppid:>7}({ppname})  {pname}')
                 count += 1
         if count == 0:
             out.append('No zombie processes found.')
