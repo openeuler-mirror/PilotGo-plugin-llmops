@@ -27,20 +27,19 @@ def fetch_proc_stat(pid):
             return f'Error: process {pid} not found'
         with open(path) as f:
             raw = f.read().strip()
-        name_end = raw.rfind(')')
-        if name_end == -1:
+        lparen = raw.find('(')
+        rparen = raw.find(')', lparen) if lparen >= 0 else -1
+        if lparen == -1 or rparen == -1:
             return f'Error: malformed stat for PID {pid}'
-        head = raw[:name_end+1]
-        tail = raw[name_end+2:]
-        fields = [raw[:name_end].split('(', 1)[0]] + [head] + tail.split()
+        pid_str = raw[:lparen-1] if lparen > 0 else raw[:lparen]
+        comm = raw[lparen:rparen+1]
+        fields = [pid_str] + [comm] + raw[rparen+2:].split()
         out = [f'=== Process Stat for PID {pid} ===']
         for i, (name, val) in enumerate(zip(STAT_FIELDS, fields)):
             out.append(f'  {name:<14} {val}')
         return '\n'.join(out)
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
-        return f'Permission denied reading /proc/{pid}/stat'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
