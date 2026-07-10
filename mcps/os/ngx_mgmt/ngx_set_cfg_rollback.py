@@ -240,3 +240,45 @@ def locate_target_backup(backup_path: str, target_version: Optional[str] = None)
     except Exception as e:
         logger.error(f'查找目标备份失败: {e}')
         return None
+
+def examine_backup_file(file_path: str) -> Optional[Dict]:
+    """分析备份文件信息"""
+    try:
+        filename = os.path.basename(file_path)
+        file_stat = os.stat(file_path)
+
+        # 提取时间戳
+        timestamp_match = re.search(r'(\d{8}_\d{6})', filename)  # NOSONAR
+        timestamp_str = timestamp_match.group(1) if timestamp_match else None
+
+        # 解析时间戳
+        timestamp = 0
+        if timestamp_str:
+            try:
+                dt = datetime.datetime.strptime(timestamp_str, '%Y%m%d_%H%M%S')
+                timestamp = dt.timestamp()
+            except Exception:
+                pass
+
+        # 如果没有时间戳，使用文件修改时间
+        if timestamp == 0:
+            timestamp = file_stat.st_mtime
+            timestamp_str = datetime.datetime.fromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+
+        # 推断原始文件路径
+        original_path = infer_original_path(filename, file_path)
+
+        return {
+            'path': file_path,
+            'filename': filename,
+            'timestamp': timestamp,
+            'timestamp_str': timestamp_str,
+            'version': timestamp_str,
+            'size': file_stat.st_size,
+            'original_path': original_path,
+            'modified_time': datetime.datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f'分析备份文件失败: {e}')
+        return None
