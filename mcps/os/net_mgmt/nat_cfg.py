@@ -188,3 +188,35 @@ def display_rule_info(output, index, rule):
         output.append(f"    目标端口: {rule['目标端口']}")
     if '动作' in rule:
         output.append(f"    动作: {rule['动作']}")
+def fetch_rule_stats(snat_rules, dnat_rules):
+    """
+    获取规则统计
+    """
+    stats = {}
+
+    try:
+        # 统计规则数量
+        stats['总规则数'] = len(snat_rules) + len(dnat_rules)
+        stats['SNAT规则数'] = len(snat_rules)
+        stats['DNAT规则数'] = len(dnat_rules)
+
+        # 统计不同链的规则数
+        chains = {}
+        for rule in snat_rules + dnat_rules:
+            chain = rule.get('链', '未知')
+            chains[chain] = chains.get(chain, 0) + 1
+        if chains:
+            stats['链统计'] = chains
+
+        # 统计不同协议的规则数
+        protocols = {}
+        for rule in snat_rules + dnat_rules:
+            protocol = rule.get('协议', '未知')
+            protocols[protocol] = protocols.get(protocol, 0) + 1
+        if protocols:
+            stats['协议统计'] = protocols
+
+    except Exception as e:
+        logger.error(f'获取规则统计失败: {e}')
+
+    return stats
