@@ -347,3 +347,33 @@ def fetch_bridge_stats(bridge_interfaces):
         logger.error(f'获取网桥统计失败: {e}')
 
     return stats
+def verify_bridge_status(bridge_interfaces):
+    """
+    检查网桥状态
+    """
+    checks = []
+
+    try:
+        for interface in bridge_interfaces:
+            # 检查网桥状态
+            state = fetch_bridge_status(interface)
+            if state.get('状态') == 'DOWN':
+                checks.append(f"网桥接口 {interface} 状态为DOWN")
+            if state.get('运行状态') == '未运行':
+                checks.append(f"网桥接口 {interface} 未运行")
+
+            # 检查桥接网卡
+            ports = fetch_bridge_ports(interface)
+            if not ports:
+                checks.append(f"网桥接口 {interface} 未配置桥接网卡")
+
+            # 检查STP状态（对于多端口网桥）
+            if len(ports) > 1:
+                stp = fetch_bridge_stp(interface)
+                if stp.get('STP状态') == '禁用':
+                    checks.append(f"警告: 多端口网桥 {interface} 未启用STP")
+
+    except Exception as e:
+        logger.error(f'检查网桥状态失败: {e}')
+
+    return checks
