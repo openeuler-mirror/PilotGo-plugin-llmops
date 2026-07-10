@@ -80,3 +80,42 @@ def fetch_net_firewall_rule():
     except Exception as e:
         logger.error(f'获取防火墙规则失败: {e}')
         return f'获取防火墙规则失败: {e}'
+def fetch_iptables_rules():
+    """
+    获取iptables规则
+    """
+    rules = []
+
+    try:
+        # 检查iptables是否可用
+        output = subprocess.run(['which', 'iptables'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            # 获取filter表规则
+            filter_result = subprocess.run(['iptables', '-L', '-n', '--line-numbers'], capture_output=True, text=True)
+
+            if filter_result.returncode == 0:
+                lines = filter_result.stdout.strip().split('\n')
+                chain = ''
+                for line in lines:
+                    if line.startswith('Chain'):
+                        chain = line.strip()
+                        rules.append(f"{chain}")
+                    elif line and not line.startswith('target') and not line.startswith('---'):
+                        rules.append(f"  {line.strip()}")
+
+            # 获取nat表规则
+            nat_result = subprocess.run(['iptables', '-t', 'nat', '-L', '-n', '--line-numbers'], capture_output=True, text=True)
+
+            if nat_result.returncode == 0:
+                lines = nat_result.stdout.strip().split('\n')
+                if lines:
+                    rules.append("\nnat表:")
+                    for line in lines:
+                        if line:
+                            rules.append(f"  {line.strip()}")
+
+    except Exception as e:
+        logger.error(f'获取iptables规则失败: {e}')
+
+    return rules
