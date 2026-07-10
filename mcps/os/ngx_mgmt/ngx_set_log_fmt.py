@@ -325,3 +325,50 @@ def add_log_format_to_config(cfg_filepath: str, format_name: str,
     except Exception as e:
         logger.error(f"添加日志格式到配置文件失败: {e}")
         return False, f"添加失败: {e}"
+
+def modify_existing_log_format(cfg_filepath: str, format_name: str, 
+                              new_format_content: str) -> Tuple[bool, str]:
+    """
+    修改现有的日志格式
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        format_name: 格式名称
+        new_format_content: 新的格式内容
+        
+    返回:
+        tuple: (是否成功，消息)
+    """
+    try:
+        # 安全验证：验证 cfg_filepath 路径参数（允许绝对路径）
+        valid, err_text = validate_path_param(cfg_filepath, allow_absolute=True)
+        if not valid:
+            logger.error(f"modify_existing_log_format: cfg_filepath 路径验证失败：{err_text}")
+            return False, f"配置文件路径不安全：{err_text}"
+        
+        # 安全验证：验证 format_name 标识符参数
+        valid, err_text = validate_identifier_param(format_name)
+        if not valid:
+            logger.error(f"modify_existing_log_format: format_name 验证失败：{err_text}")
+            return False, f"格式名称不安全：{err_text}"
+        
+        if not os.path.exists(cfg_filepath):
+            return False, f"配置文件不存在：{cfg_filepath}"
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 查找并替换现有的log_format
+        pattern = rf'(log_format\s+{format_name}\s*{{)[^}}]+(}})'  # NOSONAR
+        replacement = rf'\1{new_format_content}\2'
+        
+        new_content = re.sub(pattern, replacement, body, flags=re.DOTALL)  # NOSONAR
+        
+        if new_content == body:
+            return False, f"未找到格式 '{format_name}'"
+        
+        return True, new_content
+        
+    except Exception as e:
+        logger.error(f"修改现有日志格式失败: {e}")
+        return False, f"修改失败: {e}"
