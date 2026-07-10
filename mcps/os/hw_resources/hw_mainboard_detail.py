@@ -110,3 +110,124 @@ def fetch_hw_mobo_info(mobo_type=None):
     except Exception as e:
         logger.error(f'获取主板信息失败: {e}')
         return f'获取主板信息失败: {e}'
+def fetch_mobo_details():
+    """
+    获取主板详细信息
+
+    返回:
+        主板详细信息字典
+    """
+    try:
+        mobo_info = {
+            'vendor': 'Unknown',
+            'model': 'Unknown',
+            'serial': 'Unknown',
+            'chipset': 'Unknown',
+            'form_factor': 'Unknown',
+            'max_memory': 'Unknown',
+            'memory_slots': 'Unknown'
+        }
+
+        if platform.system() == 'Linux':
+            # 尝试使用dmidecode获取主板信息（不使用sudo）
+            try:
+                output = subprocess.run(['dmidecode', '-t', 'baseboard'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mobo_info = analyze_dmidecode_baseboard(output.stdout, mobo_info)
+            except (subprocess.SubprocessError, FileNotFoundError):
+                pass
+
+            # 尝试使用lshw命令获取主板信息（不使用sudo）
+            try:
+                output = subprocess.run(['lshw', '-class', 'bus'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mobo_info = analyze_lshw_baseboard(output.stdout, mobo_info)
+            except (subprocess.SubprocessError, FileNotFoundError):
+                # 如果lshw不可用，使用备用方法
+                mobo_info = fetch_fallback_mobo_info(mobo_info)
+
+            # 尝试从/sys/class/dmi获取主板信息
+            try:
+                dmi_path = '/sys/class/dmi/id'
+                if os.path.exists(dmi_path):
+                    board_vendor_file = os.path.join(dmi_path, 'board_vendor')
+                    board_name_file = os.path.join(dmi_path, 'board_name')
+                    board_serial_file = os.path.join(dmi_path, 'board_serial')
+
+                    if os.path.exists(board_vendor_file):
+                        with open(board_vendor_file, 'r') as f:
+                            mobo_info['vendor'] = f.read().strip()
+
+                    if os.path.exists(board_name_file):
+                        with open(board_name_file, 'r') as f:
+                            mobo_info['model'] = f.read().strip()
+
+                    if os.path.exists(board_serial_file):
+                        with open(board_serial_file, 'r') as f:
+                            mobo_info['serial'] = f.read().strip()
+            except Exception:
+                pass
+
+            # 尝试获取芯片组信息
+            try:
+                output = subprocess.run(['lspci', '-nn'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    chipset_info = analyze_chipset_info(output.stdout)
+                    if chipset_info:
+                        mobo_info['chipset'] = chipset_info
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Darwin':
+            # macOS系统
+            try:
+                # 获取主板信息
+                output = subprocess.run(['system_profiler', 'SPHardwareDataType'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mobo_info = analyze_macos_baseboard(output.stdout, mobo_info)
+            except subprocess.SubprocessError:
+                pass
+
+            # 获取芯片组信息
+            try:
+                output = subprocess.run(['system_profiler', 'SPPCIDataType'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    chipset_info = analyze_macos_chipset(output.stdout)
+                    if chipset_info:
+                        mobo_info['chipset'] = chipset_info
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Windows':
+            # Windows系统
+            try:
+                # 获取主板信息
+                output = subprocess.run(['wmic', 'baseboard', 'get', 'Manufacturer,Product,SerialNumber,Version'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mobo_info = analyze_windows_baseboard(output.stdout, mobo_info)
+            except subprocess.SubprocessError:
+                pass
+
+            # 获取芯片组信息
+            try:
+                output = subprocess.run(['wmic', 'path', 'Win32_PnPEntity', 'where', '"DeviceID like \'%PCI\\\\VEN%&DEV%\'"', 'get', 'Name,DeviceID'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    chipset_info = analyze_windows_chipset(output.stdout)
+                    if chipset_info:
+                        mobo_info['chipset'] = chipset_info
+            except subprocess.SubprocessError:
+                pass
+
+        return mobo_info
+
+    except Exception as e:
+        logger.error(f'获取主板详细信息失败: {e}')
+        return {
+            'vendor': 'Unknown',
+            'model': 'Unknown',
+            'serial': 'Unknown',
+            'chipset': 'Unknown',
+            'form_factor': 'Unknown',
+            'max_memory': 'Unknown',
+            'memory_slots': 'Unknown'
+        }
