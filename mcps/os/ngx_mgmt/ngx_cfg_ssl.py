@@ -287,3 +287,132 @@ def fetch_ssl_config_files(main_config_path: str) -> List[str]:
     except Exception as e:
         logger.error(f'获取SSL配置文件列表失败: {e}')
         return []
+
+def examine_ssl_security(ssl_configs: List[Dict]) -> Dict[str, Union[List, Dict]]:
+    """
+    分析SSL安全性
+
+    参数:
+        ssl_configs: SSL配置列表
+
+    返回:
+        dict: 包含安全性分析的字典
+    """
+    security_analysis = {
+        'protocols': {
+            'secure': ['TLSv1.2', 'TLSv1.3'],
+            'insecure': ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1'],
+            'found': set(),
+            'issues': []
+        },
+        'ciphers': {
+            'secure': [],
+            'insecure': [],
+            'found': set(),
+            'issues': []
+        },
+        'certificates': {
+            'valid': 0,
+            'expired': 0,
+            'expiring_soon': 0,  # 30天内过期
+            'issues': []
+        },
+        'other_settings': {
+            'ssl_prefer_server_ciphers': {
+                'recommended': 'on',
+                'found': [],
+                'issues': []
+            },
+            'ssl_session_cache': {
+                'recommended': 'shared:SSL:10m',
+                'found': [],
+                'issues': []
+            },
+            'ssl_stapling': {
+                'recommended': 'on',
+                'found': [],
+                'issues': []
+            },
+            'http2': {
+                'recommended': 'enabled',
+                'found': [],
+                'issues': []
+            }
+        }
+    }
+
+    try:
+        # 分析协议
+        for config in ssl_configs:
+            if config.get('ssl_protocols'):
+                protocols = config['ssl_protocols'].split()
+                for protocol in protocols:
+                    security_analysis['protocols']['found'].add(protocol)
+
+                    if protocol in security_analysis['protocols']['insecure']:
+                        security_analysis['protocols']['issues'].append(
+                            f"不安全的协议: {protocol} (服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                        )
+
+        # 分析证书
+        for config in ssl_configs:
+            if config.get('ssl_certificate'):
+                cert_info = fetch_ssl_cert_info(config['ssl_certificate'])
+
+                if cert_info.get('valid'):
+                    if cert_info.get('is_expired'):
+                        security_analysis['certificates']['expired'] += 1
+                        security_analysis['certificates']['issues'].append(
+                            f"证书已过期: {config['ssl_certificate']} (服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                        )
+                    elif cert_info.get('days_until_expiry', 0) <= 30:
+                        security_analysis['certificates']['expiring_soon'] += 1
+                        security_analysis['certificates']['issues'].append(
+                            f"证书即将过期: {config['ssl_certificate']} (剩余天数: {cert_info.get('days_until_expiry')}, 服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                        )
+                    else:
+                        security_analysis['certificates']['valid'] += 1
+                else:
+                    security_analysis['certificates']['issues'].append(
+                        f"证书无效: {config['ssl_certificate']} (错误: {cert_info.get('error', 'Unknown')}, 服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                    )
+
+        # 分析其他设置
+        for config in ssl_configs:
+            # ssl_prefer_server_ciphers
+            if config.get('ssl_prefer_server_ciphers'):
+                security_analysis['other_settings']['ssl_prefer_server_ciphers']['found'].append(config['ssl_prefer_server_ciphers'])
+                if config['ssl_prefer_server_ciphers'] != 'on':
+                    security_analysis['other_settings']['ssl_prefer_server_ciphers']['issues'].append(
+                        f"建议设置 ssl_prefer_server_ciphers 为 on (服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                    )
+
+            # ssl_session_cache
+            if config.get('ssl_session_cache'):
+                security_analysis['other_settings']['ssl_session_cache']['found'].append(config['ssl_session_cache'])
+                if 'shared' not in config['ssl_session_cache']:
+                    security_analysis['other_settings']['ssl_session_cache']['issues'].append(
+                        f"建议使用共享SSL会话缓存 (服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                    )
+
+            # ssl_stapling
+            if config.get('ssl_stapling'):
+                security_analysis['other_settings']['ssl_stapling']['found'].append(config['ssl_stapling'])
+                if config['ssl_stapling'] != 'on':
+                    security_analysis['other_settings']['ssl_stapling']['issues'].append(
+                        f"建议启用SSL证书钉扎 (服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                    )
+
+            # http2
+            if config.get('http2_enabled'):
+                security_analysis['other_settings']['http2']['found'].append('enabled')
+            else:
+                security_analysis['other_settings']['http2']['issues'].append(
+                    f"建议启用HTTP/2以提高性能 (服务器: {', '.join(config.get('server_names', ['Unknown']))})"
+                )
+
+        return security_analysis
+
+    except Exception as e:
+        logger.error(f'分析SSL安全性失败: {e}')
+        return security_analysis
