@@ -416,3 +416,105 @@ def examine_ssl_security(ssl_configs: List[Dict]) -> Dict[str, Union[List, Dict]
     except Exception as e:
         logger.error(f'分析SSL安全性失败: {e}')
         return security_analysis
+
+def nginx_config_ssl() -> Dict:
+    """
+    获取SSL相关配置（证书路径/有效期/加密协议、HTTPS开启状态）
+
+    返回:
+        dict: 包含SSL配置信息的字典
+    """
+    try:
+        # 检查Nginx安装状态
+        nginx_status = check_nginx_installation()
+        if not nginx_status.get('installed', False):
+            return {
+                'error': 'Nginx未安装',
+                'suggestion': nginx_status.get('suggestion', '请安装Nginx')
+            }
+
+        # 获取主配置文件路径
+        cfg_state = get_nginx_config_info()
+        main_config_path = cfg_state.get('config_file', '/etc/nginx/nginx.conf')
+
+        # 检查主配置文件是否存在
+        if not os.path.exists(main_config_path):
+            return {
+                'error': f'主配置文件不存在: {main_config_path}',
+                'suggestion': '请检查Nginx配置文件路径'
+            }
+
+        # 获取所有包含SSL配置的文件
+        ssl_config_files = fetch_ssl_config_files(main_config_path)
+
+        if not ssl_config_files:
+            return {
+                'ssl_enabled': False,
+                'message': '未找到SSL配置',
+                'ssl_config_files': ssl_config_files
+            }
+
+        # 解析SSL配置
+        all_ssl_configs = []
+        for config_file in ssl_config_files:
+            try:
+                body = Path(config_file).read_text()
+
+                ssl_configs = analyze_ssl_config(body)
+                for config in ssl_configs:
+                    config['config_file'] = config_file
+
+                all_ssl_configs.extend(ssl_configs)
+
+            except Exception as e:
+                logger.error(f'解析SSL配置文件 {config_file} 失败: {e}')
+                continue
+
+        # 获取证书详细信息
+        for config in all_ssl_configs:
+            if config.get('ssl_certificate'):
+                cert_info = fetch_ssl_cert_info(config['ssl_certificate'])
+                config['certificate_info'] = cert_info
+
+        # 分析SSL安全性
+        security_analysis = examine_ssl_security(all_ssl_configs)
+
+        # 统计信息
+        stats = {
+            'total_ssl_servers': len(all_ssl_configs),
+            'https_enabled': len(all_ssl_configs) > 0,
+            'http2_enabled_servers': sum(1 for config in all_ssl_configs if config.get('http2_enabled', False)),
+            'valid_certificates': security_analysis['certificates']['valid'],
+            'expired_certificates': security_analysis['certificates']['expired'],
+            'expiring_soon_certificates': security_analysis['certificates']['expiring_soon'],
+            'security_issues': len(security_analysis['protocols']['issues']) +
+                              len(security_analysis['certificates']['issues']) +
+                              sum(len(issues) for setting in security_analysis['other_settings'].values() for issues in [setting['issues']])
+        }
+
+        return {
+            'ssl_enabled': True,
+            'main_config': main_config_path,
+            'ssl_config_files': ssl_config_files,
+            'ssl_configs': all_ssl_configs,
+            'security_analysis': security_analysis,
+            'statistics': stats
+        }
+
+    except Exception as e:
+        logger.error(f'获取SSL配置失败: {e}')
+        return {
+            'error': f'获取SSL配置失败: {e}'
+        }
+
+
+TOOL_CONFIG = {
+    "name": "ngx_cfg_ssl",
+    "description": "获取SSL相关配置（证书路径/有效期/加密协议、HTTPS开启状态）",
+    "function": nginx_config_ssl,
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
