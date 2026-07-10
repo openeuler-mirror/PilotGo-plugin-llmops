@@ -352,3 +352,138 @@ def certify_connection_settings(worker_connections: int,
         
     except Exception as e:
         return False, f"验证失败: {e}"
+
+def modify_connection_settings(cfg_filepath: str, 
+                             worker_connections: int,
+                             single_ip_limit: Optional[int] = None,
+                             listen_backlog: Optional[int] = None,
+                             worker_rlimit_nofile: Optional[int] = None) -> Tuple[bool, str]:
+    """
+    更新 Nginx 连接设置
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        worker_connections: 工作连接数
+        single_ip_limit: 单 IP 连接限制（可选）
+        listen_backlog: 监听队列长度（可选）
+        worker_rlimit_nofile: 文件描述符限制（可选）
+        
+    返回:
+        tuple: (是否成功，错误信息)
+    """
+    try:
+        # 安全验证：验证 cfg_filepath 路径参数（允许绝对路径）
+        valid, error_msg = validate_path_param(cfg_filepath, allow_absolute=True)
+        if not valid:
+            logger.error(f"modify_connection_settings: cfg_filepath 路径验证失败：{error_msg}")
+            return False, f"配置文件路径不安全：{error_msg}"
+        
+        # 读取原始配置
+        original_content = Path(cfg_filepath).read_text(encoding='utf-8')
+        
+        # 创建备份
+        backup_path = f"{cfg_filepath}.backup.{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        shutil.copy2(cfg_filepath, backup_path)
+        logger.info(f"配置文件已备份到: {backup_path}")
+        
+        # 更新配置内容
+        updated_content = original_content
+        
+        # 更新worker_connections（在events块中）
+        worker_conn_pattern = r'(events\s*\{[^}]*?)(worker_connections\s+[^;]+;)'  # NOSONAR
+        worker_conn_replacement = f'\\1worker_connections {worker_connections};'
+        
+        if re.search(worker_conn_pattern, updated_content, re.DOTALL):  # NOSONAR
+            updated_content = re.sub(worker_conn_pattern, worker_conn_replacement, updated_content, flags=re.DOTALL)  # NOSONAR
+        else:
+            # 在events块内插入
+            events_pattern = r'(events\s*\{)([^}]*)(\})'  # NOSONAR
+            events_match = re.search(events_pattern, updated_content, re.DOTALL)  # NOSONAR
+            if events_match:
+                replacement = f'{events_match.group(1)}{events_match.group(2)}    worker_connections {worker_connections};\n{events_match.group(3)}'
+                updated_content = re.sub(events_pattern, replacement, updated_content, flags=re.DOTALL)  # NOSONAR
+            else:
+                # 创建events块
+                events_block = f'events {{\n    worker_connections {worker_connections};\n    use epoll;\n    multi_accept on;\n}}\n\n'
+                # 在http块之前插入
+                http_pattern = r'http\s*\{'  # NOSONAR
+                if re.search(http_pattern, updated_content):  # NOSONAR
+                    updated_content = re.sub(http_pattern, f'{events_block}http {{', updated_content)  # NOSONAR
+                else:
+                    # 在文件开头插入
+                    updated_content = f'{events_block}{updated_content}'
+        
+        # 更新worker_rlimit_nofile
+        if worker_rlimit_nofile:
+            rlimit_pattern = r'worker_rlimit_nofile\s+[^;]+;'  # NOSONAR
+            rlimit_replacement = f'worker_rlimit_nofile {worker_rlimit_nofile};'
+            
+            if re.search(rlimit_pattern, updated_content):  # NOSONAR
+                updated_content = re.sub(rlimit_pattern, rlimit_replacement, updated_content)  # NOSONAR
+            else:
+                # 在worker_processes之后插入
+                worker_proc_pattern = r'(worker_processes\s+[^;]+;\n)'  # NOSONAR
+                worker_proc_match = re.search(worker_proc_pattern, updated_content)  # NOSONAR
+                if worker_proc_match:
+                    replacement = f'{worker_proc_match.group(1)}worker_rlimit_nofile {worker_rlimit_nofile};\n'
+                    updated_content = re.sub(worker_proc_pattern, replacement, updated_content)  # NOSONAR
+        
+        # 更新单IP连接限制
+        if single_ip_limit:
+            # 添加或更新limit_conn_zone
+            conn_zone_name = 'perip'
+            conn_zone_pattern = r'limit_conn_zone\s+\$binary_remote_addr\s+zone=perip:[^;]+;'  # NOSONAR
+            conn_zone_replacement = f'limit_conn_zone $binary_remote_addr zone={conn_zone_name}:10m;'
+            
+            if re.search(conn_zone_pattern, updated_content):  # NOSONAR
+                updated_content = re.sub(conn_zone_pattern, conn_zone_replacement, updated_content)  # NOSONAR
+            else:
+                # 在http块开始处插入
+                http_start_pattern = r'(http\s*\{)'  # NOSONAR
+                http_start_match = re.search(http_start_pattern, updated_content)  # NOSONAR
+                if http_start_match:
+                    replacement = f'{http_start_match.group(1)}\n    limit_conn_zone $binary_remote_addr zone={conn_zone_name}:10m;'
+                    updated_content = re.sub(http_start_pattern, replacement, updated_content)  # NOSONAR
+            
+            # 添加或更新limit_conn
+            limit_conn_pattern = r'limit_conn\s+perip\s+[^;]+;'  # NOSONAR
+            limit_conn_replacement = f'limit_conn {conn_zone_name} {single_ip_limit};'
+            
+            if re.search(limit_conn_pattern, updated_content):  # NOSONAR
+                updated_content = re.sub(limit_conn_pattern, limit_conn_replacement, updated_content)  # NOSONAR
+            else:
+                # 在server块内插入
+                server_pattern = r'(server\s*\{[^}]*)(\})'  # NOSONAR
+                server_match = re.search(server_pattern, updated_content, re.DOTALL)  # NOSONAR
+                if server_match:
+                    replacement = f'{server_match.group(1)}    limit_conn {conn_zone_name} {single_ip_limit};\n{server_match.group(2)}'
+                    updated_content = re.sub(server_pattern, replacement, updated_content, flags=re.DOTALL)  # NOSONAR
+        
+        # 更新监听队列长度
+        if listen_backlog:
+            # 更新现有的listen指令
+            listen_pattern = r'(listen\s+[^;]+)(;|$)'  # NOSONAR
+            def add_backlog(match):
+                listen_config = match.group(1)
+                if 'backlog=' in listen_config:
+                    return re.sub(r'backlog=\d+', f'backlog={listen_backlog}', listen_config) + match.group(2)  # NOSONAR
+                return f'{listen_config} backlog={listen_backlog}' + match.group(2)
+            
+            updated_content = re.sub(listen_pattern, add_backlog, updated_content)  # NOSONAR
+        
+        # 写入更新后的配置
+        with open(cfg_filepath, 'w', encoding='utf-8') as f:
+            f.write(updated_content)
+        
+        # 验证配置语法
+        validation_result = subprocess.run(['nginx', '-t'], capture_output=True, text=True)
+        if validation_result.returncode != 0:
+            # 恢复备份
+            shutil.copy2(backup_path, cfg_filepath)
+            return False, f"配置语法错误: {validation_result.stderr}"
+        
+        return True, "配置更新成功"
+        
+    except Exception as e:
+        logger.error(f"更新Nginx连接设置失败: {e}")
+        return False, f"更新配置失败: {e}"
