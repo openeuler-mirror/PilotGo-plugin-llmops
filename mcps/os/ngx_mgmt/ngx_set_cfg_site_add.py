@@ -166,3 +166,64 @@ def determine_config_dir(main_config, user_config_dir):
     except Exception as e:
         logger.error(f'确定配置文件目录失败: {str(e)}')
         return None
+
+def produce_site_config(site_name, port, root_path, server_names,
+                        config_type, enable_ssl, enable_php,
+                        enable_proxy, proxy_target):
+    """生成站点配置内容"""
+    try:
+        config_lines = []
+
+        # 添加文件头注释
+        config_lines.append(f"# {site_name} 站点配置")
+        config_lines.append(f"# 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        config_lines.append("")
+
+        # 生成server块
+        config_lines.append("server {")
+
+        # 监听配置
+        if enable_ssl and port == 80:
+            # SSL启用时，默认监听443
+            config_lines.append(f"    listen 443 ssl http2;")
+            config_lines.append(f"    listen [::]:443 ssl http2;")
+        else:
+            config_lines.append(f"    listen {port};")
+            config_lines.append(f"    listen [::]:{port};")
+
+        # 服务器名称
+        server_names_str = " ".join(server_names)
+        config_lines.append(f"    server_name {server_names_str};")
+        config_lines.append("")
+
+        # 根目录和索引
+        config_lines.append(f"    root {root_path};")
+        config_lines.append("    index index.html index.htm index.php;")
+        config_lines.append("")
+
+        # 日志配置
+        config_lines.append(f"    access_log /var/log/nginx/{site_name}_access.log;")
+        config_lines.append(f"    error_log /var/log/nginx/{site_name}_error.log;")
+        config_lines.append("")
+
+        # 根据配置类型生成特定配置
+        if config_type == "php" or enable_php:
+            config_lines.extend(produce_php_config())
+        elif config_type == "proxy" or enable_proxy:
+            config_lines.extend(produce_proxy_config(proxy_target))
+        elif config_type == "static":
+            config_lines.extend(produce_static_config())
+        else:
+            config_lines.extend(produce_basic_config())
+
+        # SSL配置（如果启用）
+        if enable_ssl:
+            config_lines.extend(produce_ssl_config(site_name))
+
+        config_lines.append("}")
+
+        return "\n".join(config_lines)
+
+    except Exception as e:
+        logger.error(f'生成站点配置失败: {str(e)}')
+        return f"# 配置生成失败: {str(e)}"
