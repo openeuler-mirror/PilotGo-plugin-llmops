@@ -243,3 +243,31 @@ def verify_hosts_format():
         logger.error(f'检查hosts文件格式失败: {e}')
 
     return checks
+def verify_special_entries():
+    """
+    检查特殊条目
+    """
+    special_entries = []
+
+    try:
+        with open('/etc/hosts', 'r') as f:
+            body = f.read()
+
+            # 检查localhost条目
+            if '127.0.0.1' in body and 'localhost' in body:
+                special_entries.append('包含localhost本地回环条目')
+
+            # 检查IPv6 localhost条目
+            if '::1' in body and 'localhost' in body:
+                special_entries.append('包含IPv6 localhost本地回环条目')
+
+            # 检查特殊IP地址
+            special_ips = ['127.0.0.1', '::1', '0.0.0.0', '127.0.1.1']
+            for ip in special_ips:
+                if ip in body:
+                    special_entries.append(f"包含特殊IP地址: {ip}")
+
+    except Exception as e:
+        logger.error(f'检查特殊条目失败: {e}')
+
+    return special_entries
