@@ -459,3 +459,49 @@ def fetch_monitor_info():
     except Exception as e:
         logger.error(f'获取显示器信息失败: {e}')
         return []
+def analyze_xrandr_output(output):
+    """
+    解析xrandr命令输出
+
+    参数:
+        output: xrandr命令输出
+
+    返回:
+        显示器信息列表
+    """
+    try:
+        monitors = []
+        current_monitor = {}
+
+        lines = output.split('\n')
+        for line in lines:
+            if ' connected' in line:
+                if current_monitor:
+                    monitors.append(current_monitor)
+
+                parts = line.split(' ')
+                monitor_name = parts[0]
+                current_monitor = {
+                    'label': monitor_name,
+                    'resolution': 'Unknown',
+                    'refresh_rate': 'Unknown',
+                    'connection': 'Unknown'
+                }
+
+                # 解析分辨率
+                for part in parts:
+                    if 'x' in part and '+' in part:
+                        resolution = part.split('+')[0]
+                        current_monitor['resolution'] = resolution
+            elif current_monitor and 'Refresh rate:' in line:
+                refresh_rate = line.split(':', 1)[1].strip()
+                current_monitor['refresh_rate'] = refresh_rate
+
+        if current_monitor:
+            monitors.append(current_monitor)
+
+        return monitors
+
+    except Exception as e:
+        logger.error(f'解析xrandr输出失败: {e}')
+        return []
