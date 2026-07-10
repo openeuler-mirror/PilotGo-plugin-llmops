@@ -306,3 +306,66 @@ def render_memory_size(kb):
         return f"{mb:.2f} MB"
     else:
         return f"{kb} KB"
+def fetch_disk_info():
+    """
+    获取磁盘信息
+    """
+    disk_info = {}
+
+    try:
+        output = subprocess.run(['df', '-h'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            disk_info['磁盘使用情况'] = output.stdout.strip()
+
+        output = subprocess.run(['df', '-h', '/'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.split('\n')
+            if len(lines) > 1:
+                parts = lines[1].split()
+                if len(parts) >= 5:
+                    disk_info['根文件系统'] = parts[0]
+                    disk_info['总容量'] = parts[1]
+                    disk_info['已使用'] = parts[2]
+                    disk_info['可用容量'] = parts[3]
+                    disk_info['使用率'] = parts[4]
+                    disk_info['挂载点'] = parts[5]
+
+        output = subprocess.run(['lsblk'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            disk_info['块设备信息'] = output.stdout.strip()
+
+        output = subprocess.run(['fdisk', '-l', '2>/dev/null'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            disk_info['磁盘分区信息'] = output.stdout.strip()
+
+        output = subprocess.run(['mount'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            mount_lines = output.stdout.split('\n')
+            disk_info['挂载点数量'] = str(len(mount_lines))
+
+        redis_pid = find_redis_pid()
+        if redis_pid:
+            cwd_path = f'/proc/{redis_pid}/cwd'
+            if os.path.exists(cwd_path):
+                output = subprocess.run(['df', '-h', cwd_path], capture_output=True, text=True)
+
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    if len(lines) > 1:
+                        parts = lines[1].split()
+                        if len(parts) >= 5:
+                            disk_info['Redis数据目录'] = parts[5]
+                            disk_info['数据目录总容量'] = parts[1]
+                            disk_info['数据目录已使用'] = parts[2]
+                            disk_info['数据目录可用'] = parts[3]
+                            disk_info['数据目录使用率'] = parts[4]
+
+    except Exception as e:
+        logger.error(f'获取磁盘信息失败: {e}')
+
+    return disk_info
