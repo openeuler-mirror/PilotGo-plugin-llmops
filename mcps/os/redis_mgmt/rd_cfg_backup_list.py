@@ -124,3 +124,47 @@ def locate_backup_files(config_dir: str,
         logger.error(output['message'])
 
     return output
+def fetch_backup_list(config_dir: Optional[str] = None,
+                   config_file: Optional[str] = None) -> Dict[str, Any]:
+    """
+    获取配置备份文件列表
+
+    参数:
+        config_dir: 配置目录
+        config_file: 配置文件路径
+
+    返回:
+        备份文件列表信息字典
+    """
+    output = {
+        'backups': [],
+        'total_backups': 0,
+        'storage_path': '',
+        'message': '获取配置备份文件列表'
+    }
+
+    try:
+        if not config_dir:
+            config_dir = fetch_redis_config_dir()
+            if not config_dir:
+                output['message'] = '无法获取Redis配置目录'
+                return output
+
+        if not config_file:
+            config_file = get_redis_config_file()
+            if not config_file:
+                output['message'] = '无法获取Redis配置文件路径'
+                return output
+
+        backup_result = locate_backup_files(config_dir, config_file)
+
+        output['backups'] = backup_result['backups']
+        output['total_backups'] = backup_result['total_backups']
+        output['storage_path'] = config_dir
+        output['message'] = backup_result['message']
+
+    except Exception as e:
+        output['message'] = f'获取配置备份文件列表时发生异常: {str(e)}'
+        logger.error(output['message'])
+
+    return output
