@@ -433,3 +433,29 @@ def perform_rollback(target_backup: Dict, config_paths: Dict) -> List[Dict]:
         logger.error(f'执行回滚失败: {e}')
 
     return rollback_results
+
+def certify_nginx_syntax() -> Dict:
+    """验证Nginx语法"""
+    try:
+        output = subprocess.run(['nginx', '-t'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            return {
+                'success': True,
+                'message': '语法校验通过',
+                'output': output.stdout.strip()
+            }
+        else:
+            error_output = output.stderr if output.stderr else output.stdout
+            return {
+                'success': False,
+                'error': '语法校验失败',
+                'output': error_output.strip()
+            }
+
+    except Exception as e:
+        logger.error(f'语法校验失败: {e}')
+        return {
+            'success': False,
+            'error': f'语法校验过程出错: {e}'
+        }
