@@ -91,3 +91,59 @@ def fetch_acl_users() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def analyze_acl_user(user_line: str) -> Optional[Dict[str, Any]]:
+    """
+    解析ACL用户信息
+
+    参数:
+        user_line: ACL用户信息行
+
+    返回:
+        ACL用户信息字典
+    """
+    try:
+        parts = user_line.split()
+
+        if not parts or not parts[0].startswith('user '):
+            return None
+
+        user_info = {
+            'username': parts[0][5:],
+            'flags': [],
+            'passwords': [],  # NOSONAR
+            'categories': [],
+            'commands': [],
+            'keys': []
+        }
+
+        for part in parts[1:]:
+            if part.startswith('on'):
+                user_info['flags'].append('on')
+            elif part.startswith('off'):
+                user_info['flags'].append('off')
+            elif part.startswith('nopass'):
+                user_info['flags'].append('nopass')
+            elif part.startswith('#') and len(part) > 1:
+                user_info['passwords'].append(part)  # NOSONAR
+            elif part.startswith('>'):
+                user_info['passwords'].append(part)  # NOSONAR
+            elif part.startswith('~'):
+                user_info['keys'].append(part[1:])
+            elif part.startswith('@'):
+                user_info['categories'].append(part[1:])
+            elif part.startswith('+'):
+                user_info['commands'].append(part[1:])
+            elif part.startswith('-'):
+                user_info['commands'].append(part)
+            elif part.startswith('allkeys'):
+                user_info['keys'].append('*')
+            elif part.startswith('allchannels'):
+                user_info['channels'].append('*')
+            elif part.startswith('&'):
+                user_info['channels'].append(part[1:])
+
+        return user_info
+
+    except Exception as e:
+        logger.warning(f"解析ACL用户信息失败: {e}")
+        return None
