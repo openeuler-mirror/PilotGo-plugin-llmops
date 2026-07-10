@@ -300,3 +300,36 @@ def fetch_custom_log_formats(settings: Dict[str, Any]) -> List[Dict[str, Any]]:
         logger.error(f"获取自定义日志格式失败: {e}")
     
     return formats
+
+def analyze_log_format(format_str: str) -> Dict[str, Any]:
+    """
+    解析日志格式字符串
+    
+    参数:
+        format_str: 日志格式字符串
+        
+    返回:
+        dict: 解析后的日志格式信息
+    """
+    format_info = {
+        'name': 'ngx_log_cfg',
+        'format': format_str,
+        'variables': []
+    }
+    
+    try:
+        # 解析格式名称
+        name_match = re.match(r'(\w+)\s+(.+)', format_str)  # NOSONAR
+        if name_match:
+            format_info['name'] = name_match.group(1)
+            format_content = name_match.group(2)
+            format_info['format'] = format_content
+            
+            # 提取变量
+            variables = re.findall(r'\$(\w+)', format_content)  # NOSONAR
+            format_info['variables'] = sorted(set(variables))
+    
+    except Exception as e:
+        logger.error(f"解析日志格式失败: {e}")
+    
+    return format_info
