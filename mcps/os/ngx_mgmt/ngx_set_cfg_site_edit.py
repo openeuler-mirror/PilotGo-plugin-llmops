@@ -228,3 +228,84 @@ def modify_config_content(original_content, port, root_path, server_names,
     except Exception as e:
         logger.error(f'修改配置内容失败: {e}')
         return original_content
+
+def modify_server_block(server_block_lines, port, root_path, server_names,
+                       proxy_target, enable_ssl, enable_php):
+    """修改server块内容"""
+    try:
+        modified_block = []
+        modified_directives = set()
+
+        for line in server_block_lines:
+            original_line = line
+            line_stripped = line.strip()
+
+            # 修改监听端口
+            if port is not None and re.match(r'^\s*listen\s+', line_stripped):  # NOSONAR
+                if 'ssl' in line_stripped and enable_ssl is not False:
+                    # 保持SSL配置，只修改端口号
+                    new_line = re.sub(r'listen\s+[^;]+;',  # NOSONAR
+                                    f'listen {port} ssl http2;', line)
+                else:
+                    new_line = re.sub(r'listen\s+[^;]+;', f'listen {port};', line)  # NOSONAR
+
+                if new_line != original_line:
+                    line = new_line
+                    modified_directives.add('listen')
+
+            # 修改服务器名称
+            elif server_names is not None and re.match(r'^\s*server_name\s+', line_stripped):  # NOSONAR
+                names_str = ' '.join(server_names) if isinstance(server_names, list) else server_names
+                new_line = re.sub(r'server_name\s+[^;]+;',  # NOSONAR
+                                f'server_name {names_str};', line)
+
+                if new_line != original_line:
+                    line = new_line
+                    modified_directives.add('server_name')
+
+            # 修改根路径
+            elif root_path is not None and re.match(r'^\s*root\s+', line_stripped):  # NOSONAR
+                new_line = re.sub(r'root\s+[^;]+;', f'root {root_path};', line)  # NOSONAR
+
+                if new_line != original_line:
+                    line = new_line
+                    modified_directives.add('root')
+
+            # 修改代理目标
+            elif proxy_target is not None and re.match(r'^\s*proxy_pass\s+', line_stripped):  # NOSONAR
+                new_line = re.sub(r'proxy_pass\s+[^;]+;',  # NOSONAR
+                                f'proxy_pass {proxy_target};', line)
+
+                if new_line != original_line:
+                    line = new_line
+                    modified_directives.add('proxy_pass')
+
+            # 启用/禁用SSL
+            elif enable_ssl is not None:
+                if enable_ssl and re.match(r'^\s*listen\s+', line_stripped) and 'ssl' not in line_stripped:  # NOSONAR
+                    # 添加SSL支持
+                    line = line.replace(';', ' ssl http2;')
+                    modified_directives.add('ssl')
+                elif not enable_ssl and 'ssl' in line_stripped:
+                    # 移除SSL支持
+                    line = re.sub(r'\s+ssl\s+http2', '', line)  # NOSONAR
+                    modified_directives.add('ssl')
+
+            # 启用/禁用PHP支持
+            elif enable_php is not None and re.search(r'location\s+~\s*\\\.php', line_stripped):  # NOSONAR
+                # 这里需要更复杂的逻辑来处理PHP配置的启用/禁用
+                # 暂时跳过，需要更完整的实现
+                pass
+
+            modified_block.append(line)
+
+        # 添加缺失的配置项
+        modified_block = add_missing_directives(modified_block, port, root_path,
+                                              server_names, proxy_target,
+                                              enable_ssl, modified_directives)
+
+        return modified_block
+
+    except Exception as e:
+        logger.error(f'修改server块失败: {e}')
+        return server_block_lines
