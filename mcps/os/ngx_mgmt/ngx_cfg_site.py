@@ -259,3 +259,12 @@ def count_server_blocks(body):
     except Exception as e:
         logger.error(f'计算server块数量失败: {e}')
         return 0
+
+def derive_listen_ports(body):
+    """提取监听端口"""
+    try:
+        listen_matches = re.findall(r'listen\s+([^;]+);', body)  # NOSONAR
+        return [match.strip() for match in listen_matches]
+    except Exception as e:
+        logger.error(f'提取监听端口失败: {e}')
+        return []
