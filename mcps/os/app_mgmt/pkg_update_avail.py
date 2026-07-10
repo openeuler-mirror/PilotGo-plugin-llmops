@@ -113,3 +113,19 @@ def fetch_app_update_available(package_manager=None, check_security=True):
     except Exception as e:
         logger.error(f'获取可更新软件信息失败: {e}')
         return f'获取可更新软件信息失败: {e}'
+def spot_package_manager():
+    """
+    自动检测系统包管理器
+    """
+    package_managers = {
+        'apt': '/usr/bin/apt',
+        'yum': '/usr/bin/yum',
+        'dnf': '/usr/bin/dnf',
+        'zypper': '/usr/bin/zypper'
+    }
+
+    for pm, path in package_managers.items():
+        if os.path.exists(path):
+            return pm
+
+    return None
