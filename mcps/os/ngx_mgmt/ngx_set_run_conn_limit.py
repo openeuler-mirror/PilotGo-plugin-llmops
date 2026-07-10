@@ -312,3 +312,43 @@ def fetch_system_connection_info() -> Dict[str, Any]:
         logger.error(f"获取系统连接信息失败: {e}")
     
     return sys_info
+
+def certify_connection_settings(worker_connections: int, 
+                               single_ip_limit: Optional[int] = None,
+                               listen_backlog: Optional[int] = None) -> Tuple[bool, str]:
+    """
+    验证连接设置的有效性
+    
+    参数:
+        worker_connections: 工作连接数
+        single_ip_limit: 单IP连接限制
+        listen_backlog: 监听队列长度
+        
+    返回:
+        tuple: (是否有效, 错误信息)
+    """
+    try:
+        # 验证worker_connections
+        if worker_connections <= 0:
+            return False, "工作连接数必须大于0"
+        if worker_connections > 65535:
+            return False, "工作连接数不能超过65535"
+        
+        # 验证单IP限制
+        if single_ip_limit is not None:
+            if single_ip_limit <= 0:
+                return False, "单IP连接限制必须大于0"
+            if single_ip_limit > worker_connections:
+                return False, "单IP连接限制不能超过工作连接数"
+        
+        # 验证监听队列长度
+        if listen_backlog is not None:
+            if listen_backlog < 0:
+                return False, "监听队列长度不能为负数"
+            if listen_backlog > 65535:
+                return False, "监听队列长度不能超过65535"
+        
+        return True, "设置有效"
+        
+    except Exception as e:
+        return False, f"验证失败: {e}"
