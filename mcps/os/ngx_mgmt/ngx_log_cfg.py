@@ -213,3 +213,45 @@ def fetch_log_rotation_config() -> Dict[str, Any]:
         logger.error(f"获取日志轮转配置失败: {e}")
     
     return rotation_config
+
+def fetch_log_levels(settings: Dict[str, Any]) -> Dict[str, str]:
+    """
+    获取日志级别配置
+    
+    参数:
+        settings: 解析后的配置信息
+        
+    返回:
+        dict: 日志级别配置
+    """
+    log_levels = {
+        'error_log_level': 'error',
+        'access_log_level': 'info'
+    }
+    
+    try:
+        # 检查错误日志级别
+        if 'error_log' in settings['main_config']:
+            error_log_value = settings['main_config']['error_log']
+            if isinstance(error_log_value, list):
+                error_log_value = error_log_value[0]
+            
+            # 解析日志级别
+            level_match = re.search(r'\s+(debug|info|notice|warn|error|crit|alert|emerg)$', error_log_value)  # NOSONAR
+            if level_match:
+                log_levels['error_log_level'] = level_match.group(1)
+        
+        # 检查HTTP块中的错误日志级别
+        if 'error_log' in settings['http_config']:
+            error_log_value = settings['http_config']['error_log']
+            if isinstance(error_log_value, list):
+                error_log_value = error_log_value[0]
+            
+            level_match = re.search(r'\s+(debug|info|notice|warn|error|crit|alert|emerg)$', error_log_value)  # NOSONAR
+            if level_match:
+                log_levels['error_log_level'] = level_match.group(1)
+        
+    except Exception as e:
+        logger.error(f"获取日志级别失败: {e}")
+    
+    return log_levels
