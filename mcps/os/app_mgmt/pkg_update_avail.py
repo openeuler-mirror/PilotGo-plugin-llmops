@@ -184,3 +184,46 @@ def fetch_apt_updates(check_security):
         logger.error(f'获取APT更新失败: {e}')
 
     return updates
+def fetch_yum_updates(check_security):
+    """
+    获取YUM包管理器的可更新软件
+    """
+    updates = []
+
+    try:
+        # 获取可更新包
+        cmd = ['yum', 'check-update', '--quiet']
+        output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+
+        # 解析输出
+        lines = output.stdout.strip().split('\n')
+        for line in lines:
+            if line and not line.startswith('Loaded plugins:'):
+                parts = line.split()
+                if len(parts) >= 3:
+                    package_name = parts[0]
+                    current_version = parts[1]
+                    available_version = parts[2]
+
+                    # 检查是否是安全更新
+                    is_security = False
+                    if check_security:
+                        # 尝试获取安全更新信息
+                        sec_result = subprocess.run(['yum', 'info', package_name], capture_output=True, text=True)
+                        if 'Security:' in sec_result.stdout:
+                            is_security = True
+
+                    updates.append({
+                        'name': package_name,
+                        'current_version': current_version,
+                        'available_version': available_version,
+                        'is_security': is_security
+                    })
+    except Exception as e:
+        logger.error(f'获取YUM更新失败: {e}')
+
+    return updates
