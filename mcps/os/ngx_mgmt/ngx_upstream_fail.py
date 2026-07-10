@@ -671,3 +671,111 @@ def fetch_failure_analysis_recommendations(failure_metrics: Dict[str, Any]) -> L
         logger.error(f"生成建议失败: {e}")
     
     return recommendations
+
+def fetch_nginx_upstream_fail(upstream_name: str = "", hours: int = 24) -> str:
+    """
+    获取Nginx上游服务器失败信息
+    
+    参数:
+        upstream_name: upstream名称（可选，为空时获取所有upstream失败汇总）
+        hours: 分析时间范围（小时，默认24小时）
+        
+    返回:
+        str: JSON格式的上游服务器失败信息
+    """
+    try:
+        # 检查Nginx是否运行
+        nginx_running = False
+        for proc in psutil.process_iter(['name']):
+            if proc.info['name'] and 'nginx' in proc.info['name'].lower():
+                nginx_running = True
+                break
+        
+        if not nginx_running:
+            return json.dumps({
+                'status': 'error',
+                'message': 'Nginx服务未运行',
+                'suggestion': '请先启动Nginx服务',
+                'timestamp': datetime.now().isoformat()
+            }, ensure_ascii=False, indent=2)
+        
+        # 根据是否指定upstream_name返回不同信息
+        if upstream_name:
+            # 获取指定upstream的失败信息
+            failure_metrics = estimate_failure_metrics(upstream_name, hours)
+            recommendations = fetch_failure_analysis_recommendations(failure_metrics)
+            
+            output = {
+                'status': 'success',
+                'upstream_name': upstream_name,
+                'analysis_period_hours': hours,
+                'failure_metrics': failure_metrics,
+                'recommendations': recommendations,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            if 'error' in failure_metrics:
+                output['status'] = 'error'
+                output['message'] = failure_metrics['error']
+            
+        else:
+            # 获取所有upstream的失败汇总
+            cfg_filepath = fetch_nginx_config_path()
+            if not cfg_filepath:
+                return json.dumps({
+                    'status': 'error',
+                    'message': '无法找到Nginx配置文件',
+                    'timestamp': datetime.now().isoformat()
+                }, ensure_ascii=False, indent=2)
+            
+            body = load_nginx_config(cfg_filepath)
+            upstream_pattern = r'upstream\s+(\w+)\s*\{[^}]+\}'  # NOSONAR
+            upstream_matches = re.findall(upstream_pattern, body)  # NOSONAR
+            
+            if not upstream_matches:
+                return json.dumps({
+                    'status': 'warning',
+                    'message': '未找到任何upstream配置',
+                    'timestamp': datetime.now().isoformat()
+                }, ensure_ascii=False, indent=2)
+            
+            all_upstreams_failures = []
+            total_failure_rate = 0
+            upstream_count = 0
+            
+            for upstream in upstream_matches:
+                failure_metrics = estimate_failure_metrics(upstream, hours)
+                if 'error' not in failure_metrics:
+                    all_upstreams_failures.append(failure_metrics)
+                    total_failure_rate += failure_metrics['failure_rate_percentage']
+                    upstream_count += 1
+            
+            avg_failure_rate = round(total_failure_rate / upstream_count, 2) if upstream_count > 0 else 0
+            
+            output = {
+                'status': 'success',
+                'analysis_period_hours': hours,
+                'total_upstreams': upstream_count,
+                'average_failure_rate_percentage': avg_failure_rate,
+                'upstreams_failures': all_upstreams_failures,
+                'timestamp': datetime.now().isoformat()
+            }
+        
+        return json.dumps(output, ensure_ascii=False, indent=2)
+        
+    except Exception as e:
+        logger.error(f"获取Nginx上游失败信息失败: {e}")
+        return json.dumps({
+            'status': 'error',
+            'message': f'获取失败信息失败: {e}',
+            'timestamp': datetime.now().isoformat()
+        }, ensure_ascii=False, indent=2)
+
+# 工具配置
+TOOL_CONFIG = {
+    'name': 'fetch_nginx_upstream_fail',
+    'description': '获取Nginx配置文件中定义的所有上游服务的失败信息，包括失败请求数、失败率、建议等',
+    'category': 'Nginx',
+    'function': fetch_nginx_upstream_fail,
+    'output_format': 'json'
+}
