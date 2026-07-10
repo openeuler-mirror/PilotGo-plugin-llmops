@@ -229,3 +229,40 @@ def fetch_firewall_status():
         logger.error(f'获取防火墙状态失败: {e}')
 
     return state
+def examine_firewall_rules(iptables_rules, ufw_rules, firewalld_rules):
+    """
+    分析防火墙规则
+    """
+    analysis = []
+
+    try:
+        # 统计规则数量
+        total_rules = len(iptables_rules) + len(ufw_rules) + len(firewalld_rules)
+        analysis.append(f"总规则数: {total_rules}")
+
+        # 检查是否有开放的SSH端口
+        ssh_open = False
+        for rule in iptables_rules + ufw_rules + firewalld_rules:
+            if '22' in rule and ('ACCEPT' in rule or 'ALLOW' in rule):
+                ssh_open = True
+                break
+        if ssh_open:
+            analysis.append('SSH端口已开放')
+        else:
+            analysis.append('SSH端口未开放')
+
+        # 检查是否有开放的HTTP/HTTPS端口
+        web_open = False
+        for rule in iptables_rules + ufw_rules + firewalld_rules:
+            if ('80' in rule or '443' in rule) and ('ACCEPT' in rule or 'ALLOW' in rule):
+                web_open = True
+                break
+        if web_open:
+            analysis.append('HTTP/HTTPS端口已开放')
+        else:
+            analysis.append('HTTP/HTTPS端口未开放')
+
+    except Exception as e:
+        logger.error(f'分析防火墙规则失败: {e}')
+
+    return analysis
