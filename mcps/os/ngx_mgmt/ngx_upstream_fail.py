@@ -468,3 +468,97 @@ def examine_error_line(log_line: str, upstream_name: str) -> Optional[Dict[str, 
         
     except Exception as e:
         return None
+
+def estimate_failure_metrics(upstream_name: str, hours: int = 24) -> Dict[str, Any]:
+    """
+    估算失败指标
+    
+    参数:
+        upstream_name: upstream名称
+        hours: 分析时间范围（小时）
+        
+    返回:
+        dict: 失败指标估算
+    """
+    failure_metrics = {
+        'upstream_name': upstream_name,
+        'analysis_period_hours': hours,
+        'estimated_total_requests': 0,
+        'estimated_failed_requests': 0,
+        'failure_rate_percentage': 0,
+        'circuit_breaker_status': 'unknown',
+        'average_retry_count': 0,
+        'server_failure_stats': [],
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    try:
+        # 获取upstream配置
+        upstream_config = fetch_upstream_configuration(upstream_name)
+        if not upstream_config:
+            failure_metrics['error'] = f"无法获取upstream配置: {upstream_name}"
+            return failure_metrics
+        
+        # 分析错误日志
+        error_analysis = examine_error_logs(upstream_name, hours)
+        
+        # 估算总请求数（基于错误率和假设的正常请求比例）
+        total_errors = error_analysis.get('total_errors', 0)
+        
+        # 假设错误率在1%-5%之间，估算总请求数
+        if total_errors > 0:
+            # 基于错误率估算总请求数
+            assumed_error_rate = 0.02  # 2%的错误率
+            failure_metrics['estimated_total_requests'] = int(total_errors / assumed_error_rate)
+            failure_metrics['estimated_failed_requests'] = total_errors
+            failure_metrics['failure_rate_percentage'] = round(assumed_error_rate * 100, 2)
+        else:
+            # 没有错误，假设请求量较低
+            failure_metrics['estimated_total_requests'] = 1000
+            failure_metrics['estimated_failed_requests'] = 0
+            failure_metrics['failure_rate_percentage'] = 0
+        
+        # 分析熔断状态
+        failure_metrics['circuit_breaker_status'] = examine_circuit_breaker_status(
+            upstream_config, error_analysis
+        )
+        
+        # 计算平均重试次数
+        if error_analysis.get('error_timeline'):
+            retry_counts = [e.get('retry_attempt', 0) for e in error_analysis['error_timeline']]
+            failure_metrics['average_retry_count'] = round(
+                sum(retry_counts) / len(retry_counts), 2
+            )
+        
+        # 统计每个服务器的失败情况
+        server_stats = {}
+        for error in error_analysis.get('error_timeline', []):
+            server_addr = error.get('server_address', 'unknown')
+            if server_addr not in server_stats:
+                server_stats[server_addr] = {
+                    'failure_count': 0,
+                    'error_types': set(),
+                    'last_error_time': error['timestamp']
+                }
+            
+            server_stats[server_addr]['failure_count'] += 1
+            server_stats[server_addr]['error_types'].add(error['error_type'])
+            server_stats[server_addr]['last_error_time'] = max(
+                server_stats[server_addr]['last_error_time'], error['timestamp']
+            )
+        
+        # 转换为列表格式
+        for server_addr, stats in server_stats.items():
+            server_info = {
+                'server_address': server_addr,
+                'failure_count': stats['failure_count'],
+                'error_types': list(stats['error_types']),
+                'last_error_time': stats['last_error_time']
+            }
+            failure_metrics['server_failure_stats'].append(server_info)
+        
+    except Exception as e:
+        logger.error(f"估算失败指标失败 {upstream_name}: {e}")
+        failure_metrics['error'] = f"估算失败: {e}"
+    
+    return failure_metrics
