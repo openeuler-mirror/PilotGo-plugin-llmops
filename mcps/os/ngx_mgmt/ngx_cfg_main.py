@@ -147,3 +147,33 @@ def examine_config_structure(body):
     except Exception as e:
         logger.error(f'分析配置文件结构失败: {e}')
         return f'分析配置文件结构失败: {e}'
+
+def derive_global_configs(body):
+    """提取全局配置"""
+    try:
+        global_configs = []
+
+        # 常见的全局配置项
+        patterns = {
+            'user': r'user\s+([^;]+);',
+            'worker_processes': r'worker_processes\s+([^;]+);',
+            'worker_cpu_affinity': r'worker_cpu_affinity\s+([^;]+);',
+            'worker_rlimit_nofile': r'worker_rlimit_nofile\s+([^;]+);',
+            'error_log': r'error_log\s+([^;]+);',
+            'pid': r'pid\s+([^;]+);',
+            'worker_priority': r'worker_priority\s+([^;]+);',
+            'worker_rlimit_core': r'worker_rlimit_core\s+([^;]+);',
+            'daemon': r'daemon\s+([^;]+);',
+            'master_process': r'master_process\s+([^;]+);',
+            'debug_points': r'debug_points\s+([^;]+);'
+        }
+
+        for config_name, pattern in patterns.items():
+            match = re.search(pattern, body)  # NOSONAR
+            if match:
+                global_configs.append(f"{config_name}: {match.group(1).strip()}")
+
+        return global_configs
+    except Exception as e:
+        logger.error(f'提取全局配置失败: {e}')
+        return []
