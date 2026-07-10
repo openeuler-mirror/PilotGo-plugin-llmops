@@ -22,6 +22,7 @@ def fetch_proc_threads(pid, fmt=None):
         out.append(f'{"TID":>8}  NAME')
         out.append('-' * 40)
         count = 0
+        states = {}
         for tid in sorted(os.listdir(task_dir), key=int):
             try:
                 comm_path = f'{task_dir}/{tid}/comm'
@@ -29,11 +30,26 @@ def fetch_proc_threads(pid, fmt=None):
                 if os.path.exists(comm_path):
                     with open(comm_path) as f:
                         name = f.read().strip()
-                out.append(f'{tid:>8}  {name}')
+                # Get thread state from stat
+                thr_state = '?'
+                stat_path = f'{task_dir}/{tid}/stat'
+                if os.path.exists(stat_path):
+                    with open(stat_path) as f:
+                        sf = f.read().strip()
+                    end = sf.rfind(')')
+                    fs = sf[end+2:].split() if end > 0 else []
+                    thr_state = fs[0] if fs else '?'
+                out.append(f'{tid:>8}  {thr_state}  {name}')
+                states[thr_state] = states.get(thr_state, 0) + 1
                 count += 1
             except (OSError, ValueError):
                 pass
         out.append(f'\nTotal: {count} threads')
+        state_names = {'R': 'Running', 'S': 'Sleeping', 'D': 'Uninterruptible',
+                       'Z': 'Zombie', 'T': 'Stopped', 't': 'Tracing'}
+        out.append('State breakdown:')
+        for s, cnt in sorted(states.items()):
+            out.append(f'  {state_names.get(s, s)}({s}): {cnt}')
         return '\n'.join(out)
     except ValueError:
         return f'Error: invalid PID: {pid}'
