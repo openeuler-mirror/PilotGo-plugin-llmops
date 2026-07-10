@@ -104,3 +104,124 @@ def fetch_hw_mem_physical(mem_type=None):
     except Exception as e:
         logger.error(f'获取物理内存信息失败: {e}')
         return f'获取物理内存信息失败: {e}'
+def fetch_physical_memory_details():
+    """
+    获取物理内存详细信息
+
+    返回:
+        物理内存详细信息字典
+    """
+    try:
+        mem_data = {
+            'total': 'Unknown',
+            'slots': 'Unknown',
+            'installed': 'Unknown',
+            'available': 'Unknown',
+            'models': [],
+            'vendors': [],
+            'frequencies': [],
+            'details': []
+        }
+
+        if platform.system() == 'Linux':
+            # 尝试从/proc/meminfo获取总内存
+            try:
+                with open('/proc/meminfo', 'r') as f:
+                    for line in f:
+                        if line.startswith('MemTotal:'):
+                            total_kb = int(line.split()[1])
+                            total_gb = total_kb / 1024 / 1024
+                            mem_data['total'] = f"{total_gb:.2f} GB"
+                            break
+            except Exception:
+                pass
+
+            # 尝试使用dmidecode命令获取内存信息
+            try:
+                output = subprocess.run(['sudo', 'dmidecode', '-t', 'memory'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mem_data = analyze_dmidecode_memory(output.stdout, mem_data)
+            except subprocess.SubprocessError:
+                pass
+
+            # 尝试使用lshw命令获取内存信息
+            try:
+                output = subprocess.run(['sudo', 'lshw', '-class', 'memory'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mem_data = analyze_lshw_memory(output.stdout, mem_data)
+            except subprocess.SubprocessError:
+                pass
+
+            # 尝试从/sys/devices/system/memory获取内存信息
+            try:
+                memory_blocks = os.listdir('/sys/devices/system/memory')
+                # 只计算以memory开头的目录
+                memory_dirs = [block for block in memory_blocks if block.startswith('memory') and os.path.isdir(f'/sys/devices/system/memory/{block}')]
+                if memory_dirs:
+                    mem_data['slots'] = str(len(memory_dirs))
+                    mem_data['slots_note'] = '（注：此为内存块数量，非物理插槽数）'
+                    installed = 0
+                    for block in memory_dirs:
+                        state_file = f'/sys/devices/system/memory/{block}/state'
+                        if os.path.exists(state_file):
+                            with open(state_file, 'r') as f:
+                                if 'online' in f.read():
+                                    installed += 1
+                    mem_data['installed'] = str(installed)
+                    if mem_data['slots'] != 'Unknown':
+                        mem_data['available'] = str(int(mem_data['slots']) - installed)
+            except Exception:
+                pass
+
+        elif platform.system() == 'Darwin':
+            # macOS系统
+            try:
+                # 获取内存总容量
+                output = subprocess.run(['sysctl', '-n', 'hw.memsize'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    total_bytes = int(output.stdout.strip())
+                    total_gb = total_bytes / 1024 / 1024 / 1024
+                    mem_data['total'] = f"{total_gb:.2f} GB"
+
+                # 获取内存详细信息
+                output = subprocess.run(['system_profiler', 'SPMemoryDataType'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mem_data = analyze_macos_memory(output.stdout, mem_data)
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Windows':
+            # Windows系统
+            try:
+                # 获取内存总容量
+                output = subprocess.run(['wmic', 'memorychip', 'get', 'Capacity'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.strip().split('\n')[1:]
+                    total_bytes = 0
+                    for line in lines:
+                        if line.strip():
+                            total_bytes += int(line.strip())
+                    total_gb = total_bytes / 1024 / 1024 / 1024
+                    mem_data['total'] = f"{total_gb:.2f} GB"
+
+                # 获取内存详细信息
+                output = subprocess.run(['wmic', 'memorychip', 'get', 'Capacity,Manufacturer,PartNumber,Speed,ConfiguredClockSpeed'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mem_data = analyze_windows_memory(output.stdout, mem_data)
+            except subprocess.SubprocessError:
+                pass
+
+        return mem_data
+
+    except Exception as e:
+        logger.error(f'获取物理内存详细信息失败: {e}')
+        return {
+            'total': 'Unknown',
+            'slots': 'Unknown',
+            'installed': 'Unknown',
+            'available': 'Unknown',
+            'models': [],
+            'vendors': [],
+            'frequencies': [],
+            'details': []
+        }
