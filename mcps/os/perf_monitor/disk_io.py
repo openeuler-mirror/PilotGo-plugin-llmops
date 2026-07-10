@@ -89,3 +89,44 @@ def fetch_perf_disk_io(pid=None, interval=None):
     except Exception as e:
         logger.error(f'获取进程磁盘IO失败: {e}')
         return f'获取进程磁盘IO失败: {e}'
+def fetch_process_io(pid, interval):
+    """
+    获取指定进程的磁盘IO
+    """
+    io_info = {}
+
+    try:
+        # 第一次读取
+        first_io = load_process_io(pid)
+
+        # 等待指定间隔
+        time.sleep(interval)
+
+        # 第二次读取
+        second_io = load_process_io(pid)
+
+        if first_io and second_io:
+            # 计算差值
+            read_bytes = second_io['read_bytes'] - first_io['read_bytes']
+            write_bytes = second_io['write_bytes'] - first_io['write_bytes']
+            cancelled_write_bytes = second_io['cancelled_write_bytes'] - first_io['cancelled_write_bytes']
+
+            # 计算速率
+            read_speed = read_bytes / interval
+            write_speed = write_bytes / interval
+
+            # 格式化输出
+            io_info['读速率'] = render_bytes_speed(read_speed)
+            io_info['写速率'] = render_bytes_speed(write_speed)
+            io_info['总速率'] = render_bytes_speed(read_speed + write_speed)
+            io_info['取消的写字节数'] = f"{cancelled_write_bytes} 字节"
+
+            # 获取进程名称
+            comm = fetch_process_comm(pid)
+            if comm:
+                io_info['进程名称'] = comm
+
+    except Exception as e:
+        logger.error(f'获取指定进程的磁盘IO失败: {e}')
+
+    return io_info
