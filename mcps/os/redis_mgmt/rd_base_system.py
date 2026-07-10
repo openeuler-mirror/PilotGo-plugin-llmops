@@ -369,3 +369,77 @@ def fetch_disk_info():
         logger.error(f'获取磁盘信息失败: {e}')
 
     return disk_info
+def fetch_dependencies_info():
+    """
+    获取依赖库版本
+    """
+    dependencies_info = {}
+
+    try:
+        libraries = [
+            ('glibc', 'ldd', '--version'),
+            ('openssl', 'openssl', 'version'),
+            ('zlib', 'zlib-flate', '-h'),
+            ('tcl', 'tclsh', 'info patchlevel'),
+            ('jemalloc', 'jemalloc-config', '--version'),
+            ('libevent', 'event-config', '--version'),
+            ('libaio', 'rpm', '-q', 'libaio'),
+            ('libgcc', 'rpm', '-q', 'libgcc'),
+            ('libstdc++', 'rpm', '-q', 'libstdc++')
+        ]
+
+        for lib_name, cmd, *args in libraries:
+            try:
+                output = subprocess.run(
+                    [cmd] + args,
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+
+                if output.returncode == 0:
+                    output = output.stdout.strip()
+                    if output:
+                        dependencies_info[lib_name] = output.split('\n')[0]
+            except Exception:
+                pass
+
+        output = subprocess.run(['ldd', '--version'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            version_line = output.stdout.split('\n')[0]
+            dependencies_info['GLIBC'] = version_line
+
+        output = subprocess.run(['openssl', 'version'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            dependencies_info['OpenSSL'] = output.stdout.strip()
+
+        output = subprocess.run(['python3', '--version'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            dependencies_info['Python'] = output.stdout.strip()
+
+        output = subprocess.run(['gcc', '--version'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            gcc_version = output.stdout.split('\n')[0]
+            dependencies_info['GCC'] = gcc_version
+
+        output = subprocess.run(['make', '--version'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            make_version = output.stdout.split('\n')[0]
+            dependencies_info['Make'] = make_version
+
+        redis_pid = find_redis_pid()
+        if redis_pid:
+            output = subprocess.run(['ldd', f'/proc/{redis_pid}/exe'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                dependencies_info['Redis动态链接库'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取依赖库版本失败: {e}')
+
+    return dependencies_info
