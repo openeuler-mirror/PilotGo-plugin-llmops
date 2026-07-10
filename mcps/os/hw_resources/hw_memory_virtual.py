@@ -519,3 +519,26 @@ def fetch_swap_usage():
     except Exception as e:
         logger.error(f'获取交换分区使用情况失败: {e}')
         return None
+def fetch_virtual_memory_management():
+    """
+    获取虚拟内存管理信息
+
+    返回:
+        虚拟内存管理信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['vmstat', '-s'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    relevant_lines = [line.strip() for line in lines[:10]]
+                    return '\n'.join(relevant_lines)
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取虚拟内存管理信息失败: {e}')
+        return None
