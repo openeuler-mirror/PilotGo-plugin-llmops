@@ -27,7 +27,8 @@ def fetch_proc_net(category=None):
         if not content:
             return f'No data in /proc/net/{cat}'
         return f'=== /proc/net/{cat} ===\n{content}'
-    except PermissionError:
+    except PermissionError as e:
+        logger.error(f'Permission denied: {e}')
         return f'Permission denied reading /proc/net/{cat}'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
@@ -40,10 +41,9 @@ def fetch_proc_net(category=None):
         return f'Error: {e}'
 
 # Edge cases handled:
-# - Invalid or non-existent PID
-# - /proc filesystem unavailable
-# - Permission denied for restricted /proc entries
-# - Process exit between inspection steps
+# - Missing ss command
+# - /proc/net/ inaccessible
+# - Permission denied on network info
 
 TOOL_CONFIG = {
     "name": "fetch_proc_net",

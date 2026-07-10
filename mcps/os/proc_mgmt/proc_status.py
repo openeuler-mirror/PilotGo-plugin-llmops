@@ -24,7 +24,8 @@ def fetch_proc_status(pid, format=None):
         return f'=== Process Status for PID {pid} ===\n{content}'
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
+    except PermissionError as e:
+        logger.error(f'Permission denied: {e}')
         return f'Permission denied reading /proc/{pid}/status'
     except Exception as e:
         logger.error(f'Failed: {e}')

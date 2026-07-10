@@ -53,7 +53,8 @@ def fetch_proc_threads(pid, format=None):
         return '\n'.join(out)
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
+    except PermissionError as e:
+        logger.error(f'Permission denied: {e}')
         return f'Permission denied reading /proc/{pid}/task'
     except Exception as e:
         logger.error(f'Failed: {e}')

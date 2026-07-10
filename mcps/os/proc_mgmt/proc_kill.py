@@ -49,7 +49,8 @@ def fetch_proc_kill(pid, sig=None):
         return f'Signal {sig_name}({sig_num}) sent to PID {pid}. {desc}'
     except ProcessLookupError:
         return f'Error: process {pid} not found or already exited'
-    except PermissionError:
+    except PermissionError as e:
+        logger.error(f'Permission denied: {e}')
         return f'Permission denied: cannot signal PID {pid} (may need root or own the process)'
     except Exception as e:
         logger.error(f'Failed: {e}')

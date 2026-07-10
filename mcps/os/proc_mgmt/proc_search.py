@@ -50,10 +50,9 @@ def fetch_proc_search(pattern, exact=None):
         return f'Error: {e}'
 
 # Edge cases handled:
-# - Invalid or non-existent PID
-# - /proc filesystem unavailable
-# - Permission denied for restricted /proc entries
-# - Process exit between inspection steps
+# - Empty search pattern
+# - pgrep command not installed
+# - No matching processes
 
 TOOL_CONFIG = {
     "name": "fetch_proc_search",
