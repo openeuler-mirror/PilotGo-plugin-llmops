@@ -440,3 +440,46 @@ def verify_backup_integrity(backup_results: List[Dict], original_files: List[Dic
             integrity_check['failed_verification'] += 1
 
     return integrity_check
+
+def render_file_size(size_bytes: int) -> str:
+    """格式化文件大小"""
+    if size_bytes == 0:
+        return "0 B"
+
+    size_names = ["B", "KB", "MB", "GB"]
+    i = 0
+    while size_bytes >= 1024 and i < len(size_names) - 1:
+        size_bytes /= 1024.0
+        i += 1
+
+    return f"{size_bytes:.2f} {size_names[i]}"
+
+# MCP工具配置
+TOOL_CONFIG = {
+    "name": "save_nginx_configs",
+    "function": save_nginx_configs,
+    "description": "备份当前所有Nginx配置文件（按时间戳命名、支持指定备份路径）",
+    "version": "1.0.0",
+    "author": "Nginx配置工具",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "backup_path": {
+                "type": "string",
+                "description": "指定备份路径，如果为空则使用默认路径 (/tmp/nginx_backup_时间戳)"  # NOSONAR
+            }
+        }
+    },
+    "examples": [
+        {
+            "name": "save_nginx_configs",
+            "arguments": {}
+        },
+        {
+            "name": "save_nginx_configs",
+            "arguments": {
+                "backup_path": "/home/user/nginx_backups"
+            }
+        }
+    ]
+}
