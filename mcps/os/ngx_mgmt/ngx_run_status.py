@@ -346,3 +346,91 @@ def fetch_status_module_url():
     except Exception as e:
         logger.warning(f'获取状态模块URL失败: {e}')
         return None
+
+def compute_health_score(process_status, connection_status, request_stats, cache_status, resource_usage):
+    """计算健康评分"""
+    try:
+        score = 100
+        warnings = []
+
+        # 进程状态检查
+        if process_status['master'] == 0:
+            score -= 50
+            warnings.append("缺少主进程")
+
+        if process_status['workers'] == 0:
+            score -= 50
+            warnings.append("缺少工作进程")
+
+        # 连接状态检查
+        if connection_status['active'] > 1000:
+            score -= 10
+            warnings.append("活跃连接数过高")
+
+        # 请求统计检查
+        if request_stats['req_per_sec'] != "未知":
+            req_per_sec = float(request_stats['req_per_sec'])
+            if req_per_sec > 1000:
+                score -= 10
+                warnings.append("请求率过高")
+
+        # 缓存状态检查
+        if cache_status['hit_rate'] != "未知":
+            hit_rate = float(cache_status['hit_rate'].rstrip('%'))
+            if hit_rate < 50:
+                score -= 10
+                warnings.append("缓存命中率过低")
+
+        # 资源使用检查
+        if resource_usage['cpu'] != "未知":
+            cpu = float(resource_usage['cpu'])
+            if cpu > 80:
+                score -= 15
+                warnings.append("CPU使用率过高")
+
+        if resource_usage['memory'] != "未知":
+            memory = float(resource_usage['memory'])
+            if memory > 80:
+                score -= 15
+                warnings.append("内存使用率过高")
+
+        # 确定状态和图标
+        if score >= 90:
+            state = "优秀"
+            icon = "🟢"
+        elif score >= 70:
+            state = "良好"
+            icon = "🟡"
+        elif score >= 50:
+            state = "一般"
+            icon = "🟠"
+        else:
+            state = "差"
+            icon = "🔴"
+
+        return {
+            'score': max(0, score),
+            'state': state,
+            'icon': icon,
+            'warnings': warnings
+        }
+    except Exception as e:
+        logger.error(f'计算健康评分失败: {e}')
+        return {
+            'score': 0,
+            'state': "未知",
+            'icon': "❓",
+            'warnings': ["无法计算健康评分"]
+        }
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_runtime_status",
+    "function": fetch_nginx_runtime_status,
+    "description": "聚合获取Nginx运行时核心指标（进程+连接+请求+缓存），输出极简健康快照",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
