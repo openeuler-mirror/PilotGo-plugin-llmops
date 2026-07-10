@@ -50,7 +50,6 @@ def fetch_proc_list(sort_by=None, limit=None):
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
-    except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
     except FileNotFoundError as e:
