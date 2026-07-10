@@ -266,3 +266,40 @@ def examine_firewall_rules(iptables_rules, ufw_rules, firewalld_rules):
         logger.error(f'分析防火墙规则失败: {e}')
 
     return analysis
+def verify_firewall_security(iptables_rules, ufw_rules, firewalld_rules):
+    """
+    检查防火墙安全性
+    """
+    security_checks = []
+
+    try:
+        # 检查是否有默认允许规则
+        for rule in iptables_rules:
+            if 'ACCEPT' in rule and '0.0.0.0/0' in rule:
+                security_checks.append('警告: 存在默认允许所有IP的规则')
+
+        # 检查是否有SSH端口开放给所有IP
+        for rule in iptables_rules + ufw_rules + firewalld_rules:
+            if '22' in rule and ('0.0.0.0/0' in rule or 'anywhere' in rule):
+                security_checks.append('注意: SSH端口开放给所有IP')
+
+        # 检查是否有防火墙规则
+        if not iptables_rules and not ufw_rules and not firewalld_rules:
+            security_checks.append('警告: 未发现防火墙规则')
+
+    except Exception as e:
+        logger.error(f'检查防火墙安全性失败: {e}')
+
+    return security_checks
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_firewall_rule",
+    "function": fetch_net_firewall_rule,
+    "description": "采集防火墙规则（iptables/ufw/firewalld的规则/链/动作/端口/IP限制）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
