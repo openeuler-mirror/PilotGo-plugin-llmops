@@ -142,3 +142,16 @@ def fetch_redis_version():
         return '未检测到'
     except Exception:
         return '未检测到'
+def fetch_mongodb_version():
+    """
+    获取MongoDB版本
+    """
+    try:
+        output = subprocess.run(['mongod', '--ver'], capture_output=True, text=True)
+        if output.returncode == 0:
+            for line in output.stdout.split('\n'):
+                if 'ver v' in line:
+                    return line.strip().split('v')[-1]
+        return '未检测到'
+    except Exception:
+        return '未检测到'
