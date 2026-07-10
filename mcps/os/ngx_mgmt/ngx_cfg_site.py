@@ -170,3 +170,19 @@ def locate_site_config(site_name, site_configs):
     except Exception as e:
         logger.error(f'查找站点配置失败: {e}')
         return None
+
+def render_config_content(body):
+    """格式化配置文件内容，添加行号"""
+    try:
+        lines = body.split('\n')
+        formatted_lines = []
+        line_number = 1
+
+        for line in lines:
+            formatted_lines.append(f"{line_number:4d}: {line}")
+            line_number += 1
+
+        return '\n'.join(formatted_lines)
+    except Exception as e:
+        logger.error(f'格式化配置内容失败: {e}')
+        return body
