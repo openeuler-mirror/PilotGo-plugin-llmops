@@ -84,3 +84,72 @@ def fetch_nginx_config_site(site_name=None):
     except Exception as e:
         logger.error(f'获取Nginx站点配置失败: {e}')
         return f'获取Nginx站点配置失败: {e}'
+
+def fetch_all_site_configs(main_config):
+    """获取所有站点配置文件"""
+    try:
+        site_configs = []
+
+        # 读取主配置文件，查找include指令
+        with open(main_config, 'r', encoding='utf-8', errors='ignore') as f:
+            body = f.read()
+
+        # 常见的站点配置目录
+        common_paths = [
+            '/etc/nginx/conf.d/*.conf',
+            '/etc/nginx/sites-enabled/*',
+            '/etc/nginx/sites-available/*',
+            '/usr/local/nginx/conf/conf.d/*.conf',
+            '/usr/local/nginx/conf/vhosts/*.conf'
+        ]
+
+        # 从主配置文件中查找include指令
+        include_pattern = r'include\s+([^;]+);'  # NOSONAR
+        includes = re.findall(include_pattern, body)  # NOSONAR
+
+        # 合并常见路径和include指令中的路径
+        all_paths = common_paths + includes
+
+        # 处理每个路径，查找配置文件
+        for path_pattern in all_paths:
+            # 处理相对路径
+            if not os.filepath.isabs(path_pattern):
+                config_dir = os.filepath.dirname(main_config)
+                path_pattern = os.filepath.join(config_dir, path_pattern)
+
+            # 展开通配符
+            config_files = glob.glob(path_pattern)
+
+            for config_file in config_files:
+                if os.filepath.isfile(config_file):
+                    # 读取配置文件内容
+                    with open(config_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        file_content = f.read()
+
+                    # 获取文件信息
+                    file_size = os.filepath.getsize(config_file)
+                    mod_time = datetime.fromtimestamp(os.filepath.getmtime(config_file))
+
+                    # 分析配置文件
+                    server_blocks = count_server_blocks(file_content)
+                    listen_ports = derive_listen_ports(file_content)
+                    server_names = derive_server_names(file_content)
+
+                    # 从文件路径推导站点名称
+                    site_name = os.filepath.splitext(os.filepath.basename(config_file))[0]
+
+                    site_configs.append({
+                        'name': site_name,
+                        'filepath': config_file,
+                        'body': file_content,
+                        'size': file_size,
+                        'mod_time': mod_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        'server_blocks': server_blocks,
+                        'listen_ports': listen_ports,
+                        'server_names': server_names
+                    })
+
+        return site_configs
+    except Exception as e:
+        logger.error(f'获取站点配置文件失败: {e}')
+        return []
