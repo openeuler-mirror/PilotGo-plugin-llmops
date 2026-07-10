@@ -91,3 +91,65 @@ def fetch_redis_base_system(system_type=None):
     except Exception as e:
         logger.error(f'获取Redis系统环境信息失败: {e}')
         return f'获取Redis系统环境信息失败: {e}'
+def fetch_os_info():
+    """
+    获取操作系统信息
+    """
+    os_info = {}
+
+    try:
+        output = subprocess.run(['uname', '-a'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            os_info['系统信息'] = output.stdout.strip()
+
+        output = subprocess.run(['uname', '-r'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            os_info['内核版本'] = output.stdout.strip()
+
+        output = subprocess.run(['uname', '-m'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            os_info['系统架构'] = output.stdout.strip()
+
+        if os.path.exists('/etc/os-release'):
+            with open('/etc/os-release', 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.startswith('NAME='):
+                        os_info['操作系统名称'] = line.split('=')[1].strip('"')
+                    elif line.startswith('VERSION='):
+                        os_info['系统版本'] = line.split('=')[1].strip('"')
+                    elif line.startswith('ID='):
+                        os_info['系统ID'] = line.split('=')[1].strip('"')
+
+        if os.path.exists('/etc/lsb-release'):
+            with open('/etc/lsb-release', 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line.startswith('DISTRIB_ID='):
+                        os_info['发行版ID'] = line.split('=')[1].strip('"')
+                    elif line.startswith('DISTRIB_RELEASE='):
+                        os_info['发行版版本'] = line.split('=')[1].strip('"')
+                    elif line.startswith('DISTRIB_DESCRIPTION='):
+                        os_info['发行版描述'] = line.split('=')[1].strip('"')
+
+        if os.path.exists('/etc/redhat-release'):
+            with open('/etc/redhat-release', 'r') as f:
+                os_info['RedHat版本'] = f.read().strip()
+
+        output = subprocess.run(['uptime'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            os_info['系统运行时间'] = output.stdout.strip()
+
+        output = subprocess.run(['hostname'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            os_info['主机名'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取操作系统信息失败: {e}')
+
+    return os_info
