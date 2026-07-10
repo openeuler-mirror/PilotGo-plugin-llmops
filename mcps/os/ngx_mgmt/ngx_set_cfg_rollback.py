@@ -282,3 +282,40 @@ def examine_backup_file(file_path: str) -> Optional[Dict]:
     except Exception as e:
         logger.error(f'分析备份文件失败: {e}')
         return None
+
+def infer_original_path(filename: str, backup_path: str) -> str:
+    """推断原始文件路径"""
+    try:
+        # 从文件名中提取原始路径信息
+        # 移除时间戳部分
+        clean_name = re.sub(r'\d{8}_\d{6}_', '', filename)  # NOSONAR
+        clean_name = re.sub(r'\.backup$', '', clean_name)  # NOSONAR
+
+        # 常见配置路径映射
+        path_mappings = {
+            'nginx_conf': '/etc/nginx/nginx.conf',
+            'etc_nginx_nginx_conf': '/etc/nginx/nginx.conf',
+            'sites_available': '/etc/nginx/sites-available/',
+            'conf_d': '/etc/nginx/conf.d/',
+            'mime_types': '/etc/nginx/mime.types',
+            'fastcgi_params': '/etc/nginx/fastcgi_params'
+        }
+
+        # 尝试匹配已知路径
+        for key, path in path_mappings.items():
+            if key in clean_name:
+                if path.endswith('/'):
+                    # 如果是目录，需要进一步处理
+                    return path + clean_name.replace(key + '_', '')
+                return path
+
+        # 默认使用常见配置路径
+        config_paths = fetch_config_paths()
+        if config_paths['config_root'] != 'Unknown':
+            return os.path.join(config_paths['config_root'], clean_name)
+
+        return f'/etc/nginx/{clean_name}'
+
+    except Exception as e:
+        logger.error(f'推断原始路径失败: {e}')
+        return '/etc/nginx/unknown.conf'
