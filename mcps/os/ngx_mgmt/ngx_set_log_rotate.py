@@ -219,3 +219,97 @@ def setup_logrotate_config(config_content: str, config_name: str = 'nginx') -> b
     except Exception as e:
         logger.error(f"安装logrotate配置失败: {e}")
         return False
+
+def build_custom_rotation_script(log_files: List[str], rotation_type: str,
+                                 rotation_value: str, retention_days: int,
+                                 compress: bool, notification_script: str) -> str:
+    """
+    创建自定义日志切割脚本
+    
+    参数:
+        log_files: 日志文件列表
+        rotation_type: 切割类型
+        rotation_value: 切割值
+        retention_days: 保留天数
+        compress: 是否压缩
+        notification_script: 通知脚本
+        
+    返回:
+        str: 自定义脚本内容
+    """
+    script_content = f"""#!/bin/bash
+# Nginx日志自定义切割脚本
+# 生成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
+LOG_FILES=({" ".join([f'"{f}"' for f in log_files])})
+RETENTION_DAYS={retention_days}
+COMPRESS={'true' if compress else 'false'}
+
+# 日志函数
+log_message() {{
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> /var/log/nginx-rotation.log
+}}
+
+# 切割函数
+rotate_logs() {{
+    for LOG_FILE in ${{LOG_FILES[@]}}; do
+        if [ ! -f "$LOG_FILE" ]; then
+            log_message "警告: 日志文件 $LOG_FILE 不存在"
+            continue
+        fi
+        
+        # 创建时间戳备份
+        TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+        BACKUP_FILE="$LOG_FILE.$TIMESTAMP"
+        
+        # 复制日志文件
+        cp "$LOG_FILE" "$BACKUP_FILE"
+        
+        # 清空原日志文件
+        > "$LOG_FILE"
+        
+        log_message "已切割日志文件: $LOG_FILE -> $BACKUP_FILE"
+        
+        # 压缩备份文件
+        if [ "$COMPRESS" = "true" ]; then
+            gzip "$BACKUP_FILE"
+            log_message "已压缩备份文件: $BACKUP_FILE.gz"
+        fi
+    done
+}}
+
+# 清理旧文件
+cleanup_old_files() {{
+    for LOG_FILE in ${{LOG_FILES[@]}}; do
+        if [ ! -f "$LOG_FILE" ]; then
+            continue
+        fi
+        
+        # 查找并删除超过保留天数的文件
+        find $(dirname "$LOG_FILE") -name "$(basename "$LOG_FILE")*.gz" -mtime +$RETENTION_DAYS -delete
+        find $(dirname "$LOG_FILE") -name "$(basename "$LOG_FILE")*" ! -name "$(basename "$LOG_FILE")" -mtime +$RETENTION_DAYS -delete
+        
+        log_message "已清理超过{RETENTION_DAYS}天的旧日志文件"
+    done
+}}
+
+# 发送通知
+send_notification() {{
+    if [ -n "{notification_script}" ]; then
+        {notification_script}
+        log_message "已发送通知"
+    fi
+}}
+
+# 主执行流程
+main() {{
+    log_message "开始执行Nginx日志切割"
+    rotate_logs
+    cleanup_old_files
+    send_notification
+    log_message "Nginx日志切割完成"
+}}
+
+main "$@"
+"""
+    return script_content
