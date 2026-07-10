@@ -112,3 +112,31 @@ def fetch_icmp_stats():
         logger.error(f'获取ICMP包收发数失败: {e}')
 
     return stats
+def fetch_icmp_rates(icmp_stats):
+    """
+    计算ICMP包丢包率和错包率
+    """
+    rates = {}
+
+    try:
+        if icmp_stats:
+            # 计算丢包率
+            if 'ICMP接收包数' in icmp_stats and 'ICMP发送包数' in icmp_stats:
+                received = int(icmp_stats['ICMP接收包数'])
+                sent = int(icmp_stats['ICMP发送包数'])
+                if sent > 0:
+                    loss_rate = ((sent - received) / sent) * 100
+                    rates['ICMP丢包率'] = f"{loss_rate:.2f}%"
+
+            # 计算错包率
+            if 'ICMP接收错误数' in icmp_stats and 'ICMP接收包数' in icmp_stats:
+                errors = int(icmp_stats['ICMP接收错误数'])
+                received = int(icmp_stats['ICMP接收包数'])
+                if received > 0:
+                    error_rate = (errors / received) * 100
+                    rates['ICMP错包率'] = f"{error_rate:.2f}%"
+
+    except Exception as e:
+        logger.error(f'计算ICMP包率失败: {e}')
+
+    return rates
