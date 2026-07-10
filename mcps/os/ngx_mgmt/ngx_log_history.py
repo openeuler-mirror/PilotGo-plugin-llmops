@@ -312,3 +312,44 @@ def estimate_file_time_range(log_path, mtime):
     except Exception as e:
         logger.error(f'估算文件时间范围失败: {e}')
         return "时间范围未知"
+
+def analyze_time_range(start_time, end_time):
+    """
+    解析时间范围
+
+    参数:
+        start_time: 开始时间字符串
+        end_time: 结束时间字符串
+
+    返回:
+        tuple: (start_datetime, end_datetime)
+    """
+    try:
+        now = datetime.now()
+
+        # 解析开始时间
+        if start_time:
+            if len(start_time) == 10:  # YYYY-MM-DD
+                start_dt = datetime.strptime(start_time, '%Y-%m-%d')
+            else:  # YYYY-MM-DD HH:MM:SS
+                start_dt = datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S')
+        else:
+            # 默认查询最近7天
+            start_dt = now - timedelta(days=7)
+
+        # 解析结束时间
+        if end_time:
+            if len(end_time) == 10:  # YYYY-MM-DD
+                end_dt = datetime.strptime(end_time, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+            else:  # YYYY-MM-DD HH:MM:SS
+                end_dt = datetime.strptime(end_time, '%Y-%m-%d %H:%M:%S')
+        else:
+            end_dt = now
+
+        return start_dt, end_dt
+
+    except Exception as e:
+        logger.error(f'解析时间范围失败: {e}')
+        # 返回默认时间范围
+        now = datetime.now()
+        return now - timedelta(days=7), now
