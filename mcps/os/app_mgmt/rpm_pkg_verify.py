@@ -158,3 +158,36 @@ def is_package_installed(package_name):
 
     except Exception:
         return False
+def verify_package_integrity(package_name, check_type=None):
+    """
+    检查指定包的完整性
+
+    参数:
+        package_name: 包名
+        check_type: 检查类型
+
+    返回:
+        检查结果字典
+    """
+    try:
+        results = {
+            'package': package_name
+        }
+
+        # 检查篡改
+        if check_type in [None, 'tamper']:
+            results['tamper'] = verify_package_tamper(package_name)
+
+        # 检查文件缺失
+        if check_type in [None, 'missing']:
+            results['missing'] = verify_package_missing(package_name)
+
+        # 检查配置文件变更
+        if check_type in [None, 'config']:
+            results['config'] = verify_package_config(package_name)
+
+        return results
+
+    except Exception as e:
+        logger.error(f'检查包完整性失败 {package_name}: {e}')
+        return {'package': package_name, 'error': str(e)}
