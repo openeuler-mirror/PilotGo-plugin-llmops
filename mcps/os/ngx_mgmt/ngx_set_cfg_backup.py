@@ -286,3 +286,57 @@ def gather_all_config_files(config_paths: Dict) -> List[Dict]:
     except Exception as e:
         logger.error(f'收集配置文件失败: {e}')
         return []
+
+def perform_backup(config_files: List[Dict], backup_dir: str) -> List[Dict]:
+    """执行备份操作"""
+    backup_results = []
+
+    for config_file in config_files:
+        try:
+            source_path = config_file['path']
+            if not os.path.exists(source_path):
+                backup_results.append({
+                    'success': False,
+                    'file': source_path,
+                    'backup_path': None,
+                    'error': '源文件不存在',
+                    'size': 0
+                })
+                continue
+
+            # 生成备份文件名（保留目录结构）
+            relative_path = os.path.relpath(source_path, '/')
+            backup_filename = relative_path.replace('/', '_')
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_filename = f"{timestamp}_{backup_filename}"
+
+            backup_path = os.path.join(backup_dir, 'configs', backup_filename)
+
+            # 复制文件
+            shutil.copy2(source_path, backup_path)
+
+            # 获取文件信息
+            file_stat = os.stat(source_path)
+
+            backup_results.append({
+                'success': True,
+                'file': source_path,
+                'backup_path': backup_path,
+                'size': file_stat.st_size,
+                'modified_time': datetime.datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+                'backup_time': datetime.datetime.now().isoformat()
+            })
+
+            logger.info(f'成功备份: {source_path} -> {backup_path}')
+
+        except Exception as e:
+            backup_results.append({
+                'success': False,
+                'file': config_file['path'],
+                'backup_path': None,
+                'error': str(e),
+                'size': 0
+            })
+            logger.error(f'备份文件失败 {config_file["path"]}: {e}')
+
+    return backup_results
