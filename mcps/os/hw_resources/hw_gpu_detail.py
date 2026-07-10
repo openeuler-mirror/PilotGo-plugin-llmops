@@ -526,3 +526,58 @@ def fetch_opengl_info():
     except Exception as e:
         logger.error(f'获取OpenGL信息失败: {e}')
         return None
+def analyze_macos_video(output):
+    """
+    解析macOS system_profiler输出
+
+    参数:
+        output: system_profiler命令输出
+
+    返回:
+        显卡信息列表
+    """
+    try:
+        video_cards = []
+        current_card = {}
+
+        lines = output.split('\n')
+        for line in lines:
+            if line.strip() and ':' in line:
+                parts = line.split(':', 1)
+                key = parts[0].strip()
+                val = parts[1].strip()
+
+                if 'Graphics/Displays' in key:
+                    if current_card:
+                        video_cards.append(current_card)
+                    current_card = {
+                        'model': 'Unknown',
+                        'vendor': 'Apple',
+                        'memory': 'Unknown',
+                        'driver': 'Unknown',
+                        'interface': 'Unknown',
+                        'pci_address': 'Unknown',
+                        'device_id': 'Unknown',
+                        'driver_date': 'Unknown',
+                        'status': 'Unknown'
+                    }
+                elif current_card:
+                    if 'Chipset Model' in key:
+                        current_card['model'] = val
+                    elif 'VRAM (Total)' in key:
+                        current_card['memory'] = val
+                    elif 'Vendor' in key:
+                        current_card['vendor'] = val
+                    elif 'Device ID' in key:
+                        current_card['device_id'] = val
+                    elif 'Revision ID' in key:
+                        current_card['revision'] = val
+
+        if current_card:
+            video_cards.append(current_card)
+
+        return video_cards
+
+    except Exception as e:
+        logger.error(f'解析macOS显卡输出失败: {e}')
+        return []
