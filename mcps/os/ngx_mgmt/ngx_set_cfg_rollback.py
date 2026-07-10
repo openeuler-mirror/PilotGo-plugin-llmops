@@ -498,3 +498,14 @@ def reload_nginx_config() -> Dict:
             'success': False,
             'error': f'重载过程出错: {e}'
         }
+
+def recover_from_backup(backup_info: Dict, config_paths: Dict):
+    """从备份恢复配置"""
+    try:
+        for file_info in backup_info.get('backup_files', []):
+            if os.path.exists(file_info['backup']):
+                shutil.copy2(file_info['backup'], file_info['original'])
+                logger.info(f'恢复配置: {file_info["backup"]} -> {file_info["original"]}')
+
+    except Exception as e:
+        logger.error(f'恢复配置失败: {e}')
