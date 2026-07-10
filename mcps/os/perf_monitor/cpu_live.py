@@ -89,3 +89,75 @@ def fetch_cpu_count():
             return body.count('processor\t:')
     except Exception:
         return 0
+def fetch_cpu_usage(interval):
+    """
+    获取CPU使用率
+    """
+    try:
+        # 读取/proc/stat文件
+        def load_cpu_stats():
+            stats = {}
+            with open('/proc/stat', 'r') as f:
+                for line in f:
+                    if line.startswith('cpu'):
+                        parts = line.strip().split()
+                        if parts[0] == 'cpu':
+                            # 总体CPU
+                            stats['total'] = {
+                                'user': int(parts[1]),
+                                'nice': int(parts[2]),
+                                'system': int(parts[3]),
+                                'idle': int(parts[4]),
+                                'iowait': int(parts[5]),
+                                'irq': int(parts[6]),
+                                'softirq': int(parts[7])
+                            }
+                        elif parts[0].startswith('cpu') and parts[0][3:].isdigit():
+                            # 每个核心
+                            core = parts[0][3:]
+                            stats[core] = {
+                                'user': int(parts[1]),
+                                'nice': int(parts[2]),
+                                'system': int(parts[3]),
+                                'idle': int(parts[4]),
+                                'iowait': int(parts[5]),
+                                'irq': int(parts[6]),
+                                'softirq': int(parts[7])
+                            }
+            return stats
+
+        # 第一次读取
+        stats1 = load_cpu_stats()
+
+        # 等待指定间隔
+        time.sleep(interval)
+
+        # 第二次读取
+        stats2 = load_cpu_stats()
+
+        # 计算使用率
+        usage = {}
+        for key in stats1:
+            if key in stats2:
+                stat1 = stats1[key]
+                stat2 = stats2[key]
+
+                # 计算总时间差
+                total_diff = sum(stat2.values()) - sum(stat1.values())
+
+                if total_diff > 0:
+                    usage[key] = {
+                        'user': round((stat2['user'] - stat1['user']) / total_diff * 100, 2),
+                        'nice': round((stat2['nice'] - stat1['nice']) / total_diff * 100, 2),
+                        'system': round((stat2['system'] - stat1['system']) / total_diff * 100, 2),
+                        'idle': round((stat2['idle'] - stat1['idle']) / total_diff * 100, 2),
+                        'iowait': round((stat2['iowait'] - stat1['iowait']) / total_diff * 100, 2),
+                        'irq': round((stat2['irq'] - stat1['irq']) / total_diff * 100, 2),
+                        'softirq': round((stat2['softirq'] - stat1['softirq']) / total_diff * 100, 2)
+                    }
+
+        return usage
+
+    except Exception as e:
+        logger.error(f'获取CPU使用率失败: {e}')
+        return {}
