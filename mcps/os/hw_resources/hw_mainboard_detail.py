@@ -231,3 +231,35 @@ def fetch_mobo_details():
             'max_memory': 'Unknown',
             'memory_slots': 'Unknown'
         }
+def analyze_dmidecode_baseboard(output, mobo_info):
+    """
+    解析dmidecode主板输出
+
+    参数:
+        output: dmidecode输出
+        mobo_info: 主板信息字典
+
+    返回:
+        更新后的主板信息字典
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Manufacturer:'):
+                mobo_info['vendor'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Product Name:'):
+                mobo_info['model'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Serial Number:'):
+                mobo_info['serial'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Version:'):
+                mobo_info['form_factor'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Number Of Memory Slots:'):
+                mobo_info['memory_slots'] = line.split(':', 1)[1].strip()
+
+        return mobo_info
+
+    except Exception as e:
+        logger.error(f'解析dmidecode主板输出失败: {e}')
+        return mobo_info
