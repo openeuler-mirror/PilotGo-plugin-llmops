@@ -320,3 +320,43 @@ def render_bytes_speed(bytes_per_sec):
         return f"{(bytes_per_sec / 1024):.2f} KB/s"
     else:
         return f"{bytes_per_sec:.2f} B/s"
+def analyze_speed(speed_str):
+    """
+    解析速率字符串为数值
+    """
+    try:
+        match = re.search(r'(\d+\.\d+)\s*(\w+/s)', speed_str)  # NOSONAR
+        if match:
+            val = float(match.group(1))
+            unit = match.group(2)
+
+            if unit == 'MB/s':
+                return val * 1024 * 1024
+            elif unit == 'KB/s':
+                return val * 1024
+            else:
+                return val
+    except Exception:
+        pass
+    return 0
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_perf_disk_io",
+    "function": fetch_perf_disk_io,
+    "description": "采集进程磁盘IO（指定进程/所有进程的磁盘读写速率/IO占用排序）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "pid": {
+                "type": "string",
+                "description": "进程ID，如 \"1234\""
+            },
+            "interval": {
+                "type": "string",
+                "description": "采样间隔（秒），如 \"1\""
+            }
+        },
+        "required": []
+    }
+}
