@@ -4,11 +4,12 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('proc_status')
 
-def fetch_proc_status(pid):
+def fetch_proc_status(pid, fmt=None):
     """Read /proc/<pid>/status showing human-readable process status.
 
     Args:
         pid: Target PID (e.g. "1234")
+        fmt: Output format - text (default), json, or summary
 
     Returns:
         Process status key-value pairs
@@ -36,7 +37,12 @@ TOOL_CONFIG = {
     "parameters": {
         "type": "object",
         "properties": {
-            "pid": {"type": "string", "description": "Target PID, e.g. '1234'"}
+            "pid": {"type": "string", "description": "Target PID, e.g. '1234'"},
+            "format": {
+                "type": "string",
+                "description": "Output format: text (default), json, or summary",
+                "enum": ["text", "json", "summary"]
+            }
         },
         "required": ["pid"]
     }
