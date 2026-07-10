@@ -107,3 +107,29 @@ def revert_nginx_config(backup_path: str, target_version: Optional[str] = None) 
             'message': f'回滚失败: {e}',
             'rollback_files': []
         }
+
+def verify_nginx_installation() -> Dict:
+    """检查Nginx安装状态"""
+    try:
+        output = subprocess.run(['which', 'nginx'], capture_output=True, text=True)
+        if output.returncode != 0:
+            return {
+                'installed': False,
+                'suggestion': '请使用包管理器安装Nginx (如: apt install nginx 或 yum install nginx)'
+            }
+
+        ngx_bin_path = output.stdout.strip()
+        if not os.path.exists(ngx_bin_path):
+            return {
+                'installed': False,
+                'suggestion': 'Nginx二进制文件不存在，请重新安装'
+            }
+
+        return {'installed': True, 'path': ngx_bin_path}
+
+    except Exception as e:
+        logger.error(f'检查Nginx安装状态失败: {e}')
+        return {
+            'installed': False,
+            'suggestion': f'检查安装状态时出错: {e}'
+        }
