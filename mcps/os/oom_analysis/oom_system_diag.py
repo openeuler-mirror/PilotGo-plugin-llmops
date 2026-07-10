@@ -265,3 +265,28 @@ def analyze_mem_value(line: str) -> int:
     except Exception:
         pass
     return 0
+def analyze_zoneinfo(body: str) -> Dict[str, Any]:
+    """解析zoneinfo信息"""
+    summary = {}
+
+    try:
+        zones = {}
+        current_zone = None
+
+        for line in body.split('\n'):
+            if line.startswith('Node'):
+                zone_match = re.search(r'zone\s+(\w+)', line)
+                if zone_match:
+                    current_zone = zone_match.group(1)
+                    zones[current_zone] = {}
+            elif current_zone and 'pages' in line.lower():
+                pages_match = re.search(r'(\d+)\s+pages', line)
+                if pages_match:
+                    zones[current_zone]['pages'] = int(pages_match.group(1))
+
+        summary['zones'] = zones
+
+    except Exception as e:
+        summary['error'] = str(e)
+
+    return summary
