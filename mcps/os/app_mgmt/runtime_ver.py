@@ -120,3 +120,14 @@ def fetch_nodejs_version():
         return '未检测到'
     except Exception:
         return '未检测到'
+def fetch_php_version():
+    """
+    获取PHP版本
+    """
+    try:
+        output = subprocess.run(['php', '-v'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return output.stdout.strip().split()[1]
+        return '未检测到'
+    except Exception:
+        return '未检测到'
