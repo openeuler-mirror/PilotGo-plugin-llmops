@@ -269,3 +269,47 @@ def examine_rule_config(snat_rules, dnat_rules):
         logger.error(f'分析规则配置失败: {e}')
 
     return analysis
+def verify_rule_security(snat_rules, dnat_rules):
+    """
+    检查规则安全性
+    """
+    security_checks = []
+
+    try:
+        # 检查是否有不安全的SNAT规则
+        for rule in snat_rules:
+            if rule.get('源IP') == '0.0.0.0/0' and rule.get('目标') == 'MASQUERADE':
+                security_checks.append("警告: 发现对所有IP的MASQUERADE规则")
+
+        # 检查是否有不安全的DNAT规则
+        for rule in dnat_rules:
+            if rule.get('源IP') == '0.0.0.0/0' and rule.get('目标IP') != '127.0.0.1/32':
+                security_checks.append("警告: 发现对所有IP的DNAT规则")
+
+        # 检查是否有SSH端口的DNAT规则
+        for rule in dnat_rules:
+            if rule.get('目标端口') == '22':
+                security_checks.append("警告: 发现对SSH端口的DNAT规则")
+
+        # 检查是否有特权端口的DNAT规则
+        for rule in dnat_rules:
+            dport = rule.get('目标端口')
+            if dport and dport.isdigit() and int(dport) < 1024:
+                security_checks.append(f"注意: 发现对特权端口 {dport} 的DNAT规则")
+
+    except Exception as e:
+        logger.error(f'检查规则安全性失败: {e}')
+
+    return security_checks
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_snat_dnat",
+    "function": fetch_net_snat_dnat,
+    "description": "采集SNAT/DNAT规则（地址转换规则/源/目标IP/端口/协议/生效链）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
