@@ -610,3 +610,71 @@ def produce_statistics(log_content, log_type):
     except Exception as e:
         logger.error(f'生成统计信息失败: {e}')
         return ["统计信息生成失败"]
+
+def render_file_size(size_bytes):
+    """
+    格式化文件大小
+    """
+    if size_bytes == 0:
+        return "0 B"
+
+    size_names = ["B", "KB", "MB", "GB", "TB"]
+    i = 0
+    size = float(size_bytes)
+
+    while size >= 1024 and i < len(size_names) - 1:
+        size /= 1024
+        i += 1
+
+    return f"{size:.2f} {size_names[i]}"
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_log_history",
+    "function": fetch_nginx_log_history,
+    "description": "获取指定时间范围的历史日志，支持按时间/IP/URL/状态码过滤的MCP工具",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "start_time": {
+                "type": "string",
+                "description": "开始时间 (格式: YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD)，默认最近7天",
+                "default": ""
+            },
+            "end_time": {
+                "type": "string",
+                "description": "结束时间 (格式: YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD)，默认当前时间",
+                "default": ""
+            },
+            "ip_address": {
+                "type": "string",
+                "description": "IP地址过滤，支持部分匹配",
+                "default": ""
+            },
+            "url_pattern": {
+                "type": "string",
+                "description": "URL模式过滤，支持正则表达式",
+                "default": ""
+            },
+            "status_code": {
+                "type": "string",
+                "description": "状态码过滤 (如: 200, 404, 500)",
+                "default": ""
+            },
+            "log_type": {
+                "type": "string",
+                "description": "日志类型：access（访问日志）、error（错误日志）",
+                "enum": ["access", "error"],
+                "default": "access"
+            },
+            "max_lines": {
+                "type": "integer",
+                "description": "最大返回行数",
+                "minimum": 1,
+                "maximum": 10000,
+                "default": 1000
+            }
+        },
+        "required": []
+    }
+}
