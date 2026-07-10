@@ -565,3 +565,33 @@ def certify_nginx_config() -> Dict:
             "message": f"配置语法检查失败: {e}",
             "error": str(e)
         }
+
+def reload_nginx_config() -> Dict:
+    """
+    重载Nginx配置
+    
+    Returns:
+        dict: 重载结果
+    """
+    try:
+        cmd_result = execute_command(['nginx', '-s', 'reload'], timeout=60)
+        
+        if cmd_result["success"]:
+            return {
+                "success": True,
+                "message": "配置重载成功"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "配置重载失败",
+                "error": cmd_result.get("error", "重载命令执行失败")
+            }
+        
+    except Exception as e:
+        logger.error(f"重载Nginx配置失败: {e}")
+        return {
+            "success": False,
+            "message": f"配置重载失败: {e}",
+            "error": str(e)
+        }
