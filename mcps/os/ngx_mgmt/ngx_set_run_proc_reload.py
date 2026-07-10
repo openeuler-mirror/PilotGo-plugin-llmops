@@ -427,3 +427,24 @@ def verify_worker_process_change(initial_pids, current_pids):
     except Exception as e:
         logger.error(f"检查工作进程变化失败: {e}")
         return False
+
+def fetch_nginx_master_pids():
+    """
+    获取Nginx主进程PID列表
+
+    Returns:
+        list: 主进程PID列表
+    """
+    try:
+        pids = []
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if (proc.info['name'] and 'nginx' in proc.info['name'].lower() and
+                    proc.info['cmdline'] and 'master' in ' '.join(proc.info['cmdline']).lower()):
+                    pids.append(proc.info['pid'])
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return pids
+    except Exception as e:
+        logger.error(f"获取Nginx主进程PID失败: {e}")
+        return []
