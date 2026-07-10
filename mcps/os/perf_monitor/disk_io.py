@@ -243,3 +243,34 @@ def fetch_process_comm(pid):
             return f.read().strip()
     except Exception:
         return None
+def fetch_system_io_stats():
+    """
+    获取系统磁盘IO统计
+    """
+    stats = {}
+
+    try:
+        # 读取/proc/vmstat
+        with open('/proc/vmstat', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) == 2:
+                    key = parts[0]
+                    val = parts[1]
+
+                    # 提取IO相关统计
+                    if key == 'pgpgin':
+                        stats['换入页数'] = val
+                    elif key == 'pgpgout':
+                        stats['换出页数'] = val
+                    elif key == 'pgfault':
+                        stats['页错误数'] = val
+                    elif key == 'pgmajfault':
+                        stats['主页错误数'] = val
+
+    except Exception as e:
+        logger.error(f'获取系统磁盘IO统计失败: {e}')
+
+    return stats
