@@ -44,8 +44,6 @@ def fetch_proc_kill(pid, sig=None):
                 sig_name = sig if sig in sig_desc else f'SIG{sig}'
             else:
                 return f'Error: unknown signal: {sig}. Supported: TERM KILL HUP STOP CONT INT USR1 USR2 QUIT or numbers 1 2 9 15 17 18'
-        if not os.path.exists(f'/proc/{pid}'):
-            return f'Error: process {pid} not found'
         os.kill(pid, sig_num)
         desc = sig_desc.get(sig_name.replace('SIG',''), '')
         return f'Signal {sig_name}({sig_num}) sent to PID {pid}. {desc}'
