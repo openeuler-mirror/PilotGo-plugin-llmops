@@ -312,3 +312,30 @@ def derive_location_blocks(body):
     except Exception as e:
         logger.error(f'提取location块失败: {e}')
         return []
+
+def derive_directives(body, directive_name):
+    """提取指定指令的值"""
+    try:
+        pattern = rf'{directive_name}\s+([^;]+);'
+        matches = re.findall(pattern, body)  # NOSONAR
+        return [match.strip() for match in matches]
+    except Exception as e:
+        logger.error(f'提取{directive_name}指令失败: {e}')
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_config_site",
+    "function": fetch_nginx_config_site,
+    "description": "获取Nginx站点配置文件内容、所有站点配置列表及路径",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "site_name": {
+                "type": "string",
+                "description": "可选，指定要查看的站点名称，如果不指定则显示所有站点列表"
+            }
+        },
+        "required": []
+    }
+}
