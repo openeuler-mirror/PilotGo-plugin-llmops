@@ -234,3 +234,12 @@ def fetch_all_pids():
         logger.error(f'获取所有进程ID失败: {e}')
 
     return pids
+def fetch_process_comm(pid):
+    """
+    获取进程名称
+    """
+    try:
+        with open(f'/proc/{pid}/comm', 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return None
