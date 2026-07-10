@@ -395,3 +395,159 @@ def fetch_service_script():
         logger.error(f'获取服务管理脚本路径失败: {e}')
 
     return script_info
+def fetch_restart_policy():
+    """
+    获取重启策略
+    """
+    restart_info = {}
+
+    try:
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'Restart'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            restart = output.stdout.strip()
+            if restart:
+                restart_info['重启策略'] = restart
+                restart_map = {
+                    'no': '不重启',
+                    'on-success': '成功时重启',
+                    'on-failure': '失败时重启',
+                    'on-abnormal': '异常时重启',
+                    'on-watchdog': '看门狗触发时重启',
+                    'always': '总是重启'
+                }
+                restart_info['重启策略说明'] = restart_map.get(restart, '未知')
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'RestartSec'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            restart_sec = output.stdout.strip()
+            if restart_sec and restart_sec != '0':
+                restart_info['重启间隔'] = f"{restart_sec} 秒"
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'RestartMode'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            restart_mode = output.stdout.strip()
+            if restart_mode:
+                restart_info['重启模式'] = restart_mode
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'StartLimitIntervalSec'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            start_limit = output.stdout.strip()
+            if start_limit and start_limit != '0' and start_limit != 'infinity':
+                restart_info['启动限制间隔'] = f"{start_limit} 秒"
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'StartLimitBurst'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            start_burst = output.stdout.strip()
+            if start_burst and start_burst != '0':
+                restart_info['启动限制次数'] = start_burst
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'TimeoutStartSec'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            timeout_start = output.stdout.strip()
+            if timeout_start:
+                restart_info['启动超时'] = f"{timeout_start} 秒"
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'TimeoutStopSec'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            timeout_stop = output.stdout.strip()
+            if timeout_stop:
+                restart_info['停止超时'] = f"{timeout_stop} 秒"
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'TimeoutSec'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            deadline = output.stdout.strip()
+            if deadline:
+                restart_info['通用超时'] = f"{deadline} 秒"
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'KillMode'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            kill_mode = output.stdout.strip()
+            if kill_mode:
+                restart_info['终止模式'] = kill_mode
+                kill_mode_map = {
+                    'control-group': '终止控制组内所有进程',
+                    'process': '仅终止主进程',
+                    'mixed': '终止主进程和控制组内所有进程',
+                    'none': '不终止任何进程'
+                }
+                restart_info['终止模式说明'] = kill_mode_map.get(kill_mode, '未知')
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'KillSignal'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            kill_signal = output.stdout.strip()
+            if kill_signal:
+                restart_info['终止信号'] = kill_signal
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'SendSIGKILL'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            send_sigkill = output.stdout.strip()
+            if send_sigkill:
+                restart_info['发送SIGKILL'] = '是' if send_sigkill == 'yes' else '否'
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'RemainAfterExit'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            remain_after_exit = output.stdout.strip()
+            if remain_after_exit:
+                restart_info['退出后保持激活'] = '是' if remain_after_exit == 'yes' else '否'
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'WantedBy'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            wanted_by = output.stdout.strip()
+            if wanted_by:
+                restart_info['依赖目标'] = wanted_by
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'Requires'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            requires = output.stdout.strip()
+            if requires:
+                restart_info['依赖服务'] = requires
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'After'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            after = output.stdout.strip()
+            if after:
+                restart_info['启动顺序'] = after
+
+        output = subprocess.run(['systemctl', 'show', 'redis.service', '-p', 'Before'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            before = output.stdout.strip()
+            if before:
+                restart_info['前置服务'] = before
+
+    except Exception as e:
+        logger.error(f'获取重启策略失败: {e}')
+
+    return restart_info
+
+TOOL_CONFIG = {
+    "name": "fetch_redis_base_service",
+    "function": fetch_redis_base_service,
+    "description": "采集Redis系统服务状态（开机自启/手动）、服务管理脚本路径、重启策略",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "service_type": {
+                "type": "string",
+                "description": "指定要采集的服务信息类型，可选值：status（服务状态）、autostart（开机自启状态）、script（服务管理脚本路径）、restart（重启策略）、all（所有服务信息）",
+                "enum": ["status", "autostart", "script", "restart", "all"]
+            }
+        },
+        "required": []
+    }
+}
