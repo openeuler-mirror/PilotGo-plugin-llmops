@@ -153,3 +153,70 @@ def save_config_file(cfg_filepath: str) -> str:
     except Exception as e:
         logger.error(f"备份配置文件失败: {e}")
         raise
+
+def fetch_current_log_formats(cfg_filepath: str) -> Dict[str, Any]:
+    """
+    获取当前自定义日志格式配置
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        
+    返回:
+        dict: 当前日志格式配置信息
+    """
+    current_formats = {
+        'formats': [],
+        'source_file': cfg_filepath
+    }
+    
+    try:
+        # 安全验证：验证 cfg_filepath 路径参数（允许绝对路径）
+        valid, err_text = validate_path_param(cfg_filepath, allow_absolute=True)
+        if not valid:
+            logger.error(f"fetch_current_log_formats: cfg_filepath 路径验证失败：{err_text}")
+            return current_formats
+        
+        if not os.path.exists(cfg_filepath):
+            return current_formats
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 移除注释
+        body = re.sub(r'#.*$', '', body, flags=re.MULTILINE)  # NOSONAR
+        
+        # 解析log_format指令
+        format_pattern = r'log_format\s+([^{]+)\{([^}]+)\}'  # NOSONAR
+        format_matches = re.finditer(format_pattern, body, re.DOTALL)  # NOSONAR
+        
+        for match in format_matches:
+            format_name = match.group(1).strip()
+            format_content = match.group(2).strip()
+            
+            # 提取变量
+            variables = re.findall(r'\$(\w+)', format_content)  # NOSONAR
+            
+            current_formats['formats'].append({
+                'name': format_name,
+                'format': format_content,
+                'variables': sorted(set(variables)),
+                'line_number': body[:match.start()].count('\n') + 1
+            })
+        
+        # 检查include文件
+        include_pattern = r'include\s+([^;]+);'  # NOSONAR
+        includes = re.findall(include_pattern, body)  # NOSONAR
+        
+        for include in includes:
+            include_path = include.strip().strip('"\'')
+            if not os.path.isabs(include_path):
+                include_path = os.path.join(os.path.dirname(cfg_filepath), include_path)
+            
+            if os.path.exists(include_path):
+                include_formats = fetch_current_log_formats(include_path)
+                current_formats['formats'].extend(include_formats['formats'])
+        
+    except Exception as e:
+        logger.error(f"获取当前日志格式配置失败: {e}")
+    
+    return current_formats
