@@ -17,29 +17,42 @@ def fetch_proc_kill(pid, sig=None):
     """
     try:
         pid = int(pid)
+        if pid <= 0:
+            return f'Error: invalid PID {pid} (must be positive)'
+        sig_desc = {}
         if sig is None:
             sig_name = 'SIGTERM'
             sig_num = signal.SIGTERM
         else:
             sig = str(sig).upper().replace('SIG', '')
-            sig_map = {str(v): k for k, v in signal.Signals.__members__.items()}
-            valid = {s: getattr(signal, s, None) for s in signal.Signals.__members__}
-            if sig in valid:
-                sig_num = valid[sig]
-                sig_name = f'SIG{sig}'
-            elif sig in sig_map:
-                sig_num = int(sig)
-                sig_name = sig_map[sig]
+            signal_aliases = {
+                'TERM': signal.SIGTERM, 'KILL': signal.SIGKILL, 'HUP': signal.SIGHUP,
+                'STOP': signal.SIGSTOP, 'CONT': signal.SIGCONT, 'INT': signal.SIGINT,
+                'USR1': signal.SIGUSR1, 'USR2': signal.SIGUSR2, 'QUIT': signal.SIGQUIT,
+                '1': signal.SIGHUP, '9': signal.SIGKILL, '15': signal.SIGTERM,
+                '17': signal.SIGSTOP, '18': signal.SIGCONT, '2': signal.SIGINT,
+            }
+            sig_desc = {
+                'TERM': 'Terminate gracefully', 'KILL': 'Force kill (cannot be caught)',
+                'HUP': 'Hangup / reload config', 'STOP': 'Pause process',
+                'CONT': 'Resume paused process', 'INT': 'Interrupt (Ctrl+C)',
+                'USR1': 'User-defined signal 1', 'USR2': 'User-defined signal 2',
+                'QUIT': 'Quit with core dump',
+            }
+            if sig in signal_aliases:
+                sig_num = signal_aliases[sig]
+                sig_name = sig if sig in sig_desc else f'SIG{sig}'
             else:
-                return f'Error: unknown signal: {sig}'
+                return f'Error: unknown signal: {sig}. Supported: TERM KILL HUP STOP CONT INT USR1 USR2 QUIT or numbers 1 2 9 15 17 18'
         if not os.path.exists(f'/proc/{pid}'):
             return f'Error: process {pid} not found'
         os.kill(pid, sig_num)
-        return f'Signal {sig_name} sent to PID {pid} successfully'
+        desc = sig_desc.get(sig_name.replace('SIG',''), '')
+        return f'Signal {sig_name}({sig_num}) sent to PID {pid}. {desc}'
     except ProcessLookupError:
-        return f'Error: process {pid} not found'
+        return f'Error: process {pid} not found or already exited'
     except PermissionError:
-        return f'Permission denied: cannot signal PID {pid}'
+        return f'Permission denied: cannot signal PID {pid} (may need root or own the process)'
     except Exception as e:
         logger.error(f'Failed: {e}')
         return f'Error: {e}'
