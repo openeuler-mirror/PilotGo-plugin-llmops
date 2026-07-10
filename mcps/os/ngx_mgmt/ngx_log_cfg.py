@@ -392,3 +392,66 @@ def fetch_log_buffer_config(settings: Dict[str, Any]) -> Dict[str, Any]:
         logger.error(f"获取日志缓冲配置失败: {e}")
     
     return buffer_config
+
+def fetch_nginx_log_config() -> str:
+    """
+    获取Nginx日志配置信息
+    
+    返回:
+        str: JSON格式的日志配置信息，包含日志切割规则、保留天数、日志级别、自定义日志格式等
+    """
+    try:
+        # 获取配置文件路径
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            return json.dumps({
+                'status': 'error',
+                'message': '无法找到Nginx配置文件',
+                'suggestion': '请确保Nginx已安装并配置正确'
+            }, ensure_ascii=False, indent=2)
+        
+        # 解析配置文件
+        settings = analyze_nginx_config(cfg_filepath)
+        
+        # 获取日志轮转配置
+        rotation_config = fetch_log_rotation_config()
+        
+        # 获取日志级别
+        log_levels = fetch_log_levels(settings)
+        
+        # 获取自定义日志格式
+        custom_formats = fetch_custom_log_formats(settings)
+        
+        # 获取日志缓冲配置
+        buffer_config = fetch_log_buffer_config(settings)
+        
+        # 构建结果
+        output = {
+            'status': 'success',
+            'config_file': cfg_filepath,
+            'log_rotation': rotation_config,
+            'log_levels': log_levels,
+            'custom_formats': custom_formats,
+            'buffer_config': buffer_config,
+            'include_files': settings['include_files'],
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return json.dumps(output, ensure_ascii=False, indent=2)
+        
+    except Exception as e:
+        logger.error(f"获取Nginx日志配置失败: {e}")
+        return json.dumps({
+            'status': 'error',
+            'message': f'获取日志配置失败: {e}',
+            'timestamp': datetime.now().isoformat()
+        }, ensure_ascii=False, indent=2)
+
+# 工具配置
+TOOL_CONFIG = {
+    'name': 'fetch_nginx_log_config',
+    'description': '获取Nginx日志配置信息，包括日志切割规则、保留天数、日志级别、自定义日志格式等',
+    'category': 'Nginx',
+    'function': fetch_nginx_log_config,
+    'output_format': 'json'
+}
