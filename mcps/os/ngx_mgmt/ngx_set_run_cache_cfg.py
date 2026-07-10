@@ -494,3 +494,26 @@ def certify_nginx_config():
         return {'valid': True} if output.returncode == 0 else {'valid': False, 'error': output.stderr}
     except Exception as e:
         return {'valid': False, 'error': str(e)}
+
+def reload_nginx_config(method):
+    """重新加载 Nginx 配置"""
+    try:
+        # 安全验证：验证 method 参数（枚举值验证）
+        if method not in ['graceful', 'restart', 'none']:
+            return {'success': False, 'error': f'不支持的重载方式：{method}。有效值：graceful, restart, none'}
+
+        if method == 'graceful':
+            # 平滑重载
+            output = subprocess.run(['nginx', '-s', 'reload'], capture_output=True, text=True)
+        elif method == 'restart':
+            # 重启服务
+            output = subprocess.run(['systemctl', 'restart', 'nginx'], capture_output=True, text=True)
+            if output.returncode != 0:
+                # 尝试使用 service 命令
+                output = subprocess.run(['service', 'nginx', 'restart'], capture_output=True, text=True)
+        else:
+            return {'success': True, 'message': '跳过重载（method=none）'}
+
+        return {'success': True} if output.returncode == 0 else {'success': False, 'error': output.stderr}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
