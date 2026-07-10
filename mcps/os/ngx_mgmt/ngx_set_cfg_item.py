@@ -457,3 +457,40 @@ def modify_config_file(config_file: str, item_name: str, item_value: str, contex
             "success": False,
             "error": f"更新配置文件失败: {e}"
         }
+
+def save_config_files(config_files: List[str]) -> Dict:
+    """
+    备份配置文件
+    
+    Args:
+        config_files: 配置文件路径列表
+    
+    Returns:
+        dict: 备份结果
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = f"/tmp/nginx_config_backup_{timestamp}"  # NOSONAR
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        backed_up_files = []
+        
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                backup_file = os.path.join(backup_dir, os.path.basename(config_file))
+                shutil.copy2(config_file, backup_file)
+                backed_up_files.append(backup_file)
+        
+        return {
+            "success": True,
+            "backup_path": backup_dir,
+            "backed_up_files": backed_up_files,
+            "message": f"配置文件已备份至: {backup_dir}"
+        }
+        
+    except Exception as e:
+        logger.error(f"备份配置文件失败: {e}")
+        return {
+            "success": False,
+            "error": f"备份配置文件失败: {e}"
+        }
