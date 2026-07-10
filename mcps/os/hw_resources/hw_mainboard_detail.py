@@ -293,3 +293,33 @@ def analyze_lshw_baseboard(output, mobo_info):
     except Exception as e:
         logger.error(f'解析lshw主板输出失败: {e}')
         return mobo_info
+def analyze_macos_baseboard(output, mobo_info):
+    """
+    解析macOS主板输出
+
+    参数:
+        output: system_profiler输出
+        mobo_info: 主板信息字典
+
+    返回:
+        更新后的主板信息字典
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            stripped_line = line.strip()
+            if stripped_line.startswith('Model Identifier:'):
+                mobo_info['model'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('Serial Number (system):'):
+                mobo_info['serial'] = stripped_line.split(':', 1)[1].strip()
+
+        mobo_info['vendor'] = 'Apple'
+
+        return mobo_info
+
+    except Exception as e:
+        logger.error(f'解析macOS主板输出失败: {e}')
+        # 即使在异常情况下，对于macOS系统也应该设置vendor为Apple
+        mobo_info['vendor'] = 'Apple'
+        return mobo_info
