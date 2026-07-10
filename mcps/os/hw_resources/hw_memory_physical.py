@@ -352,3 +352,78 @@ def analyze_lshw_memory(output, mem_data):
     except Exception as e:
         logger.error(f'解析lshw内存输出失败: {e}')
         return mem_data
+def analyze_macos_memory(output, mem_data):
+    """
+    解析macOS内存输出
+
+    参数:
+        output: system_profiler输出
+        mem_data: 内存信息字典
+
+    返回:
+        更新后的内存信息字典
+    """
+    try:
+        lines = output.split('\n')
+        current_device = None
+        devices = []
+
+        # 检查是否是Hardware Overview格式
+        is_hardware_overview = any('Hardware Overview:' in line for line in lines)
+
+        if is_hardware_overview:
+            # 处理Hardware Overview格式
+            device_info = {}
+            for line in lines:
+                stripped_line = line.strip()
+                if ':' in stripped_line:
+                    key, val = stripped_line.split(':', 1)
+                    key = key.strip()
+                    val = val.strip()
+                    if key in ['Model', 'Manufacturer', 'Part Number', 'Speed']:
+                        device_info[key] = val
+
+            if device_info:
+                devices.append(device_info)
+        else:
+            # 处理Bank格式
+            for line in lines:
+                stripped_line = line.strip()
+                if stripped_line.startswith('Bank'):
+                    if current_device:
+                        devices.append(current_device)
+                    current_device = {}
+                elif current_device is not None and ':' in stripped_line:
+                    key, val = stripped_line.split(':', 1)
+                    key = key.strip()
+                    val = val.strip()
+                    current_device[key] = val
+
+            if current_device:
+                devices.append(current_device)
+
+        # 更新内存信息
+        for device in devices:
+            detail = {
+                'size': device.get('Size', 'Unknown'),
+                'model': device.get('Part Number', device.get('Model', 'Unknown')),
+                'vendor': device.get('Manufacturer', 'Unknown'),
+                'frequency': device.get('Speed', 'Unknown'),
+                'type': device.get('Type', 'Unknown'),
+                'speed': 'Unknown',
+                'voltage': 'Unknown'
+            }
+            mem_data['details'].append(detail)
+            mem_data['models'].append(detail['model'])
+            mem_data['vendors'].append(detail['vendor'])
+            mem_data['frequencies'].append(detail['frequency'])
+
+        if devices:
+            mem_data['installed'] = str(len(devices))
+            mem_data['slots'] = str(len(devices))
+
+        return mem_data
+
+    except Exception as e:
+        logger.error(f'解析macOS内存输出失败: {e}')
+        return mem_data
