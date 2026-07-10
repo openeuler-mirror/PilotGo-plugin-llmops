@@ -354,3 +354,119 @@ def build_config_file(file_path, body):
     except Exception as e:
         logger.error(f'创建配置文件失败: {str(e)}')
         return False
+
+def produce_creation_report(site_name, port, root_path, server_names,
+                           config_type, enable_ssl, enable_php,
+                           enable_proxy, proxy_target, config_file_path):
+    """生成创建报告"""
+    try:
+        report_lines = []
+
+        report_lines.append("=== Nginx站点配置创建报告 ===")
+        report_lines.append(f"站点名称: {site_name}")
+        report_lines.append(f"监听端口: {port}")
+        report_lines.append(f"网站根路径: {root_path}")
+        report_lines.append(f"服务器名称: {', '.join(server_names)}")
+        report_lines.append(f"配置类型: {config_type}")
+        report_lines.append(f"启用SSL: {'是' if enable_ssl else '否'}")
+        report_lines.append(f"启用PHP: {'是' if enable_php else '否'}")
+        report_lines.append(f"启用代理: {'是' if enable_proxy else '否'}")
+
+        if enable_proxy:
+            report_lines.append(f"代理目标: {proxy_target}")
+
+        report_lines.append(f"配置文件路径: {config_file_path}")
+        report_lines.append("")
+
+        # 后续操作建议
+        report_lines.append("=== 后续操作建议 ===")
+        report_lines.append("1. 检查配置文件语法:")
+        report_lines.append(f"   nginx -t -c {config_file_path}")
+        report_lines.append("")
+        report_lines.append("2. 重载Nginx配置:")
+        report_lines.append("   nginx -s reload")
+        report_lines.append("")
+        report_lines.append("3. 创建网站根目录:")
+        report_lines.append(f"   mkdir -p {root_path}")
+        report_lines.append(f"   chown -R www-data:www-data {root_path}")
+        report_lines.append("")
+
+        if enable_ssl:
+            report_lines.append("4. 配置SSL证书:")
+            report_lines.append(f"   证书文件: /etc/ssl/certs/{site_name}.crt")
+            report_lines.append(f"   私钥文件: /etc/ssl/private/{site_name}.key")
+            report_lines.append("")
+
+        report_lines.append("=== 配置预览 ===")
+        # 读取并显示配置文件前几行
+        try:
+            body = Path(config_file_path).read_text(encoding='utf-8')
+            lines = body.split('\n')[:20]  # 显示前20行
+            report_lines.extend(lines)
+            if len(body.split('\n')) > 20:
+                report_lines.append("... (完整配置请查看文件)")
+        except Exception:
+            report_lines.append("无法读取配置文件内容")
+
+        return "\n".join(report_lines)
+
+    except Exception as e:
+        logger.error(f'生成创建报告失败: {str(e)}')
+        return f"生成报告失败: {str(e)}"
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "build_nginx_site_config",
+    "function": build_nginx_site_config,
+    "description": "创建Nginx新站点配置，支持基础配置快速生成（端口/根路径/域名）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "site_name": {
+                "type": "string",
+                "description": "站点名称（必需），只能包含字母、数字、下划线和连字符"
+            },
+            "port": {
+                "type": "integer",
+                "description": "监听端口，默认80"
+            },
+            "root_path": {
+                "type": "string",
+                "description": "网站根路径，默认/var/www/html"
+            },
+            "server_names": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "description": "服务器名称列表（域名），默认使用站点名称"
+            },
+            "config_type": {
+                "type": "string",
+                "enum": ["basic", "php", "proxy", "static"],
+                "description": "配置类型，支持basic(基础)/php(PHP支持)/proxy(代理)/static(静态优化)"
+            },
+            "enable_ssl": {
+                "type": "boolean",
+                "description": "是否启用SSL，默认False"
+            },
+            "enable_php": {
+                "type": "boolean",
+                "description": "是否启用PHP支持，默认False"
+            },
+            "enable_proxy": {
+                "type": "boolean",
+                "description": "是否启用代理，默认False"
+            },
+            "proxy_target": {
+                "type": "string",
+                "description": "代理目标地址，启用代理时必需"
+            },
+            "config_dir": {
+                "type": "string",
+                "description": "配置文件目录，默认自动检测"
+            }
+        },
+        "required": ["site_name"]
+    }
+}
