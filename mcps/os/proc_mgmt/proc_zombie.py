@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -21,12 +22,20 @@ def fetch_proc_zombie():
                 continue
             parts = line.split(None, 10)
             if len(parts) >= 8 and 'Z' in parts[7]:
-                out.append(f'  PID:{parts[1]:>7}  PPID:{parts[3]:>7}  {parts[10][:50] if len(parts)>10 else ""}')
+                ppid = parts[3]
+                ppname = ''
+                try:
+                    with open(f'/proc/{ppid}/comm') as f:
+                        ppname = f.read().strip()
+                except (OSError, FileNotFoundError):
+                    ppname = '(exited)'
+                out.append(f'  PID:{parts[1]:>7}  PPID:{ppid:>7}({ppname})  {parts[10][:50] if len(parts)>10 else ""}')
                 count += 1
         if count == 0:
             out.append('No zombie processes found.')
         else:
             out.append(f'\nFound: {count} zombie process(es)')
+            out.append('Tip: zombies persist until parent calls wait(). Restart or kill the parent process.')
         return '\n'.join(out)
     except Exception as e:
         logger.error(f'Failed: {e}')
