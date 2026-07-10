@@ -274,3 +274,187 @@ def fetch_redis_version() -> str:
         logger.warning(f"获取Redis版本失败: {e}")
 
     return '0.0.0'
+def redis_config_auth_set(action: str = 'set_password',  # NOSONAR
+                         username: Optional[str] = None,
+                         password: Optional[str] = None,  # NOSONAR
+                         enabled: Optional[bool] = None,
+                         categories: Optional[List[str]] = None,
+                         commands: Optional[List[str]] = None,
+                         keys: Optional[List[str]] = None,
+                         reset: bool = False) -> Dict[str, Any]:
+    """
+    设置/修改Redis访问密码、开启/关闭密码认证、配置ACL权限规则
+
+    参数:
+        action: 操作类型，可选值：
+               - "set_password": 设置Redis访问密码  # NOSONAR
+               - "enable_auth": 开启/关闭密码认证
+               - "create_user": 创建ACL用户
+               - "modify_user": 修改ACL用户
+               - "delete_user": 删除ACL用户
+        username: 用户名（ACL操作）
+        password: 密码  # NOSONAR
+        enabled: 是否启用（ACL用户）
+        categories: 权限类别列表（ACL用户）
+        commands: 命令权限列表（ACL用户）
+        keys: 键权限列表（ACL用户）
+        reset: 是否重置用户权限（modify_user操作）
+
+    返回:
+        格式化的操作结果字典
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'data': {},
+        'timestamp': datetime.now().isoformat()
+    }
+
+    try:
+        rd_cli = get_redis_cli_command()
+        if not rd_cli:
+            output['message'] = '未找到redis-cli命令'
+            return output
+
+        test_output = execute_redis_command('PING')
+        if not test_output or test_output.upper() != 'PONG':
+            output['message'] = '无法连接到Redis服务器'
+            return output
+
+        redis_version = fetch_redis_version()
+        version_parts = redis_version.split('.')
+        major = int(version_parts[0]) if version_parts else 0
+
+        if action == 'set_password':  # NOSONAR
+            if password is None:  # NOSONAR
+                output['message'] = '缺少参数: password'  # NOSONAR
+                return output
+
+            set_result = set_redis_password(password)  # NOSONAR
+            output['data'] = set_result
+            output['success'] = set_result['success']
+            output['message'] = set_result['message']
+
+        elif action == 'enable_auth':
+            if enabled is None:
+                output['message'] = '缺少参数: enabled'
+                return output
+
+            enable_result = activate_password_auth(enabled)  # NOSONAR
+            output['data'] = enable_result
+            output['success'] = enable_result['success']
+            output['message'] = enable_result['message']
+
+        elif action == 'create_user':
+            if not username:
+                output['message'] = '缺少参数: username'
+                return output
+
+            if major < 6:
+                output['message'] = 'ACL功能需要Redis 6.0或更高版本'
+                return output
+
+            create_result = build_acl_user(username, password, enabled, categories, commands, keys)  # NOSONAR
+            output['data'] = create_result
+            output['success'] = create_result['success']
+            output['message'] = create_result['message']
+
+        elif action == 'modify_user':
+            if not username:
+                output['message'] = '缺少参数: username'
+                return output
+
+            if major < 6:
+                output['message'] = 'ACL功能需要Redis 6.0或更高版本'
+                return output
+
+            modify_result = modify_acl_user(username, password, enabled, categories, commands, keys, reset)  # NOSONAR
+            output['data'] = modify_result
+            output['success'] = modify_result['success']
+            output['message'] = modify_result['message']
+
+        elif action == 'delete_user':
+            if not username:
+                output['message'] = '缺少参数: username'
+                return output
+
+            if major < 6:
+                output['message'] = 'ACL功能需要Redis 6.0或更高版本'
+                return output
+
+            delete_result = remove_acl_user(username)
+            output['data'] = delete_result
+            output['success'] = delete_result['success']
+            output['message'] = delete_result['message']
+
+        else:
+            output['message'] = f'不支持的操作类型: {action}'
+
+    except Exception as e:
+        output['message'] = f'配置认证时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
+
+TOOL_CONFIG = {
+    'name': 'rd_cfg_auth_assign',
+    'function': redis_config_auth_set,
+    'description': '设置/修改Redis访问密码、开启/关闭密码认证、配置ACL权限规则',
+    'parameters': {
+        'action': {
+            'type': 'string',
+            'description': '操作类型',
+            'enum': ['set_password', 'enable_auth', 'create_user', 'modify_user', 'delete_user'],  # NOSONAR
+            'default': 'set_password'  # NOSONAR
+        },
+        'username': {
+            'type': 'string',
+            'description': '用户名',
+            'required': False
+        },
+        'password': {  # NOSONAR
+            'type': 'string',
+            'description': '密码',
+            'required': False
+        },
+        'enabled': {
+            'type': 'boolean',
+            'description': '是否启用',
+            'required': False
+        },
+        'categories': {
+            'type': 'array',
+            'description': '权限类别列表',
+            'required': False
+        },
+        'commands': {
+            'type': 'array',
+            'description': '命令权限列表',
+            'required': False
+        },
+        'keys': {
+            'type': 'array',
+            'description': '键权限列表',
+            'required': False
+        },
+        'reset': {
+            'type': 'boolean',
+            'description': '是否重置用户权限',
+            'default': False
+        }
+    },
+    'returns': {
+        'type': 'object',
+        'description': '操作结果字典'
+    }
+}
+
+if __name__ == '__main__':
+    action = sys.argv[1] if len(sys.argv) > 1 else 'set_password'  # NOSONAR
+    username = sys.argv[2] if len(sys.argv) > 2 else None
+    password = sys.argv[3] if len(sys.argv) > 3 else None  # NOSONAR
+    enabled = sys.argv[4].lower() == 'true' if len(sys.argv) > 4 else None
+    reset = sys.argv[5].lower() == 'true' if len(sys.argv) > 5 else False
+
+    output = redis_config_auth_set(action, username, password, enabled, None, None, None, reset)  # NOSONAR
+    print(json.dumps(output, indent=2, ensure_ascii=False))
