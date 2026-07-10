@@ -331,3 +331,47 @@ def produce_analysis_summary(oom_events: List[Dict], memory_pressure: Dict) -> D
         summary['error'] = str(e)
 
     return summary
+def produce_recommendations(oom_events: List[Dict], memory_pressure: Dict) -> List[str]:
+    """生成建议"""
+    recommendations = []
+
+    try:
+        # 基于OOM事件的建议
+        if oom_events:
+            recommendations.append('系统近期发生过OOM事件，建议检查内存使用情况')
+
+            # 分析被杀进程类型
+            process_types = set()
+            for event in oom_events:
+                if 'process_name' in event:
+                    process_types.add(event['process_name'])
+
+            if len(process_types) == 1:
+                proc = list(process_types)[0]
+                recommendations.append(f'进程 {proc} 频繁触发OOM，建议优化其内存使用或增加内存限制')
+
+        # 基于内存压力的建议
+        usage = memory_pressure.get('current_usage_percent', 0)
+        if usage > 90:
+            recommendations.append(f'当前内存使用率 {usage}% 过高，建议增加物理内存或优化应用程序')
+        elif usage > 80:
+            recommendations.append(f'当前内存使用率 {usage}% 较高，建议监控内存使用情况')
+
+        # 基于压力接口的建议
+        if memory_pressure.get('some_avg10', 0) > 60:
+            recommendations.append('内存压力指标较高（some avg10 > 60%），系统可能存在内存竞争')
+
+        # 通用建议
+        if not recommendations:
+            recommendations.append('当前系统内存状况良好，建议持续监控')
+
+    except Exception as e:
+        recommendations.append(f'生成建议时出错: {e}')
+
+    return recommendations
+
+
+if __name__ == '__main__':
+    # 测试
+    output = oom_system_analysis()
+    print(json.dumps(output, indent=2, ensure_ascii=False))
