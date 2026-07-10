@@ -255,3 +255,55 @@ def fetch_disk_usage():
         logger.error(f'获取磁盘使用率失败: {e}')
 
     return usage
+def fetch_system_io_stats():
+    """
+    获取系统磁盘IO统计
+    """
+    stats = {}
+
+    try:
+        # 读取/proc/vmstat
+        with open('/proc/vmstat', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) == 2:
+                    key = parts[0]
+                    val = parts[1]
+
+                    # 提取IO相关统计
+                    if key == 'pgpgin':
+                        stats['换入页数'] = val
+                    elif key == 'pgpgout':
+                        stats['换出页数'] = val
+                    elif key == 'pgfault':
+                        stats['页错误数'] = val
+                    elif key == 'pgmajfault':
+                        stats['主页错误数'] = val
+
+    except Exception as e:
+        logger.error(f'获取系统磁盘IO统计失败: {e}')
+
+    return stats
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_perf_disk_real",
+    "function": fetch_perf_disk_real,
+    "description": "采集磁盘实时性能（磁盘IOPS/读写速率/平均响应时间/队列长度/忙占比）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "interval": {
+                "type": "string",
+                "description": "采样间隔（秒），如 \"1\""
+            },
+            "device": {
+                "type": "string",
+                "description": "设备名称，如 \"sda\""
+            }
+        },
+        "required": []
+    }
+}
