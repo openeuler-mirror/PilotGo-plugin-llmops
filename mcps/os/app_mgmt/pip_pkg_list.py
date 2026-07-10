@@ -261,3 +261,53 @@ def fetch_package_location(pip_cmd, package_name):
 
     except Exception:
         return 'Unknown'
+def fetch_package_dependencies(pip_cmd, package_name):
+    """
+    获取包的依赖
+
+    参数:
+        pip_cmd: pip命令
+        package_name: 包名
+
+    返回:
+        依赖列表
+    """
+    try:
+        output = subprocess.run([pip_cmd, 'show', package_name], capture_output=True, text=True)
+
+        dependencies = []
+        if output.returncode == 0:
+            for line in output.stdout.split('\n'):
+                if line.startswith('Requires:'):
+                    reqs = line.split(':', 1)[1].strip()
+                    if reqs:
+                        dependencies = [dep.strip() for dep in reqs.split(',')]
+                    break
+
+        return dependencies
+
+    except Exception:
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_pip_list",
+    "function": fetch_app_pip_list,
+    "description": "采集Python Pip包（系统/用户级Pip已安装包/版本/依赖/安装路径）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "pip_info": {
+                "type": "string",
+                "description": "信息类型，可选值：all（所有已安装Pip包）、version（版本信息）、dependencies（依赖信息）、path（安装路径），不指定则获取所有信息",
+                "enum": ["all", "version", "dependencies", "path"]
+            },
+            "scope": {
+                "type": "string",
+                "description": "作用域，可选值：system（系统级Pip包）、user（用户级Pip包），不指定则获取所有Pip包",
+                "enum": ["system", "user"]
+            }
+        },
+        "required": []
+    }
+}
