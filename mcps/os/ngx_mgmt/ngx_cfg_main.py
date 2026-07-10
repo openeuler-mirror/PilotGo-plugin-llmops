@@ -209,3 +209,53 @@ def derive_events_configs(body):
     except Exception as e:
         logger.error(f'提取events配置失败: {e}')
         return []
+
+def derive_http_configs(body):
+    """提取http块配置"""
+    try:
+        http_configs = []
+
+        # 提取http块内容（不包括嵌套的server和location块）
+        http_pattern = r'http\s*\{((?:[^{}]*\{[^{}]*\})*[^{}]*)\}'  # NOSONAR
+        http_match = re.search(http_pattern, body, re.DOTALL)  # NOSONAR
+        if not http_match:
+            return http_configs
+
+        http_content = http_match.group(1)
+
+        # 移除server块和location块，只保留http级别的配置
+        server_block_pattern = r'server\s*\{[^{}]*\}'  # NOSONAR
+        http_content = re.sub(server_block_pattern, '', http_content, flags=re.DOTALL)  # NOSONAR
+
+        # 常见的http配置项
+        patterns = {
+            'sendfile': r'sendfile\s+([^;]+);',
+            'tcp_nopush': r'tcp_nopush\s+([^;]+);',
+            'tcp_nodelay': r'tcp_nodelay\s+([^;]+);',
+            'keepalive_timeout': r'keepalive_timeout\s+([^;]+);',
+            'keepalive_requests': r'keepalive_requests\s+([^;]+);',
+            'client_header_timeout': r'client_header_timeout\s+([^;]+);',
+            'client_body_timeout': r'client_body_timeout\s+([^;]+);',
+            'send_timeout': r'send_timeout\s+([^;]+);',
+            'client_max_body_size': r'client_max_body_size\s+([^;]+);',
+            'default_type': r'default_type\s+([^;]+);',
+            'access_log': r'access_log\s+([^;]+);',
+            'error_log': r'error_log\s+([^;]+);',
+            'gzip': r'gzip\s+([^;]+);',
+            'gzip_vary': r'gzip_vary\s+([^;]+);',
+            'gzip_proxied': r'gzip_proxied\s+([^;]+);',
+            'gzip_comp_level': r'gzip_comp_level\s+([^;]+);',
+            'gzip_types': r'gzip_types\s+([^;]+);',
+            'root': r'root\s+([^;]+);',
+            'index': r'index\s+([^;]+);'
+        }
+
+        for config_name, pattern in patterns.items():
+            match = re.search(pattern, http_content)  # NOSONAR
+            if match:
+                http_configs.append(f"{config_name}: {match.group(1).strip()}")
+
+        return http_configs
+    except Exception as e:
+        logger.error(f'提取http配置失败: {e}')
+        return []
