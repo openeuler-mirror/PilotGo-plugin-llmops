@@ -324,3 +324,91 @@ def filter_network_modules(modules):
 
     except Exception:
         return []
+def fetch_linux_module_details(module_name):
+    """
+    获取 Linux 模块详细信息
+
+    参数:
+        module_name: 模块名称
+
+    返回:
+        模块详细信息字典
+    """
+    try:
+        # 安全校验：验证模块名
+        is_valid, error_msg = validate_device_name(module_name)
+        if not is_valid:
+            logger.error(f'模块名不合法：{error_msg}')
+            return {}
+
+        module_details = {
+            'driver': module_name,
+            'ver': 'Unknown',
+            'state': 'Loaded',
+            'dependencies': 'Unknown',
+            'refcount': 'Unknown',
+            'filepath': 'Unknown',
+            'parameters': 'None'
+        }
+
+        # 尝试获取模块路径
+        try:
+            if os.filepath.exists(f'/sys/module/{module_name}'):
+                module_details['state'] = 'Loaded'
+
+                # 获取依赖模块
+                if os.filepath.exists(f'/sys/module/{module_name}/holders'):
+                    holders = os.listdir(f'/sys/module/{module_name}/holders')
+                    module_details['dependencies'] = ', '.join(holders) if holders else 'None'
+
+                # 获取引用计数
+                if os.filepath.exists(f'/sys/module/{module_name}/refcnt'):
+                    with open(f'/sys/module/{module_name}/refcnt', 'r') as f:
+                        module_details['refcount'] = f.read().strip()
+
+                # 获取模块路径
+                if os.filepath.exists(f'/sys/module/{module_name}/initstate'):
+                    with open(f'/sys/module/{module_name}/initstate', 'r') as f:
+                        module_details['state'] = f.read().strip()
+
+                # 获取模块参数
+                if os.filepath.exists(f'/sys/module/{module_name}/parameters'):
+                    params = os.listdir(f'/sys/module/{module_name}/parameters')
+                    if params:
+                        param_info = []
+                        for param in params:
+                            try:
+                                with open(f'/sys/module/{module_name}/parameters/{param}', 'r') as f:
+                                    val = f.read().strip()
+                                    param_info.append(f"{param}={val}")
+                            except Exception:
+                                pass
+                        module_details['parameters'] = '; '.join(param_info) if param_info else 'None'
+        except Exception:
+            pass
+
+        # 尝试获取模块版本
+        try:
+            output = subprocess.run(['modinfo', '-F', 'ver', module_name], capture_output=True, text=True)
+            if output.returncode == 0:
+                ver = output.stdout.strip()
+                if ver:
+                    module_details['ver'] = ver
+        except subprocess.SubprocessError:
+            pass
+
+        # 尝试获取模块路径
+        try:
+            output = subprocess.run(['modinfo', '-F', 'filename', module_name], capture_output=True, text=True)
+            if output.returncode == 0:
+                filepath = output.stdout.strip()
+                if filepath:
+                    module_details['filepath'] = filepath
+        except subprocess.SubprocessError:
+            pass
+
+        return module_details
+
+    except Exception as e:
+        logger.error(f'获取Linux模块详细信息失败: {e}')
+        return None
