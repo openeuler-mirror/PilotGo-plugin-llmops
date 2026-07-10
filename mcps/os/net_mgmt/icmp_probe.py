@@ -140,3 +140,25 @@ def fetch_icmp_rates(icmp_stats):
         logger.error(f'计算ICMP包率失败: {e}')
 
     return rates
+def fetch_icmp_type_stats():
+    """
+    获取ICMP类型统计
+    """
+    type_stats = {}
+
+    try:
+        # 读取/proc/net/icmp
+        with open('/proc/net/icmp', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines[1:]:  # 跳过标题行
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    icmp_type = parts[0]
+                    type_stats[f'ICMP类型 {icmp_type} 接收'] = parts[1]
+                    type_stats[f'ICMP类型 {icmp_type} 发送'] = parts[3]
+
+    except Exception as e:
+        logger.error(f'获取ICMP类型统计失败: {e}')
+
+    return type_stats
