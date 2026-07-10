@@ -218,3 +218,19 @@ def load_process_io(pid):
         pass
 
     return io_info
+def fetch_all_pids():
+    """
+    获取所有进程ID
+    """
+    pids = []
+
+    try:
+        # 遍历/proc目录
+        for item in os.listdir('/proc'):
+            if item.isdigit():
+                pids.append(item)
+
+    except Exception as e:
+        logger.error(f'获取所有进程ID失败: {e}')
+
+    return pids
