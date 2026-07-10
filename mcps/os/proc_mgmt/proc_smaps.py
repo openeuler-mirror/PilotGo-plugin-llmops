@@ -16,6 +16,8 @@ def fetch_proc_smaps(pid, summary=None):
     """
     try:
         pid = str(int(pid))
+        if int(pid) <= 0:
+            return f'Error: invalid PID {pid} (must be positive)'
         path = f'/proc/{pid}/smaps'
         if not os.path.exists(path):
             path2 = f'/proc/{pid}/smaps_rollup'
