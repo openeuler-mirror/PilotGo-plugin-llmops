@@ -195,3 +195,37 @@ def fetch_firewalld_rules():
         logger.error(f'获取firewalld规则失败: {e}')
 
     return rules
+def fetch_firewall_status():
+    """
+    获取防火墙状态
+    """
+    state = {}
+
+    try:
+        # 检查iptables状态
+        iptables_result = subprocess.run(['which', 'iptables'], capture_output=True, text=True)
+        if iptables_result.returncode == 0:
+            state['iptables'] = '已安装'
+        else:
+            state['iptables'] = '未安装'
+
+        # 检查ufw状态
+        ufw_result = subprocess.run(['which', 'ufw'], capture_output=True, text=True)
+        if ufw_result.returncode == 0:
+            ufw_status_result = subprocess.run(['ufw', 'state'], capture_output=True, text=True)
+            state['ufw'] = ufw_status_result.stdout.strip()
+        else:
+            state['ufw'] = '未安装'
+
+        # 检查firewalld状态
+        firewalld_result = subprocess.run(['which', 'firewall-cmd'], capture_output=True, text=True)
+        if firewalld_result.returncode == 0:
+            firewalld_status_result = subprocess.run(['firewall-cmd', '--state'], capture_output=True, text=True)
+            state['firewalld'] = firewalld_status_result.stdout.strip()
+        else:
+            state['firewalld'] = '未安装'
+
+    except Exception as e:
+        logger.error(f'获取防火墙状态失败: {e}')
+
+    return state
