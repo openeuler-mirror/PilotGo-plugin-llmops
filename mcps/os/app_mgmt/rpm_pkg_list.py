@@ -155,3 +155,55 @@ def is_rpm_based_system():
 
     except Exception:
         return False
+def fetch_rpm_packages():
+    """
+    获取所有已安装的RPM包
+
+    返回:
+        RPM包信息列表
+    """
+    try:
+        packages = []
+
+        # 使用rpm命令获取所有已安装的包
+        output = subprocess.run(['rpm', '-qa', '--queryformat', '%{NAME}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\t%{VENDOR}\t%{INSTALLTIME:date}\n'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if line.strip():
+                    parts = line.split('\t')
+                    if len(parts) >= 6:
+                        pkg_info = {
+                            'name': parts[0],
+                            'version': parts[1],
+                            'release': parts[2],
+                            'arch': parts[3],
+                            'vendor': parts[4],
+                            'install_time': parts[5]
+                        }
+                        packages.append(pkg_info)
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取RPM包列表失败: {e}')
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_rpm_list",
+    "function": fetch_app_rpm_list,
+    "description": "采集RPM包信息（CentOS/RHEL/AlmaLinux，所有已安装RPM包/版本/发布者/安装时间）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "rpm_info": {
+                "type": "string",
+                "description": "信息类型，可选值：all（所有已安装RPM包）、version（版本信息）、publisher（发布者信息）、time（安装时间），不指定则获取所有信息",
+                "enum": ["all", "version", "publisher", "time"]
+            }
+        },
+        "required": []
+    }
+}
