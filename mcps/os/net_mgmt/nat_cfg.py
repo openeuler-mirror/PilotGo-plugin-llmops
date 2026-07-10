@@ -80,3 +80,48 @@ def fetch_net_snat_dnat():
     except Exception as e:
         logger.error(f'获取SNAT/DNAT规则失败: {e}')
         return f'获取SNAT/DNAT规则失败: {e}'
+def fetch_snat_rules():
+    """
+    获取SNAT规则
+    """
+    rules = []
+
+    try:
+        # 使用iptables命令获取SNAT规则
+        output = subprocess.run(['iptables', '-t', 'nat', '-L', '-n', '--line-numbers'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            chain = ''
+            for line in lines:
+                if line.startswith('Chain'):
+                    chain = line.strip()
+                elif line and not line.startswith('target') and not line.startswith('---'):
+                    parts = line.strip().split()
+                    if len(parts) >= 4:
+                        target = parts[1]
+                        if target == 'SNAT' or target == 'MASQUERADE':
+                            rule = {
+                                '链': chain,
+                                '目标': target,
+                                '协议': parts[2],
+                                '源IP': parts[3],
+                                '目标IP': parts[4]
+                            }
+                            # 提取SNAT参数
+                            if len(parts) > 4:
+                                for i, part in enumerate(parts[5:]):
+                                    if part == '-j':
+                                        rule['动作'] = parts[i + 6] if i + 6 < len(parts) else ''
+                                    elif part == '--to-source':
+                                        rule['转换地址'] = parts[i + 6] if i + 6 < len(parts) else ''
+                                    elif part == 'sport':
+                                        rule['源端口'] = parts[i + 6] if i + 6 < len(parts) else ''
+                                    elif part == 'dport':
+                                        rule['目标端口'] = parts[i + 6] if i + 6 < len(parts) else ''
+                            rules.append(rule)
+
+    except Exception as e:
+        logger.error(f'获取SNAT规则失败: {e}')
+
+    return rules
