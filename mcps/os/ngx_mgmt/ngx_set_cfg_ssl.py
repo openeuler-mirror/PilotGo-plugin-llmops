@@ -465,3 +465,18 @@ def produce_ssl_config(cert_path, key_path, http2_enabled, protocols, ciphers, s
         ssl_config.append('    add_header X-XSS-Protection "1; mode=block" always;')
 
     return ssl_config
+
+def certify_certificate(cert_path):
+    """验证 SSL 证书"""
+    try:
+        # 安全验证：验证 cert_path 路径参数（允许绝对路径）
+        valid, error_msg = validate_path_param(cert_path, allow_absolute=True)
+        if not valid:
+            logger.error(f"certify_certificate: cert_path 路径验证失败：{error_msg}")
+            return False
+
+        output = subprocess.run(['openssl', 'x509', '-in', cert_path, '-noout'],
+                              capture_output=True, text=True)
+        return output.returncode == 0
+    except Exception:
+        return False
