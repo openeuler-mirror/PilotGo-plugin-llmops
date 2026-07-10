@@ -250,3 +250,12 @@ def examine_site_config(body):
     except Exception as e:
         logger.error(f'分析站点配置结构失败: {e}')
         return f'分析站点配置结构失败: {e}'
+
+def count_server_blocks(body):
+    """计算server块数量"""
+    try:
+        server_matches = re.findall(r'server\s*\{', body)  # NOSONAR
+        return len(server_matches)
+    except Exception as e:
+        logger.error(f'计算server块数量失败: {e}')
+        return 0
