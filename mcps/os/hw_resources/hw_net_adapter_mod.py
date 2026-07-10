@@ -296,3 +296,31 @@ def analyze_lsmod_output(output):
     except Exception as e:
         logger.error(f'解析lsmod输出失败: {e}')
         return []
+def filter_network_modules(modules):
+    """
+    过滤网络相关模块
+
+    参数:
+        modules: 模块列表
+
+    返回:
+        网络相关模块列表
+    """
+    try:
+        network_keywords = [
+            'eth', 'net', 'wireless', 'wifi', 'bluetooth', '80211',
+            'ethernet', 'nic', 'lan', 'wlan', 'usbnet', 'r8169',
+            'e1000', 'igb', 'ixgbe', 'bnx2', 'tg3', 'sky2',
+            'ath', 'rtl', 'iwlwifi', 'brcm', 'mt76', 'rt2800'
+        ]
+
+        network_modules = []
+        for module in modules:
+            module_name = module.get('label', '').lower()
+            if any(keyword in module_name for keyword in network_keywords):
+                network_modules.append(module_name)
+
+        return network_modules
+
+    except Exception:
+        return []
