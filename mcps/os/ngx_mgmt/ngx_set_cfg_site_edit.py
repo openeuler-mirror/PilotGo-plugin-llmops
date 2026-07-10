@@ -175,3 +175,56 @@ def certify_modify_parameters(site_name, port, root_path, server_names,
     except Exception as e:
         logger.error(f'验证修改参数失败: {e}')
         return f'参数验证失败: {e}'
+
+def modify_config_content(original_content, port, root_path, server_names,
+                        proxy_target, enable_ssl, enable_php):
+    """修改配置内容"""
+    try:
+        lines = original_content.split('\n')
+        modified_lines = []
+        in_server_block = False
+        server_block_start = -1
+        server_block_end = -1
+
+        # 查找server块的开始和结束位置
+        brace_count = 0
+        for i, line in enumerate(lines):
+            modified_lines.append(line)
+
+            # 检测server块开始
+            if re.search(r'server\s*\{', line.strip()):  # NOSONAR
+                if not in_server_block:
+                    in_server_block = True
+                    server_block_start = i
+                    brace_count = 1
+                else:
+                    brace_count += 1
+            # 检测大括号
+            elif in_server_block:
+                if '{' in line:
+                    brace_count += 1
+                if '}' in line:
+                    brace_count -= 1
+                    if brace_count == 0:
+                        server_block_end = i
+                        break
+
+        # 如果没有找到完整的server块，返回原始内容
+        if server_block_start == -1 or server_block_end == -1:
+            logger.warning('未找到完整的server块，无法修改配置')
+            return original_content
+
+        # 提取server块内容进行修改
+        server_block_lines = lines[server_block_start:server_block_end + 1]
+        modified_server_block = modify_server_block(server_block_lines, port, root_path,
+                                                  server_names, proxy_target,
+                                                  enable_ssl, enable_php)
+
+        # 替换修改后的server块
+        modified_lines = lines[:server_block_start] + modified_server_block + lines[server_block_end + 1:]
+
+        return '\n'.join(modified_lines)
+
+    except Exception as e:
+        logger.error(f'修改配置内容失败: {e}')
+        return original_content
