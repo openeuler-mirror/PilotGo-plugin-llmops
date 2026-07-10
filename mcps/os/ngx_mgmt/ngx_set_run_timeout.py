@@ -166,3 +166,33 @@ def set_nginx_runtime_timeout(
     except Exception as e:
         logger.error(f'设置Nginx超时时间失败: {e}')
         return f'设置Nginx超时时间失败: {e}'
+
+def certify_timeout_parameters(params):
+    """验证超时时间参数格式"""
+    errors = []
+
+    # 时间参数验证规则
+    time_pattern = r'^\d+[smhd]?$'  # NOSONAR
+    size_pattern = r'^\d+[kKmMgG]?$'  # NOSONAR
+
+    time_params = [
+        'client_body_timeout', 'client_header_timeout', 'keepalive_timeout',
+        'send_timeout', 'proxy_connect_timeout', 'proxy_send_timeout',
+        'proxy_read_timeout', 'fastcgi_connect_timeout', 'fastcgi_send_timeout',
+        'fastcgi_read_timeout', 'uwsgi_connect_timeout', 'uwsgi_send_timeout',
+        'uwsgi_read_timeout', 'scgi_connect_timeout', 'scgi_send_timeout',
+        'scgi_read_timeout', 'resolver_timeout'
+    ]
+
+    size_params = ['client_max_body_size']
+
+    for param_name, param_value in params.items():
+        if param_name in time_params:
+            if not re.match(time_pattern, str(param_value)):  # NOSONAR
+                errors.append(f'{param_name}: 格式错误，应为数字+单位(s/m/h/d)，如: 60s, 5m, 1h')
+
+        elif param_name in size_params:
+            if not re.match(size_pattern, str(param_value)):  # NOSONAR
+                errors.append(f'{param_name}: 格式错误，应为数字+单位(k/m/g)，如: 10m, 1g, 512k')
+
+    return {'valid': len(errors) == 0, 'errors': errors}
