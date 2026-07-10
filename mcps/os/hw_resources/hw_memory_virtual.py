@@ -110,3 +110,253 @@ def fetch_hw_mem_virtual(vmem_type=None):
     except Exception as e:
         logger.error(f'获取虚拟内存基础配置失败: {e}')
         return f'获取虚拟内存基础配置失败: {e}'
+def fetch_virtual_memory_details():
+    """
+    获取虚拟内存详细信息
+
+    返回:
+        虚拟内存详细信息字典
+    """
+    try:
+        vmem_info = {
+            'page_size': 'Unknown',
+            'address_bits': 'Unknown',
+            'virtual_address_space': 'Unknown',
+            'physical_address_space': 'Unknown',
+            'swap': {},
+            'swap_total': 'Unknown',
+            'swap_used': 'Unknown',
+            'swap_free': 'Unknown'
+        }
+
+        if platform.system() == 'Linux':
+            # 获取页面大小
+            try:
+                output = subprocess.run(['getconf', 'PAGESIZE'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    page_size = int(output.stdout.strip())
+                    # 避免浮点数溢出，使用更安全的格式化
+                    if page_size >= 1024:
+                        kb_size = page_size // 1024
+                        remainder = page_size % 1024
+                        if remainder == 0:
+                            vmem_info['page_size'] = f"{page_size} bytes ({kb_size}.00 KB)"
+                        else:
+                            vmem_info['page_size'] = f"{page_size} bytes ({kb_size}.{remainder//102:02d} KB)"
+                    else:
+                        vmem_info['page_size'] = f"{page_size} bytes"
+            except subprocess.SubprocessError:
+                pass
+
+            # 获取地址位数
+            try:
+                output = subprocess.run(['getconf', 'LONG_BIT'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    vmem_info['address_bits'] = output.stdout.strip() + ' bits'
+            except subprocess.SubprocessError:
+                pass
+
+            # 获取虚拟地址空间大小
+            try:
+                output = subprocess.run(['getconf', 'VIRTUAL_ADDRESS_BITS'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    vmem_info['virtual_address_space'] = output.stdout.strip() + ' bits'
+            except subprocess.SubprocessError:
+                pass
+
+            # 获取物理地址空间大小
+            try:
+                output = subprocess.run(['getconf', 'PHYSICAL_ADDRESS_BITS'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    vmem_info['physical_address_space'] = output.stdout.strip() + ' bits'
+            except subprocess.SubprocessError:
+                pass
+
+            # 获取交换分区信息
+            try:
+                # 首先尝试读取/proc/swaps
+                proc_swaps_info = {}
+                try:
+                    with open('/proc/swaps', 'r') as f:
+                        body = f.read()
+                        proc_swaps_info = analyze_proc_swaps_info(body)
+                except FileNotFoundError:
+                    pass
+
+                # 然后尝试使用swapon命令
+                swap_info = {}
+                try:
+                    output = subprocess.run(['swapon', '--show'], capture_output=True, text=True)
+                    if output.returncode == 0:
+                        swap_info = analyze_swap_info(output.stdout)
+                except subprocess.SubprocessError:
+                    pass
+
+                # 合并两种来源的信息
+                vmem_info['swap'] = swap_info
+
+                # 计算总交换空间（优先使用/proc/swaps数据）
+                if proc_swaps_info and 'SwapTotal' in proc_swaps_info:
+                    total_swap = proc_swaps_info['SwapTotal']
+                    free_swap = proc_swaps_info.get('SwapFree', 0)
+                    used_swap = total_swap - free_swap
+
+                    vmem_info['swap_total'] = f"{total_swap} KB ({total_swap/1024/1024:.2f} GB)" if total_swap > 0 else "0 KB"
+                    vmem_info['swap_used'] = f"{used_swap} KB ({used_swap/1024/1024:.2f} GB)" if used_swap > 0 else "0 KB"
+                    vmem_info['swap_free'] = f"{free_swap} KB ({free_swap/1024/1024:.2f} GB)" if free_swap > 0 else "0 KB"
+                elif swap_info:
+                    # 使用swapon数据
+                    total_swap = 0
+                    used_swap = 0
+                    for swap_dev in swap_info.values():
+                        # 解析SIZE字段（如8G）
+                        size_str = swap_dev.get('size', '0')
+                        used_str = swap_dev.get('used', '0')
+
+                        # 简单的单位转换（G->KB）
+                        def analyze_size(size_str):
+                            if size_str.endswith('G'):
+                                return int(float(size_str[:-1]) * 1024 * 1024)
+                            elif size_str.endswith('M'):
+                                return int(float(size_str[:-1]) * 1024)
+                            elif size_str.endswith('K'):
+                                return int(size_str[:-1])
+                            else:
+                                return int(size_str)
+
+                        total_swap += analyze_size(size_str)
+                        used_swap += analyze_size(used_str)
+
+                    vmem_info['swap_total'] = f"{total_swap} KB ({total_swap/1024/1024:.2f} GB)" if total_swap > 0 else "0 KB"
+                    vmem_info['swap_used'] = f"{used_swap} KB ({used_swap/1024/1024:.2f} GB)" if used_swap > 0 else "0 KB"
+                    vmem_info['swap_free'] = f"{total_swap - used_swap} KB ({(total_swap - used_swap)/1024/1024:.2f} GB)" if total_swap > used_swap else "0 KB"
+            except Exception:
+                pass
+
+        elif platform.system() == 'Darwin':
+            # macOS下的实现
+            try:
+                # 首先尝试使用vm_stat获取页面大小
+                output = subprocess.run(['vm_stat'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    # 解析vm_stat输出
+                    for line in output.stdout.split('\n'):
+                        if 'page size' in line.lower():
+                            # 提取页面大小数值
+                            match = re.search(r'page size = (\d+) bytes', line)
+                            if match:
+                                page_size = int(match.group(1))
+                                if page_size >= 1024:
+                                    kb_size = page_size // 1024
+                                    remainder = page_size % 1024
+                                    if remainder == 0:
+                                        vmem_info['page_size'] = f"{page_size} bytes ({kb_size} KB)"
+                                    else:
+                                        vmem_info['page_size'] = f"{page_size} bytes ({kb_size}.{remainder//102:02d} KB)"
+                                else:
+                                    vmem_info['page_size'] = f"{page_size} bytes"
+                                break
+
+                # 如果vm_stat失败，尝试使用pagesize命令
+                if vmem_info['page_size'] == 'Unknown':
+                    output = subprocess.run(['pagesize'], capture_output=True, text=True)
+                    if output.returncode == 0:
+                        page_size = int(output.stdout.strip())
+                        if page_size >= 1024:
+                            kb_size = page_size // 1024
+                            remainder = page_size % 1024
+                            if remainder == 0:
+                                vmem_info['page_size'] = f"{page_size} bytes ({kb_size} KB)"
+                            else:
+                                vmem_info['page_size'] = f"{page_size} bytes ({kb_size}.{remainder//102:02d} KB)"
+                        else:
+                            vmem_info['page_size'] = f"{page_size} bytes"
+
+                # 获取地址位数
+                output = subprocess.run(['sysctl', '-n', 'hw.cpu64bit_capable'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    if output.stdout.strip() == '1':
+                        vmem_info['address_bits'] = '64 bits'
+                    else:
+                        vmem_info['address_bits'] = '32 bits'
+
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Windows':
+            # Windows下的实现
+            try:
+                # 获取页面大小
+                output = subprocess.run(['wmic', 'os', 'get', 'PageSize'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.strip().split('\n')[1:]
+                    if lines:
+                        page_size = int(lines[0].strip())
+                        if page_size >= 1024:
+                            kb_size = page_size // 1024
+                            remainder = page_size % 1024
+                            if remainder == 0:
+                                vmem_info['page_size'] = f"{page_size} bytes ({kb_size}.00 KB)"
+                            else:
+                                vmem_info['page_size'] = f"{page_size} bytes ({kb_size}.{remainder//102:02d} KB)"
+                        else:
+                            vmem_info['page_size'] = f"{page_size} bytes"
+
+                # 获取地址位数
+                output = subprocess.run(['wmic', 'os', 'get', 'OSArchitecture'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.strip().split('\n')[1:]
+                    if lines:
+                        arch = lines[0].strip()
+                        if '64' in arch:
+                            vmem_info['address_bits'] = '64 bits'
+                            vmem_info['virtual_address_space'] = '128 TB'
+                            vmem_info['physical_address_space'] = '128 GB'
+                        else:
+                            vmem_info['address_bits'] = '32 bits'
+                            vmem_info['virtual_address_space'] = '4 GB'
+                            vmem_info['physical_address_space'] = '4 GB'
+
+                # 获取交换分区信息
+                output = subprocess.run(['wmic', 'pagefile', 'get', 'Name,Size'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.strip().split('\n')
+                    if len(lines) > 1:
+                        # 解析表头和数据行
+                        header = lines[0].strip()
+                        if len(lines) > 1:
+                            data_line = lines[1].strip()
+                            # 简单按空格分割（实际应该更精确地按列位置解析）
+                            parts = data_line.split()
+                            if len(parts) >= 2:
+                                label = parts[0]
+                                try:
+                                    size_mb = int(parts[1])
+                                    vmem_info['swap'] = {
+                                        label: {
+                                            'size_kb': size_mb * 1024,
+                                            'used_kb': 0  # Windows不提供详细使用信息
+                                        }
+                                    }
+                                except ValueError:
+                                    pass
+            except subprocess.SubprocessError:
+                pass
+
+        return vmem_info
+
+    except Exception as e:
+        logger.error(f'获取虚拟内存详细信息失败: {e}')
+        logger.error(f'异常类型: {type(e).__name__}')
+        logger.error(f'异常详情: {repr(e)}')
+        logger.error(f'调用栈: {traceback.format_exc()}')
+        return {
+            'page_size': 'Unknown',
+            'address_bits': 'Unknown',
+            'virtual_address_space': 'Unknown',
+            'physical_address_space': 'Unknown',
+            'swap': {},
+            'swap_total': 'Unknown',
+            'swap_used': 'Unknown',
+            'swap_free': 'Unknown'
+        }
