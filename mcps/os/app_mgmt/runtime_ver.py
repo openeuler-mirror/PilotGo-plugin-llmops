@@ -188,3 +188,33 @@ def fetch_docker_version():
         return '未检测到'
     except Exception:
         return '未检测到'
+def fetch_kubernetes_version():
+    """
+    获取Kubernetes版本
+    """
+    try:
+        output = subprocess.run(['kubectl', 'ver', '--client'], capture_output=True, text=True)
+        if output.returncode == 0:
+            for line in output.stdout.split('\n'):
+                if 'Client Version:' in line:
+                    return line.strip().split(': ')[1]
+        return '未检测到'
+    except Exception:
+        return '未检测到'
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_runtime_version",
+    "function": fetch_app_runtime_version,
+    "description": "采集运行时版本（Python/Java/Go/Node.js/PHP/Redis/MongoDB等版本）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "runtime_type": {
+                "type": "string",
+                "description": "运行时类型，如未指定则获取所有支持的运行时版本"
+            }
+        },
+        "required": []
+    }
+}
