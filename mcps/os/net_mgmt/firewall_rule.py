@@ -143,3 +143,55 @@ def fetch_ufw_rules():
         logger.error(f'获取ufw规则失败: {e}')
 
     return rules
+def fetch_firewalld_rules():
+    """
+    获取firewalld规则
+    """
+    rules = []
+
+    try:
+        # 检查firewalld是否可用
+        output = subprocess.run(['which', 'firewall-cmd'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            # 获取firewalld状态
+            status_result = subprocess.run(['firewall-cmd', '--state'], capture_output=True, text=True)
+
+            if status_result.returncode == 0 and status_result.stdout.strip() == 'running':
+                # 获取默认区域
+                zone_result = subprocess.run(['firewall-cmd', '--get-default-zone'], capture_output=True, text=True)
+
+                if zone_result.returncode == 0:
+                    default_zone = zone_result.stdout.strip()
+                    rules.append(f"默认区域: {default_zone}")
+
+                # 获取活动区域
+                active_zones_result = subprocess.run(['firewall-cmd', '--get-active-zones'], capture_output=True, text=True)
+
+                if active_zones_result.returncode == 0:
+                    active_zones = active_zones_result.stdout.strip().split('\n')
+                    rules.append("活动区域:")
+                    for zone in active_zones:
+                        if zone:
+                            rules.append(f"  {zone}")
+
+                # 获取服务
+                services_result = subprocess.run(['firewall-cmd', '--list-services'], capture_output=True, text=True)
+
+                if services_result.returncode == 0:
+                    services = services_result.stdout.strip()
+                    if services:
+                        rules.append(f"允许的服务: {services}")
+
+                # 获取端口
+                ports_result = subprocess.run(['firewall-cmd', '--list-ports'], capture_output=True, text=True)
+
+                if ports_result.returncode == 0:
+                    ports = ports_result.stdout.strip()
+                    if ports:
+                        rules.append(f"允许的端口: {ports}")
+
+    except Exception as e:
+        logger.error(f'获取firewalld规则失败: {e}')
+
+    return rules
