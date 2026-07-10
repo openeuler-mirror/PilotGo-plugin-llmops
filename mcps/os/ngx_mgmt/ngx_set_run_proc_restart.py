@@ -361,3 +361,17 @@ def fetch_detailed_process_info():
         logger.error(f'获取详细进程信息失败: {e}')
 
     return processes
+
+def examine_process_changes(pre_processes, post_processes):
+    """分析进程变化"""
+    try:
+        pre_pids = {p['pid'] for p in pre_processes}
+        post_pids = {p['pid'] for p in post_processes}
+
+        new_processes = post_pids - pre_pids
+        terminated_processes = pre_pids - post_pids
+        preserved_processes = pre_pids & post_pids
+
+        return f"新增: {len(new_processes)}, 终止: {len(terminated_processes)}, 保持: {len(preserved_processes)}"
+    except Exception as e:
+        return f"分析失败: {e}"
