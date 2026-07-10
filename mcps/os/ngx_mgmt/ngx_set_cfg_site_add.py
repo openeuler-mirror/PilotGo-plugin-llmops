@@ -331,3 +331,26 @@ def produce_config_file_path(config_dir, site_name):
     except Exception as e:
         logger.error(f'生成配置文件路径失败: {str(e)}')
         return None
+
+def build_config_file(file_path, body):
+    """创建配置文件"""
+    try:
+        # 创建备份（如果文件已存在）
+        if os.path.exists(file_path):
+            backup_path = f"{file_path}.backup.{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            shutil.copy2(file_path, backup_path)
+            logger.info(f'已创建备份: {backup_path}')
+
+        # 写入配置文件
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(body)
+
+        # 设置适当的权限
+        os.chmod(file_path, 0o644)  # NOSONAR
+
+        logger.info(f'配置文件创建成功: {file_path}')
+        return True
+
+    except Exception as e:
+        logger.error(f'创建配置文件失败: {str(e)}')
+        return False
