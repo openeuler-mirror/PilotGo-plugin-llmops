@@ -184,3 +184,44 @@ def fetch_acl_rules() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def fetch_password_encryption() -> Dict[str, Any]:  # NOSONAR
+    """
+    获取密码加密方式
+
+    返回:
+        密码加密方式信息字典
+    """
+    output = {
+        'encryption_method': 'unknown',
+        'hash_algorithm': 'unknown',
+        'message': '获取密码加密方式'
+    }
+
+    try:
+        info_out = execute_redis_command('INFO server')
+        if info_out:
+            info_map = parse_redis_info(info_out)
+
+            if 'server.redis_version' in info_map:
+                ver = info_map['server.redis_version']
+                version_parts = ver.split('.')
+                major = int(version_parts[0]) if version_parts else 0
+                minor = int(version_parts[1]) if len(version_parts) > 1 else 0
+
+                if major >= 6:
+                    output['encryption_method'] = 'ACL'
+                    output['hash_algorithm'] = 'SHA256'
+                elif major >= 4:
+                    output['encryption_method'] = 'requirepass'
+                    output['hash_algorithm'] = 'SHA256'
+                else:
+                    output['encryption_method'] = 'requirepass'
+                    output['hash_algorithm'] = 'SHA1'
+
+        output['message'] = f'密码加密方式: {output["encryption_method"]}, 算法: {output["hash_algorithm"]}'
+
+    except Exception as e:
+        output['message'] = f'获取密码加密方式时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
