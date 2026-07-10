@@ -441,3 +441,57 @@ def is_file_in_time_range(log_file, start_dt, end_dt):
     except Exception as e:
         logger.error(f'检查文件时间范围失败: {e}')
         return True  # 如果检查失败，默认处理该文件
+
+def build_grep_command(log_path, start_dt, end_dt, ip_address, url_pattern, status_code):
+    """
+    构建grep命令
+
+    参数:
+        log_path: 日志文件路径
+        start_dt: 开始时间
+        end_dt: 结束时间
+        ip_address: IP地址
+        url_pattern: URL模式
+        status_code: 状态码
+
+    返回:
+        str: grep命令字符串
+    """
+    try:
+        # 基础命令
+        cmd = f"zcat {log_path}" if log_path.endswith('.gz') else f"cat {log_path}"
+        # 添加过滤条件
+        filters = []
+
+        # IP地址过滤
+        if ip_address:
+            filters.append(ip_address)
+
+        # URL模式过滤（使用grep -E支持正则）
+        if url_pattern:
+            # 转义特殊字符
+            url_pattern_escaped = re.escape(url_pattern)
+            filters.append(url_pattern_escaped)
+
+        # 状态码过滤（仅对访问日志有效）
+        if status_code and 'access' in log_path:
+            # 状态码通常在日志行的特定位置
+            filters.append(f' {status_code} ')
+
+        # 组合过滤条件
+        if filters:
+            if len(filters) == 1:
+                cmd += f" | grep '{filters[0]}'"
+            else:
+                # 多个条件使用管道连接
+                for filter_str in filters:
+                    cmd += f" | grep '{filter_str}'"
+
+        # 限制行数（避免处理过大文件）
+        cmd += " | head -10000"  # 临时限制，避免内存问题
+
+        return cmd
+
+    except Exception as e:
+        logger.error(f'构建grep命令失败: {e}')
+        return None
