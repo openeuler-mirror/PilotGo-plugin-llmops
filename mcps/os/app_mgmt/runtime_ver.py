@@ -109,3 +109,14 @@ def fetch_go_version():
         return '未检测到'
     except Exception:
         return '未检测到'
+def fetch_nodejs_version():
+    """
+    获取Node.js版本
+    """
+    try:
+        output = subprocess.run(['node', '-v'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return output.stdout.strip()
+        return '未检测到'
+    except Exception:
+        return '未检测到'
