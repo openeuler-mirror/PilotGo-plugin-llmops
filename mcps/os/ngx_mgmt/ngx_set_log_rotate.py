@@ -344,3 +344,46 @@ def setup_custom_script(script_content: str, script_name: str = 'nginx-log-rotat
     except Exception as e:
         logger.error(f"安装自定义脚本失败: {e}")
         raise
+
+def setup_cron_job(script_path: str, rotation_type: str, rotation_value: str) -> bool:
+    """
+    设置定时任务
+    
+    参数:
+        script_path: 脚本路径
+        rotation_type: 切割类型
+        rotation_value: 切割值
+        
+    返回:
+        bool: 是否设置成功
+    """
+    try:
+        cron_content = ""
+        
+        if rotation_type == 'time':
+            if rotation_value == 'daily':
+                cron_content = f"0 0 * * * root {script_path}\n"
+            elif rotation_value == 'weekly':
+                cron_content = f"0 0 * * 0 root {script_path}\n"
+            elif rotation_value == 'monthly':
+                cron_content = f"0 0 1 * * root {script_path}\n"
+            elif rotation_value == 'hourly':
+                cron_content = f"0 * * * * root {script_path}\n"
+        else:
+            # 对于按大小切割，每小时检查一次
+            cron_content = f"0 * * * * root {script_path}\n"
+        
+        if cron_content:
+            cron_file = '/etc/cron.d/nginx-log-rotate'
+            with open(cron_file, 'w', encoding='utf-8') as f:
+                f.write(cron_content)
+            
+            os.chmod(cron_file, 0o644)  # NOSONAR
+            logger.info(f"定时任务已设置: {cron_file}")
+            return True
+        
+        return False
+        
+    except Exception as e:
+        logger.error(f"设置定时任务失败: {e}")
+        return False
