@@ -562,3 +562,63 @@ def estimate_failure_metrics(upstream_name: str, hours: int = 24) -> Dict[str, A
         failure_metrics['error'] = f"估算失败: {e}"
     
     return failure_metrics
+
+def examine_circuit_breaker_status(upstream_config: Dict[str, Any], 
+                                 error_analysis: Dict[str, Any]) -> str:
+    """
+    分析熔断器状态
+    
+    参数:
+        upstream_config: upstream配置
+        error_analysis: 错误分析结果
+        
+    返回:
+        str: 熔断器状态（open/half-open/closed）
+    """
+    try:
+        # 获取最近的错误信息
+        recent_errors = error_analysis.get('error_timeline', [])
+        if not recent_errors:
+            return 'closed'  # 没有错误，熔断器关闭
+        
+        # 按时间排序
+        recent_errors.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # 检查最近1小时内的错误频率
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        recent_error_count = 0
+        
+        for error in recent_errors:
+            error_time = datetime.fromisoformat(error['timestamp'])
+            if error_time > one_hour_ago:
+                recent_error_count += 1
+            else:
+                break
+        
+        # 获取熔断配置
+        max_fails = 1
+        fail_timeout = 10  # 默认10秒
+        
+        for server in upstream_config.get('servers', []):
+            if server.get('max_fails', 0) > max_fails:
+                max_fails = server['max_fails']
+            
+            # 解析fail_timeout
+            timeout_str = server.get('fail_timeout', '10s')
+            timeout_match = re.search(r'(\d+)', timeout_str)  # NOSONAR
+            if timeout_match:
+                server_timeout = int(timeout_match.group(1))
+                if server_timeout > fail_timeout:
+                    fail_timeout = server_timeout
+        
+        # 判断熔断状态
+        if recent_error_count >= max_fails * 2:  # 错误数超过阈值2倍
+            return 'open'  # 熔断器打开
+        elif recent_error_count >= max_fails:
+            return 'half-open'  # 半开状态
+        else:
+            return 'closed'  # 关闭状态
+        
+    except Exception as e:
+        logger.error(f"分析熔断器状态失败: {e}")
+        return 'unknown'
