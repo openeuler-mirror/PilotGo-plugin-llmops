@@ -87,3 +87,76 @@ def oom_system_analysis() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def examine_oom_events() -> List[Dict[str, Any]]:
+    """分析OOM事件历史"""
+    events = []
+
+    try:
+        # 从dmesg获取OOM Killer日志
+        dmesg_result = execute_command(['dmesg'])
+        if dmesg_result['success']:
+            body = dmesg_result['stdout']
+
+            # 解析OOM Killer日志
+            # 匹配模式: "Out of memory: Kill process ..."
+            oom_pattern = r'Out of memory: Kill process (\d+) \(([^)]+)\)'
+            for match in re.finditer(oom_pattern, body, re.IGNORECASE):
+                events.append({
+                    'pid': match.group(1),
+                    'process_name': match.group(2),
+                    'source': 'dmesg',
+                    'timestamp': derive_timestamp(body, match.start()),
+                    'type': 'oom_kill'
+                })
+
+            # 解析内存不足日志
+            mem_pattern = r'invoked oom-killer: gfp_mask=0x([0-9a-f]+)'
+            for match in re.finditer(mem_pattern, body, re.IGNORECASE):
+                # 找到对应的进程信息
+                context_start = max(0, match.start() - 500)
+                context = body[context_start:match.end()]
+
+                pid_match = re.search(r'([\w\-]+)\[(\d+)\]:', context)
+                if pid_match:
+                    events.append({
+                        'pid': pid_match.group(2),
+                        'process_name': pid_match.group(1),
+                        'source': 'dmesg',
+                        'timestamp': derive_timestamp(body, match.start()),
+                        'type': 'oom_killer_invoked',
+                        'gfp_mask': match.group(1)
+                    })
+
+        # 从/var/log/messages获取OOM日志（如果存在）
+        if os.path.exists('/var/log/messages'):
+            try:
+                with open('/var/log/messages', 'r') as f:
+                    body = f.read()
+
+                oom_pattern = r'Out of memory: Kill process (\d+) \(([^)]+)\)'
+                for match in re.finditer(oom_pattern, body, re.IGNORECASE):
+                    events.append({
+                        'pid': match.group(1),
+                        'process_name': match.group(2),
+                        'source': '/var/log/messages',
+                        'timestamp': derive_syslog_timestamp(body, match.start()),
+                        'type': 'oom_kill'
+                    })
+            except Exception:
+                pass
+
+        # 去重（基于pid和process_name）
+        seen = set()
+        unique_events = []
+        for event in events:
+            key = (event.get('pid'), event.get('process_name'))
+            if key not in seen:
+                seen.add(key)
+                unique_events.append(event)
+
+        events = unique_events
+
+    except Exception as e:
+        events.append({'error': str(e)})
+
+    return events
