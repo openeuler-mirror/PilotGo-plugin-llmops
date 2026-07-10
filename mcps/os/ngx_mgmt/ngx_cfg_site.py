@@ -153,3 +153,20 @@ def fetch_all_site_configs(main_config):
     except Exception as e:
         logger.error(f'获取站点配置文件失败: {e}')
         return []
+
+def locate_site_config(site_name, site_configs):
+    """根据站点名称查找配置"""
+    try:
+        for config in site_configs:
+            if config['name'].lower() == site_name.lower():
+                return config
+
+        # 如果直接匹配失败，尝试在server_names中查找
+        for config in site_configs:
+            if site_name.lower() in [s.lower() for s in config['server_names']]:
+                return config
+
+        return None
+    except Exception as e:
+        logger.error(f'查找站点配置失败: {e}')
+        return None
