@@ -517,3 +517,125 @@ def reload_nginx_config(method):
         return {'success': True} if output.returncode == 0 else {'success': False, 'error': output.stderr}
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+def fetch_cache_config_recommendations():
+    """获取缓存配置推荐值"""
+    recommendations = {
+        'cache_path': '/var/cache/nginx',
+        'cache_size': '100m',
+        'cache_inactive': '60m',
+        'cache_levels': '1:2',
+        'cache_keys_zone': 'proxy_cache:10m',
+        'proxy_cache': 'proxy_cache'
+    }
+    return recommendations
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "set_nginx_cache_config",
+    "function": set_nginx_cache_config,
+    "description": "设置Nginx缓存配置，包括缓存开启/关闭、缓存路径、缓存大小、过期时间等",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "cache_enabled": {
+                "type": "boolean",
+                "description": "是否启用缓存 (true/false)"
+            },
+            "cache_path": {
+                "type": "string",
+                "description": "缓存路径 (如: /var/cache/nginx)"
+            },
+            "cache_size": {
+                "type": "string",
+                "description": "缓存大小 (如: 100m, 1g)"
+            },
+            "cache_inactive": {
+                "type": "string",
+                "description": "缓存过期时间 (如: 60m, 24h)"
+            },
+            "cache_levels": {
+                "type": "string",
+                "description": "缓存目录层级 (如: 1:2)"
+            },
+            "cache_keys_zone": {
+                "type": "string",
+                "description": "缓存键区大小 (如: cache_zone:10m)"
+            },
+            "proxy_cache": {
+                "type": "string",
+                "description": "proxy缓存区名称"
+            },
+            "fastcgi_cache": {
+                "type": "string",
+                "description": "fastcgi缓存区名称"
+            },
+            "cache_method": {
+                "type": "string",
+                "enum": ["proxy", "fastcgi"],
+                "description": "缓存类型：proxy(代理缓存)、fastcgi(FastCGI缓存)"
+            },
+            "reload_method": {
+                "type": "string",
+                "enum": ["graceful", "restart", "none"],
+                "description": "重载方式：graceful(平滑重载)、restart(重启服务)、none(不重载)"
+            }
+        },
+        "required": []
+    }
+}
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "ngx_set_run_cache_cfg",
+    "function": set_nginx_cache_config,
+    "description": "设置Nginx缓存配置，包括缓存开启/关闭、缓存路径、缓存大小、过期时间等",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "cache_enabled": {
+                "type": "boolean",
+                "description": "是否启用缓存 (true/false)"
+            },
+            "cache_path": {
+                "type": "string",
+                "description": "缓存路径 (如: /var/cache/nginx)"
+            },
+            "cache_size": {
+                "type": "string",
+                "description": "缓存大小 (如: 100m, 1g)"
+            },
+            "cache_inactive": {
+                "type": "string",
+                "description": "缓存过期时间 (如: 60m, 24h)"
+            },
+            "cache_levels": {
+                "type": "string",
+                "description": "缓存目录层级 (如: 1:2)"
+            },
+            "cache_keys_zone": {
+                "type": "string",
+                "description": "缓存键区大小 (如: cache_zone:10m)"
+            },
+            "proxy_cache": {
+                "type": "string",
+                "description": "proxy缓存区名称"
+            },
+            "fastcgi_cache": {
+                "type": "string",
+                "description": "fastcgi缓存区名称"
+            },
+            "cache_method": {
+                "type": "string",
+                "enum": ["proxy", "fastcgi"],
+                "description": "缓存类型：proxy(代理缓存)、fastcgi(FastCGI缓存)"
+            },
+            "reload_method": {
+                "type": "string",
+                "enum": ["graceful", "restart", "none"],
+                "description": "重载方式：graceful(平滑重载)、restart(重启服务)、none(不重载)"
+            }
+        },
+        "required": []
+    }
+}
