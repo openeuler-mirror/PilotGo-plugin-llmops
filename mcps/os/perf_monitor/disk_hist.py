@@ -199,3 +199,22 @@ def fetch_perf_disk_history(duration=None, interval=None, device=None):
     except Exception as e:
         logger.error(f'获取磁盘历史性能失败: {e}')
         return f'获取磁盘历史性能失败: {e}'
+def fetch_disk_devices():
+    """
+    获取磁盘设备列表
+    """
+    devices = []
+
+    try:
+        # 读取/sys/block目录
+        block_dir = '/sys/block'
+        if os.path.exists(block_dir):
+            for item in os.listdir(block_dir):
+                # 排除虚拟设备
+                if not item.startswith('loop') and not item.startswith('ram') and not item.startswith('dm-'):
+                    devices.append(item)
+
+    except Exception as e:
+        logger.error(f'获取磁盘设备列表失败: {e}')
+
+    return devices
