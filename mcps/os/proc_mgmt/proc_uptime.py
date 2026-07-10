@@ -55,11 +55,11 @@ def fetch_proc_uptime(pid=None):
                 em = int((elapsed%3600)//60); es = int(elapsed%60)
                 out.append(f'Elapsed:    {ed}d {eh}h {em}m {es}s')
             if len(fields) > 13:
-                ut = int(fields[11])/ticks; st = int(fields[12])/ticks
+                ut = int(fields[11])/ticks; sys_time = int(fields[12])/ticks
                 out.append(f'User CPU:   {ut:.2f}s')
-                out.append(f'System CPU: {st:.2f}s')
+                out.append(f'System CPU: {sys_time:.2f}s')
                 if elapsed > 0:
-                    out.append(f'Avg CPU:    {(ut+st)/elapsed*100:.2f}%')
+                    out.append(f'Avg CPU:    {(ut+sys_time)/elapsed*100:.2f}%')
 
         return '\n'.join(out)
     except Exception as e:
