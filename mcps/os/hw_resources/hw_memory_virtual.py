@@ -579,3 +579,48 @@ def fetch_memory_mapping_info():
     except Exception as e:
         logger.error(f'获取内存映射信息失败: {e}')
         return None
+def analyze_proc_swaps_info(body):
+    """
+    解析/proc/swaps文件内容
+
+    参数:
+        body: /proc/swaps文件内容
+
+    返回:
+        交换分区信息字典
+    """
+    try:
+        swap_info = {}
+        lines = body.strip().split('\n')
+
+        for line in lines:
+            if line.startswith('SwapTotal:') or line.startswith('SwapFree:'):
+                parts = line.split()
+                if len(parts) >= 2:
+                    key = parts[0].rstrip(':')
+                    value_kb = int(parts[1])
+                    swap_info[key] = value_kb
+
+        return swap_info
+
+    except Exception as e:
+        logger.error(f'解析/proc/swaps信息失败: {e}')
+        return {}
+
+# 工具配置
+TOOL_CONFIG = {
+    "label": "fetch_hw_mem_virtual",
+    "function": fetch_hw_mem_virtual,
+    "description": "采集虚拟内存基础配置，包括交换分区默认配置、内存页大小和地址位数",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "vmem_type": {
+                "type": "string",
+                "description": "信息类型，可选值：swap（交换分区配置）、page_size（内存页大小）、address_bits（地址位数）、swap_total（交换分区总大小）、swap_used（交换分区已用大小）、swap_free（交换分区空闲大小），不指定则获取所有信息",
+                "enum": ["swap", "page_size", "address_bits", "swap_total", "swap_used", "swap_free"]
+            }
+        },
+        "required": []
+    }
+}
