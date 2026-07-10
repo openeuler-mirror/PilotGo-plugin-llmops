@@ -304,3 +304,42 @@ def derive_server_configs(body):
     except Exception as e:
         logger.error(f'提取server配置失败: {e}')
         return []
+
+def derive_location_configs(body):
+    """提取location块配置"""
+    try:
+        location_configs = []
+
+        # 提取所有location块
+        location_pattern = r'location\s+([^{]*)\{([^{}]*)\}'  # NOSONAR
+        location_matches = re.findall(location_pattern, body, re.DOTALL)  # NOSONAR
+
+        for i, (location_path, location_content) in enumerate(location_matches, 1):
+            location_configs.append(f"位置块 #{i}: {location_path.strip()}")
+
+            # 常见的location配置项
+            patterns = {
+                'root': r'root\s+([^;]+);',
+                'index': r'index\s+([^;]+);',
+                'try_files': r'try_files\s+([^;]+);',
+                'proxy_pass': r'proxy_pass\s+([^;]+);',
+                'fastcgi_pass': r'fastcgi_pass\s+([^;]+);',
+                'uwsgi_pass': r'uwsgi_pass\s+([^;]+);',
+                'scgi_pass': r'scgi_pass\s+([^;]+);',
+                'return': r'return\s+([^;]+);',
+                'rewrite': r'rewrite\s+([^;]+);',
+                'allow': r'allow\s+([^;]+);',
+                'deny': r'deny\s+([^;]+);',
+                'expires': r'expires\s+([^;]+);',
+                'add_header': r'add_header\s+([^;]+);'
+            }
+
+            for config_name, pattern in patterns.items():
+                matches = re.findall(pattern, location_content)  # NOSONAR
+                for match in matches:
+                    location_configs.append(f"  {config_name}: {match.strip()}")
+
+        return location_configs
+    except Exception as e:
+        logger.error(f'提取location配置失败: {e}')
+        return []
