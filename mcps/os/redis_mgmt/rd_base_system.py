@@ -293,3 +293,16 @@ def fetch_memory_info():
         logger.error(f'获取内存信息失败: {e}')
 
     return memory_info
+def render_memory_size(kb):
+    """
+    格式化内存大小
+    """
+    mb = kb / 1024
+    gb = mb / 1024
+
+    if gb >= 1:
+        return f"{gb:.2f} GB"
+    elif mb >= 1:
+        return f"{mb:.2f} MB"
+    else:
+        return f"{kb} KB"
