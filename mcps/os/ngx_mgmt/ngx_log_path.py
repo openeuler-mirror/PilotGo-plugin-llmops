@@ -424,3 +424,62 @@ def fetch_logrotate_config():
     except Exception as e:
         logger.error(f'获取日志轮转配置失败: {e}')
         return [f'获取日志轮转配置失败: {e}']
+
+def verify_log_directory_permissions(log_info):
+    """
+    检查日志目录权限
+
+    参数:
+        log_info: 日志信息字典
+
+    返回:
+        list: 权限检查结果列表
+    """
+    try:
+        permission_info = []
+
+        # 收集所有日志路径的目录
+        directories = set()
+
+        # 从访问日志收集目录
+        for access_log in log_info['access_logs']:
+            if access_log['path'] not in ['stderr', 'syslog']:
+                dir_path = os.path.dirname(access_log['path'])
+                if dir_path:
+                    directories.add(dir_path)
+
+        # 从错误日志收集目录
+        for error_log in log_info['error_logs']:
+            if error_log['path'] not in ['stderr', 'syslog']:
+                dir_path = os.path.dirname(error_log['path'])
+                if dir_path:
+                    directories.add(dir_path)
+
+        # 检查常见日志目录
+        common_log_dirs = ['/var/log/nginx', '/usr/local/nginx/logs', '/var/log']
+        for log_dir in common_log_dirs:
+            if os.path.exists(log_dir):
+                directories.add(log_dir)
+
+        # 检查每个目录的权限
+        for directory in directories:
+            if os.path.exists(directory):
+                try:
+                    stat_info = os.stat(directory)
+                    mode = stat_info.st_mode
+                    readable = os.access(directory, os.R_OK)
+                    writable = os.access(directory, os.W_OK)
+
+                    state = "可读可写" if readable and writable else "只读" if readable else "不可访问"
+                    permission_info.append(f"目录 {directory}: {state} (权限: {oct(mode & 0o777)})")
+                except Exception:
+                    permission_info.append(f"目录 {directory}: 权限检查失败")
+
+        if not permission_info:
+            permission_info.append("未找到可检查的日志目录")
+
+        return permission_info
+
+    except Exception as e:
+        logger.error(f'检查日志目录权限失败: {e}')
+        return [f'检查日志目录权限失败: {e}']
