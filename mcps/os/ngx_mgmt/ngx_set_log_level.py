@@ -337,3 +337,73 @@ def deactivate_debug_log(cfg_filepath: str) -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"关闭debug日志失败: {e}")
         return False, f"关闭debug日志失败: {e}"
+
+def activate_debug_log(cfg_filepath: str, scope: str = 'main', 
+                    server_index: int = 0, log_path: str = None) -> Tuple[bool, str]:
+    """
+    开启debug日志
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        scope: 作用域
+        server_index: server块索引
+        log_path: 日志文件路径
+        
+    返回:
+        tuple: (是否成功, 修改后的内容)
+    """
+    try:
+        if not os.path.exists(cfg_filepath):
+            return False, "配置文件不存在"
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        log_path = '/var/log/nginx/debug.log' if log_path is None else log_path
+        debug_log_line = f'error_log {log_path} debug;'
+        
+        if scope == 'main':
+            # 在主配置块中添加或修改debug日志配置
+            pattern = r'(error_log\s+[^;\n]+)(?:\s+(?:debug|info|notice|warn|error|crit|alert|emerg))?;'  # NOSONAR
+            
+            def replace_with_debug(match):
+                existing_config = match.group(1)
+                # 如果已经是指定的日志路径，则只修改级别
+                return f'{existing_config} debug;' if log_path in existing_config else match.group(0) + f'\n{debug_log_line}'
+            
+            body = re.sub(pattern, replace_with_debug, body)  # NOSONAR
+            
+            # 如果没有找到任何error_log指令，直接添加
+            if 'error_log' not in body:
+                body = debug_log_line + '\n' + body
+        
+        elif scope == 'http':
+            # 在http块中添加debug日志配置
+            http_pattern = r'(http\s*\{)'  # NOSONAR
+            http_match = re.search(http_pattern, body)  # NOSONAR
+            if http_match:
+                insert_pos = http_match.end()
+                body = body[:insert_pos] + f'\n    {debug_log_line}' + body[insert_pos:]
+            else:
+                return False, "找不到http块"
+        
+        elif scope == 'server':
+            # 在指定server块中添加debug日志配置
+            server_pattern = r'server\s*\{[^}]+\}'  # NOSONAR
+            server_matches = list(re.finditer(server_pattern, body, re.DOTALL))  # NOSONAR
+            
+            if server_index < len(server_matches):
+                server_match = server_matches[server_index]
+                server_block = server_match.group(0)
+                
+                first_brace = server_block.find('{') + 1
+                new_server_block = server_block[:first_brace] + f'\n    {debug_log_line}' + server_block[first_brace:]
+                body = body[:server_match.start()] + new_server_block + body[server_match.end():]
+            else:
+                return False, f"找不到索引为 {server_index} 的server块"
+        
+        return True, body
+        
+    except Exception as e:
+        logger.error(f"开启debug日志失败: {e}")
+        return False, f"开启debug日志失败: {e}"
