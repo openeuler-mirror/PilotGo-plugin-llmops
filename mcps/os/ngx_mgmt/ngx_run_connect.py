@@ -479,3 +479,56 @@ def fetch_system_connection_stats():
         logger.error(f'获取系统连接统计失败: {e}')
 
     return stats
+
+def fetch_performance_suggestions(connection_stats, threshold_analysis):
+    """获取性能优化建议"""
+    suggestions = []
+    try:
+        # 基于连接数的建议
+        active_connections = connection_stats.get('active_connections', 0)
+        usage_percentage = threshold_analysis.get('usage_percentage', '0%')
+
+        if '危险' in threshold_analysis.get('threshold_status', ''):
+            suggestions.append("紧急: 考虑增加worker_processes或worker_connections")
+            suggestions.append("建议: 启用连接池或负载均衡")
+            suggestions.append("建议: 检查是否存在连接泄漏")
+
+        elif '警告' in threshold_analysis.get('threshold_status', ''):
+            suggestions.append("建议: 监控连接增长趋势，准备扩容")
+            suggestions.append("建议: 优化应用程序连接处理")
+
+        # 基于等待连接的建议
+        waiting_connections = connection_stats.get('waiting_connections', 0)
+        if waiting_connections != 'N/A' and waiting_connections > 50:
+            suggestions.append("建议: 优化后端响应时间，减少等待连接")
+            suggestions.append("建议: 检查是否有慢查询或阻塞操作")
+
+        # 基于worker配置的建议
+        worker_processes = threshold_analysis.get('worker_processes', 'N/A')
+        if worker_processes != 'N/A' and worker_processes < os.cpu_count():
+            suggestions.append(f"建议: 可增加worker_processes至 {os.cpu_count()} 以利用更多CPU核心")
+
+        # 通用建议
+        if not suggestions:
+            suggestions.append("当前连接状态良好，继续监控即可")
+
+        suggestions.append("建议: 定期监控连接趋势，设置告警阈值")
+        suggestions.append("建议: 考虑使用连接池减少连接建立开销")
+
+        return suggestions
+
+    except Exception as e:
+        logger.error(f'生成性能建议失败: {e}')
+        return ["建议: 继续监控连接状态"]
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_runtime_connect",
+    "function": fetch_nginx_runtime_connect,
+    "description": "获取Nginx运行时连接状态，包括活跃连接数、总连接数、等待连接数、读写连接数及阈值监控",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
