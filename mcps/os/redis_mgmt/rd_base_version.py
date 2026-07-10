@@ -195,3 +195,42 @@ def fetch_redis_version_info(pid):
         logger.error(f'获取Redis版本信息失败: {e}')
 
     return ver_data
+def fetch_redis_compile_info(pid):
+    """
+    获取Redis编译参数
+    """
+    build_info = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'INFO', 'server'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('gcc_version:'):
+                    build_info['GCC版本'] = line.split(':')[1]
+                elif line.startswith('redis_build_id:'):
+                    build_info['Build ID'] = line.split(':')[1]
+
+        exe_path = f'/proc/{pid}/exe'
+        if os.path.exists(exe_path):
+            output = subprocess.run(['readlink', exe_path], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                redis_path = output.stdout.strip()
+                redis_dir = os.path.dirname(redis_path)
+
+                cfg_filepath = os.path.join(redis_dir, '..', 'include', 'redis_version.h')
+                if os.path.exists(cfg_filepath):
+                    build_info['版本头文件'] = cfg_filepath
+
+        output = subprocess.run(['redis-cli', 'CONFIG', 'GET', '*'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            config_lines = output.stdout.split('\n')
+            build_info['配置项数量'] = str(len([line for line in config_lines if line]))
+
+    except Exception as e:
+        logger.error(f'获取Redis编译参数失败: {e}')
+
+    return build_info
