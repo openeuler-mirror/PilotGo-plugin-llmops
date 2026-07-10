@@ -353,3 +353,65 @@ def analyze_time_range(start_time, end_time):
         # 返回默认时间范围
         now = datetime.now()
         return now - timedelta(days=7), now
+
+def query_log_content(log_files, start_dt, end_dt, ip_address, url_pattern, status_code, max_lines):
+    """
+    查询日志内容
+
+    参数:
+        log_files: 日志文件列表
+        start_dt: 开始时间
+        end_dt: 结束时间
+        ip_address: IP地址过滤
+        url_pattern: URL模式过滤
+        status_code: 状态码过滤
+        max_lines: 最大行数
+
+    返回:
+        list: 匹配的日志内容
+    """
+    try:
+        all_matches = []
+        processed_files = 0
+
+        for log_file in log_files:
+            # 检查文件时间范围是否在查询范围内
+            if not is_file_in_time_range(log_file, start_dt, end_dt):
+                continue
+
+            processed_files += 1
+            logger.info(f"处理文件: {log_file['path']}")
+
+            # 构建grep命令
+            grep_cmd = build_grep_command(log_file['path'], start_dt, end_dt, ip_address, url_pattern, status_code)
+
+            if grep_cmd:
+                try:
+                    # 执行grep命令
+                    output = subprocess.run(grep_cmd, shell=True, capture_output=True, text=True, timeout=30)
+
+                    if output.returncode == 0:
+                        lines = output.stdout.strip().split('\n')
+                        for line in lines:
+                            if line.strip():
+                                # 解析日志行时间
+                                log_time = analyze_log_time(line, log_file['type'])
+                                if log_time and start_dt <= log_time <= end_dt:
+                                    all_matches.append(f"[{log_time.strftime('%Y-%m-%d %H:%M:%S')}] {line.strip()}")
+
+                    # 如果已经达到最大行数，停止处理
+                    if len(all_matches) >= max_lines:
+                        all_matches = all_matches[:max_lines]
+                        break
+
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"处理文件超时: {log_file['path']}")
+                except Exception as e:
+                    logger.error(f"处理文件失败 {log_file['path']}: {e}")
+
+        logger.info(f"处理了 {processed_files} 个文件，找到 {len(all_matches)} 条匹配记录")
+        return all_matches[:max_lines]
+
+    except Exception as e:
+        logger.error(f'查询日志内容失败: {e}')
+        return []
