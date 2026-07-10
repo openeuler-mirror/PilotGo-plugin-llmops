@@ -25,6 +25,12 @@ def fetch_proc_tree():
         if result.returncode != 0:
             return f'Error: {result.stderr}'
         return f'=== Process Tree ===\n{result.stdout.strip()}'
+    except PermissionError as e:
+        logger.error(f'Permission denied: {e}')
+        return f'Permission denied: {e}'
+    except FileNotFoundError as e:
+        logger.error(f'Resource not found: {e}')
+        return f'Resource not found: {e}'
     except Exception as e:
         logger.error(f'Failed: {e}')
         return f'Error: {e}'
