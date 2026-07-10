@@ -195,3 +195,57 @@ def analyze_nginx_log_config(config_file):
             'logrotate_config': [],
             'directory_permissions': [f'解析配置失败: {e}']
         }
+
+def analyze_access_log_directive(directive):
+    """
+    解析access_log指令
+
+    参数:
+        directive: access_log指令内容
+
+    返回:
+        dict: 访问日志信息字典
+    """
+    try:
+        # 解析路径和格式
+        parts = directive.split()
+        if not parts:
+            return None
+
+        log_info = {
+            'path': 'Unknown',
+            'format': 'combined',  # 默认格式
+            'buffer': '未设置',
+            'flush': '未设置',
+            'gzip': '未设置',
+            'state': 'Unknown',
+            'size': 'Unknown'
+        }
+
+        # 第一个参数是路径
+        log_info['path'] = parts[0]
+
+        # 检查路径状态
+        if os.path.exists(log_info['path']):
+            log_info['state'] = '存在'
+            try:
+                size = os.path.getsize(log_info['path'])
+                log_info['size'] = render_file_size(size)
+            except Exception:
+                log_info['size'] = '无法获取大小'
+        else:
+            log_info['state'] = '不存在'
+
+        # 检查其他参数
+        for i, part in enumerate(parts[1:], 1):
+            if part in ['buffer', 'gzip', 'flush']:
+                log_info[part] = '已设置'
+            elif part not in ['off']:  # 忽略off参数
+                # 可能是日志格式名称
+                log_info['format'] = part
+
+        return log_info
+
+    except Exception as e:
+        logger.error(f'解析access_log指令失败: {e}')
+        return None
