@@ -372,3 +372,47 @@ def modify_existing_log_format(cfg_filepath: str, format_name: str,
     except Exception as e:
         logger.error(f"修改现有日志格式失败: {e}")
         return False, f"修改失败: {e}"
+
+def remove_log_format(cfg_filepath: str, format_name: str) -> Tuple[bool, str]:
+    """
+    删除指定的日志格式
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        format_name: 格式名称
+        
+    返回:
+        tuple: (是否成功，消息)
+    """
+    try:
+        # 安全验证：验证 cfg_filepath 路径参数（允许绝对路径）
+        valid, err_text = validate_path_param(cfg_filepath, allow_absolute=True)
+        if not valid:
+            logger.error(f"remove_log_format: cfg_filepath 路径验证失败：{err_text}")
+            return False, f"配置文件路径不安全：{err_text}"
+        
+        # 安全验证：验证 format_name 标识符参数
+        valid, err_text = validate_identifier_param(format_name)
+        if not valid:
+            logger.error(f"remove_log_format: format_name 验证失败：{err_text}")
+            return False, f"格式名称不安全：{err_text}"
+        
+        if not os.path.exists(cfg_filepath):
+            return False, f"配置文件不存在：{cfg_filepath}"
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 查找并删除log_format指令
+        pattern = rf'log_format\s+{format_name}\s*{{[^}}]+}};\s*\n?'  # NOSONAR
+        
+        new_content = re.sub(pattern, '', body, flags=re.DOTALL)  # NOSONAR
+        
+        if new_content == body:
+            return False, f"未找到格式 '{format_name}'"
+        
+        return True, new_content
+        
+    except Exception as e:
+        logger.error(f"删除日志格式失败: {e}")
+        return False, f"删除失败: {e}"
