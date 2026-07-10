@@ -331,3 +331,42 @@ def examine_connection_thresholds(connection_stats):
     except Exception as e:
         logger.error(f'分析连接阈值失败: {e}')
         return analysis
+
+def fetch_nginx_worker_info():
+    """获取Nginx worker配置信息"""
+    details = {'worker_processes': 'N/A', 'worker_connections': 'N/A'}
+    try:
+        # 获取配置文件路径
+        config_result = subprocess.run(['nginx', '-T'], capture_output=True, text=True, stderr=subprocess.STDOUT)
+        if config_result.returncode in [0, 1]:
+            output = config_result.stdout.strip() if config_result.stdout else config_result.stderr.strip()
+
+            # 查找worker_processes
+            worker_processes_match = re.findall(r'worker_processes\s+(\w+|\d+)', output, re.IGNORECASE)  # NOSONAR
+            if worker_processes_match:
+                worker_processes = worker_processes_match[-1]  # 取最后一个配置
+                if worker_processes.lower() == 'auto':
+                    # 自动检测CPU核心数
+                    try:
+                        cpu_count = len(os.sched_getaffinity(0))
+                        details['worker_processes'] = cpu_count
+                    except Exception:
+                        details['worker_processes'] = os.cpu_count() or 1
+                else:
+                    details['worker_processes'] = int(worker_processes)
+
+            # 查找worker_connections
+            worker_connections_match = re.findall(r'worker_connections\s+(\d+)', output, re.IGNORECASE)  # NOSONAR
+            if worker_connections_match:
+                details['worker_connections'] = int(worker_connections_match[-1])
+            else:
+                # 默认值
+                details['worker_connections'] = 1024
+
+    except Exception as e:
+        logger.error(f'获取worker信息失败: {e}')
+        # 使用默认值
+        details['worker_processes'] = os.cpu_count() or 1
+        details['worker_connections'] = 1024
+
+    return details
