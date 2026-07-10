@@ -35,7 +35,7 @@ def fetch_proc_top(count=None, sort_by=None):
         if result.returncode != 0:
             return f'Error: ps failed: {result.stderr}'
         lines = result.stdout.strip().split('\n')[:n]
-        out = [f'=== Top {n} by {"CPU" if sort=="-%cpu" else "MEM"} ===']
+        labels = {"-%cpu":"CPU","-%mem":"MEM","-vsz":"VSZ","-rss":"RSS"}; out = [f'=== Top {n} by {labels.get(sort, sort)} ===']
         out.append(f'{"USER":<10} {"PID":>7} {"%CPU":>5} {"%MEM":>5} {"VSZ":>8} {"COMMAND"}')
         out.append('-' * 60)
         for l in lines:
