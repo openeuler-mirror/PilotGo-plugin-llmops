@@ -249,3 +249,54 @@ def analyze_access_log_directive(directive):
     except Exception as e:
         logger.error(f'解析access_log指令失败: {e}')
         return None
+
+def analyze_error_log_directive(directive):
+    """
+    解析error_log指令
+
+    参数:
+        directive: error_log指令内容
+
+    返回:
+        dict: 错误日志信息字典
+    """
+    try:
+        parts = directive.split()
+        if not parts:
+            return None
+
+        log_info = {
+            'path': 'Unknown',
+            'level': 'error',  # 默认级别
+            'state': 'Unknown',
+            'size': 'Unknown'
+        }
+
+        # 第一个参数是路径或stderr/syslog
+        if parts[0] in ['stderr', 'syslog']:
+            log_info['path'] = parts[0]
+            log_info['state'] = '系统输出'
+        else:
+            log_info['path'] = parts[0]
+            if os.path.exists(log_info['path']):
+                log_info['state'] = '存在'
+                try:
+                    size = os.path.getsize(log_info['path'])
+                    log_info['size'] = render_file_size(size)
+                except Exception:
+                    log_info['size'] = '无法获取大小'
+            else:
+                log_info['state'] = '不存在'
+
+        # 检查日志级别
+        log_levels = ['debug', 'info', 'notice', 'warn', 'error', 'crit', 'alert', 'emerg']
+        for part in parts[1:]:
+            if part in log_levels:
+                log_info['level'] = part
+                break
+
+        return log_info
+
+    except Exception as e:
+        logger.error(f'解析error_log指令失败: {e}')
+        return None
