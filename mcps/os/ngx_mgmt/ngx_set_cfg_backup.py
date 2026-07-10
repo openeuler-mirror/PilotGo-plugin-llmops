@@ -340,3 +340,44 @@ def perform_backup(config_files: List[Dict], backup_dir: str) -> List[Dict]:
             logger.error(f'备份文件失败 {config_file["path"]}: {e}')
 
     return backup_results
+
+def produce_backup_report(backup_results: List[Dict], backup_dir: str) -> Dict:
+    """生成备份报告"""
+    successful_backups = [r for r in backup_results if r['success']]
+    failed_backups = [r for r in backup_results if not r['success']]
+
+    total_size = sum(r.get('size', 0) for r in successful_backups)
+
+    # 生成报告文件
+    report_path = os.path.join(backup_dir, 'backup_report.json')
+
+    report_data = {
+        'backup_time': datetime.datetime.now().isoformat(),
+        'backup_directory': backup_dir,
+        'total_files': len(backup_results),
+        'successful_backups': len(successful_backups),
+        'failed_backups': len(failed_backups),
+        'total_size_bytes': total_size,
+        'total_size_human': render_file_size(total_size),
+        'successful_files': [
+            {
+                'source': r['file'],
+                'backup': r['backup_path'],
+                'size': r['size']
+            } for r in successful_backups
+        ],
+        'failed_files': [
+            {
+                'source': r['file'],
+                'error': r.get('error', 'Unknown error')
+            } for r in failed_backups
+        ]
+    }
+
+    try:
+        with open(report_path, 'w', encoding='utf-8') as f:
+            json.dump(report_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f'生成备份报告失败: {e}')
+
+    return report_data
