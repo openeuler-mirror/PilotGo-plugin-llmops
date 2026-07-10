@@ -5,11 +5,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger('proc_top')
 
 def fetch_proc_top(count=None, sort_by=None):
-    """Show top CPU-consuming processes (like top -b -n1).
+    """Show top processes by resource usage.
 
     Args:
-        count: Number of top processes to show (default 10)
-        sort_by: 'cpu' or 'mem' (default cpu)
+        count: Number of top processes (default 10, max 50)
+        sort_by: 'cpu', 'mem', 'vsz', or 'rss' (default cpu)
 
     Returns:
         Top processes listing
@@ -19,10 +19,17 @@ def fetch_proc_top(count=None, sort_by=None):
         if count:
             try:
                 n = int(count)
-                if n < 1: n = 10
-            except:
+                if n < 1:
+                    return f'Error: count must be >= 1, got {count}'
+                if n > 50:
+                    n = 50
+            except (ValueError, TypeError):
                 return f'Error: invalid count: {count}'
-        sort = '-%cpu' if not sort_by or sort_by == 'cpu' else '-%mem'
+
+        sort_map = {'cpu': '-%cpu', 'mem': '-%mem', 'vsz': '-vsz', 'rss': '-rss'}
+        if sort_by and sort_by not in sort_map:
+            return f'Error: unknown sort {sort_by}. Use cpu/mem/vsz/rss'
+        sort = sort_map.get(sort_by, '-%cpu') if sort_by else '-%cpu'
         cmd = ['ps', 'aux', f'--sort={sort}', '--no-headers']
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -39,12 +46,6 @@ def fetch_proc_top(count=None, sort_by=None):
     except Exception as e:
         logger.error(f'Failed: {e}')
         return f'Error: {e}'
-
-# Edge cases handled:
-# - Invalid or non-existent PID
-# - /proc filesystem unavailable
-# - Permission denied for restricted /proc entries
-# - Process exit between inspection steps
 
 TOOL_CONFIG = {
     "name": "fetch_proc_top",
