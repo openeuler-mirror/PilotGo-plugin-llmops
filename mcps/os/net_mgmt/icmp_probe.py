@@ -66,3 +66,49 @@ def fetch_net_icmp():
     except Exception as e:
         logger.error(f'获取ICMP协议状态失败: {e}')
         return f'获取ICMP协议状态失败: {e}'
+def fetch_icmp_stats():
+    """
+    获取ICMP包收发数
+    """
+    stats = {}
+
+    try:
+        # 读取/proc/net/snmp
+        with open('/proc/net/snmp', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    if parts[0] == 'Icmp:':
+                        if len(parts) >= 11:
+                            stats['ICMP接收包数'] = parts[1]
+                            stats['ICMP发送包数'] = parts[7]
+                            stats['ICMP接收错误数'] = parts[2]
+                            stats['ICMP发送错误数'] = parts[8]
+                            stats['ICMP接收目标不可达数'] = parts[3]
+                            stats['ICMP发送目标不可达数'] = parts[9]
+                            stats['ICMP接收超时数'] = parts[4]
+                            stats['ICMP发送超时数'] = parts[10]
+                    elif parts[0] == 'IcmpMsg:':
+                        if len(parts) >= 21:
+                            stats['ICMP消息类型统计'] = {
+                                'EchoRequests': parts[1],
+                                'EchoReplies': parts[2],
+                                'DestUnreachs': parts[3],
+                                'TimeExcds': parts[4],
+                                'ParamProbs': parts[5],
+                                'SrcQuenchs': parts[6],
+                                'Redirects': parts[7],
+                                'RouterAdverts': parts[8],
+                                'RouterSolicits': parts[9],
+                                'TStampRequests': parts[10],
+                                'TStampReplies': parts[11],
+                                'IcmpMaskRequests': parts[12],
+                                'IcmpMaskReplies': parts[13]
+                            }
+
+    except Exception as e:
+        logger.error(f'获取ICMP包收发数失败: {e}')
+
+    return stats
