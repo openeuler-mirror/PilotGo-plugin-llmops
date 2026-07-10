@@ -509,3 +509,82 @@ def recover_from_backup(backup_info: Dict, config_paths: Dict):
 
     except Exception as e:
         logger.error(f'恢复配置失败: {e}')
+
+def produce_rollback_report(rollback_results: List[Dict], target_backup: Dict, syntax_check: Dict, reload_result: Dict) -> Dict:
+    """生成回滚报告"""
+    successful_rollbacks = [r for r in rollback_results if r['success']]
+    failed_rollbacks = [r for r in rollback_results if not r['success']]
+
+    report_data = {
+        'rollback_time': datetime.datetime.now().isoformat(),
+        'target_version': target_backup.get('version', 'Unknown'),
+        'backup_file': target_backup['path'],
+        'total_files': len(rollback_results),
+        'successful_rollbacks': len(successful_rollbacks),
+        'failed_rollbacks': len(failed_rollbacks),
+        'syntax_check': syntax_check,
+        'reload_result': reload_result,
+        'successful_files': [
+            {
+                'target_file': r['target_file'],
+                'backup_file': r['backup_file'],
+                'size': r.get('size', 0)
+            } for r in successful_rollbacks
+        ],
+        'failed_files': [
+            {
+                'target_file': r['target_file'],
+                'backup_file': r['backup_file'],
+                'error': r.get('error', 'Unknown error')
+            } for r in failed_rollbacks
+        ]
+    }
+
+    # 保存报告到文件
+    report_path = f"/tmp/nginx_rollback_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"  # NOSONAR
+    try:
+        with open(report_path, 'w', encoding='utf-8') as f:
+            json.dump(report_data, f, indent=2, ensure_ascii=False)
+        report_data['report_file'] = report_path
+    except Exception as e:
+        logger.error(f'保存回滚报告失败: {e}')
+
+    return report_data
+
+# MCP工具配置
+TOOL_CONFIG = {
+    "name": "revert_nginx_config",
+    "function": revert_nginx_config,
+    "description": "回滚配置到指定备份版本（自动校验语法、重载配置）",
+    "version": "1.0.0",
+    "author": "Nginx配置工具",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "backup_path": {
+                "type": "string",
+                "description": "备份文件或备份目录路径"
+            },
+            "target_version": {
+                "type": "string",
+                "description": "目标版本标识（时间戳或版本号），如果为空则使用最新版本"
+            }
+        },
+        "required": ["backup_path"]
+    },
+    "examples": [
+        {
+            "name": "revert_nginx_config",
+            "arguments": {
+                "backup_path": "/tmp/nginx_backup_20231201_143022"  # NOSONAR
+            }
+        },
+        {
+            "name": "revert_nginx_config",
+            "arguments": {
+                "backup_path": "/tmp/nginx_backups",  # NOSONAR
+                "target_version": "20231201_120000"
+            }
+        }
+    ]
+}
