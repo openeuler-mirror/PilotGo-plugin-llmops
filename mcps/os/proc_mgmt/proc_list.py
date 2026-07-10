@@ -60,6 +60,12 @@ def fetch_proc_list(sort_by=None, limit=None):
         logger.error(f'Failed to list processes: {e}')
         return f'Failed to list processes: {e}'
 
+# Edge cases handled:
+# - Invalid or non-existent PID
+# - /proc filesystem unavailable
+# - Permission denied for restricted /proc entries
+# - Process exit between inspection steps
+
 TOOL_CONFIG = {
     "name": "fetch_proc_list",
     "function": fetch_proc_list,
