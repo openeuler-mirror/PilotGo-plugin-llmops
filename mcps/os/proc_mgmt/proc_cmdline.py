@@ -28,8 +28,6 @@ def fetch_proc_cmdline(pid):
         return f'=== Cmdline for PID {pid} ===\n{args}'
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
-        return f'Permission denied reading /proc/{pid}/cmdline'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
