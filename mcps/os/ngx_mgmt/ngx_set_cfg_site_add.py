@@ -264,3 +264,16 @@ def produce_php_config():
         "        try_files $uri $uri/ /index.php?$query_string;",
         "    }"
     ]
+
+def produce_proxy_config(proxy_target):
+    """生成代理配置"""
+    return [
+        "    # 代理配置",
+        "    location / {",
+        f"        proxy_pass {proxy_target};",
+        "        proxy_set_header Host $host;",
+        "        proxy_set_header X-Real-IP $remote_addr;",
+        "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
+        "        proxy_set_header X-Forwarded-Proto $scheme;",
+        "    }"
+    ]
