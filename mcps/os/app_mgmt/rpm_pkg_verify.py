@@ -119,3 +119,26 @@ def fetch_app_rpm_check(package_name=None, check_type=None):
 
     output.append('=====================')
     return '\n'.join(output)
+def is_rpm_based_system():
+    """
+    检查系统是否是基于RPM的系统
+
+    返回:
+        bool: 是否是基于RPM的系统
+    """
+    try:
+        # 检查是否存在rpm命令
+        output = subprocess.run(['which', 'rpm'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return True
+
+        # 检查系统发行版
+        if os.path.exists('/etc/redhat-release'):
+            return True
+
+        # 检查系统类型
+        distro = platform.platform().lower()
+        return any(keyword in distro for keyword in ['centos', 'rhel', 'redhat', 'almalinux', 'fedora'])
+
+    except Exception:
+        return False
