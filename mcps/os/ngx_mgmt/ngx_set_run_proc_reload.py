@@ -336,3 +336,55 @@ def locate_include_files(config_file):
     except Exception as e:
         logger.error(f"查找include文件失败: {e}")
         return []
+
+def wait_for_reload_completion(timeout=60):
+    """
+    等待重载完成
+
+    Args:
+        timeout: 超时时间（秒）
+
+    Returns:
+        dict: 等待结果
+    """
+    try:
+        start_time = time.time()
+        check_interval = 2  # 每2秒检查一次
+
+        # 获取初始进程信息
+        initial_info = get_nginx_process_info()
+        initial_pids = fetch_nginx_all_pids()
+
+        logger.info(f"开始等待重载完成，超时时间: {timeout}秒")
+
+        while time.time() - start_time < timeout:
+            current_info = get_nginx_process_info()
+
+            # 检查服务状态
+            if current_info["status"] != "运行中":
+                return {
+                    "success": False,
+                    "message": "Nginx服务在重载过程中停止",
+                    "error": "服务停止"
+                }
+
+            # 检查进程变化（工作进程应该重新启动）
+            current_pids = fetch_nginx_all_pids()
+            worker_changed = verify_worker_process_change(initial_pids, current_pids)
+
+            if worker_changed:
+                logger.info("工作进程已重新启动，重载完成")
+                return {"success": True, "message": "重载完成，工作进程已更新"}
+
+            time.sleep(check_interval)
+
+        # 超时处理
+        return {
+            "success": False,
+            "message": "等待重载完成超时",
+            "error": "重载超时"
+        }
+
+    except Exception as e:
+        logger.error(f"等待重载完成失败: {e}")
+        return {"success": False, "message": f"等待重载完成失败: {e}", "error": str(e)}
