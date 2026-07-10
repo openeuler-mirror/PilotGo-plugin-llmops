@@ -452,3 +452,34 @@ def analyze_windows_chipset(output):
     except Exception as e:
         logger.error(f'解析Windows芯片组信息失败: {e}')
         return 'Unknown'
+def fetch_mobo_extended_info():
+    """
+    获取主板扩展信息
+
+    返回:
+        主板扩展信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['dmidecode', '-t', 'baseboard'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    extended_info = []
+                    for line in lines:
+                        stripped_line = line.strip()
+                        if stripped_line.startswith('Asset Tag:') or \
+                           stripped_line.startswith('Location In Chassis:') or \
+                           stripped_line.startswith('Chassis Handle:') or \
+                           stripped_line.startswith('Type:') or \
+                           stripped_line.startswith('Contained Object Handles:'):
+                            extended_info.append(stripped_line)
+                    return '\n'.join(extended_info[:10])
+            except (subprocess.SubprocessError, FileNotFoundError):
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取主板扩展信息失败: {e}')
+        return None
