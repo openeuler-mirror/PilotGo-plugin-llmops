@@ -35,3 +35,25 @@ def fetch_redis_config_dir() -> Optional[str]:
         logger.warning(f"获取Redis配置目录失败: {e}")
 
     return None
+def produce_backup_filename(cfg_filepath: str,
+                           note: Optional[str] = None,
+                           timestamp: Optional[datetime] = None) -> str:
+    """
+    生成备份文件名
+
+    参数:
+        cfg_filepath: 原配置文件路径
+        note: 版本备注
+        timestamp: 时间戳，如果为None则使用当前时间
+
+    返回:
+        备份文件名
+    """
+    timestamp = datetime.now() if timestamp is None else timestamp
+    config_basename = os.path.basename(cfg_filepath)
+    config_name = os.path.splitext(config_basename)[0]
+
+    timestamp_str = timestamp.strftime('%Y%m%d_%H%M%S')
+
+    backup_filename = f"{config_name}_backup_{timestamp_str}_{note}.conf" if note else f"{config_name}_backup_{timestamp_str}.conf"
+    return backup_filename
