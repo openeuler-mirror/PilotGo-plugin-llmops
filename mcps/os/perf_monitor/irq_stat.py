@@ -280,3 +280,29 @@ def fetch_irq_cpu_usage():
         logger.error(f'获取中断占用CPU失败: {e}')
 
     return usage
+def fetch_irq_config():
+    """
+    获取中断配置
+    """
+    settings = {}
+
+    try:
+        # 检查中断相关的系统参数
+        sys_params = {
+            'irqbalance': '/proc/sys/kernel/irqbalance',
+            'irqaffinity': '/proc/sys/kernel/irqaffinity'
+        }
+
+        for param_name, param_path in sys_params.items():
+            if os.path.exists(param_path):
+                try:
+                    with open(param_path, 'r') as f:
+                        val = f.read().strip()
+                        settings[param_name] = val
+                except Exception:
+                    pass
+
+    except Exception as e:
+        logger.error(f'获取中断配置失败: {e}')
+
+    return settings
