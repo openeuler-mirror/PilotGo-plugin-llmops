@@ -419,3 +419,28 @@ def deactivate_cache_config(body, cache_method):
             updated_lines.append(line)
 
     return '\n'.join(updated_lines)
+
+def modify_specific_cache_config(body, params, cache_method):
+    """更新特定的缓存配置"""
+    lines = body.split('\n')
+    updated_lines = []
+
+    for line in lines:
+        updated_line = line
+
+        # 更新缓存路径配置
+        if 'cache_path' in params or 'cache_size' in params or 'cache_inactive' in params:
+            if cache_method == "proxy" and 'proxy_cache_path' in line:
+                updated_line = modify_cache_path_line(line, params, 'proxy_cache_path')
+            elif cache_method == "fastcgi" and 'fastcgi_cache_path' in line:
+                updated_line = modify_cache_path_line(line, params, 'fastcgi_cache_path')
+
+        # 更新缓存区名称
+        if 'proxy_cache' in params and 'proxy_cache' in line and not line.strip().startswith('#'):
+            updated_line = f"proxy_cache {params['proxy_cache']};"
+        elif 'fastcgi_cache' in params and 'fastcgi_cache' in line and not line.strip().startswith('#'):
+            updated_line = f"fastcgi_cache {params['fastcgi_cache']};"
+
+        updated_lines.append(updated_line)
+
+    return '\n'.join(updated_lines)
