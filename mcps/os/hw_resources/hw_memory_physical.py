@@ -286,3 +286,69 @@ def analyze_dmidecode_memory(output, mem_data):
     except Exception as e:
         logger.error(f'解析dmidecode内存输出失败: {e}')
         return mem_data
+def analyze_lshw_memory(output, mem_data):
+    """
+    解析lshw内存输出
+
+    参数:
+        output: lshw输出
+        mem_data: 内存信息字典
+
+    返回:
+        更新后的内存信息字典
+    """
+    try:
+        lines = output.split('\n')
+        current_device = None
+        devices = []
+
+        for line in lines:
+            stripped_line = line.strip()
+            if stripped_line.startswith('*-bank'):
+                # 遇到新的内存条目，保存之前的设备
+                if current_device and 'size' in current_device:
+                    devices.append(current_device)
+                current_device = {}
+            elif stripped_line.startswith('*-memory'):
+                # 系统内存信息，不处理
+                current_device = None
+            elif current_device is not None:
+                if stripped_line.startswith('description:'):
+                    current_device['description'] = stripped_line.split(':', 1)[1].strip()
+                elif stripped_line.startswith('size:'):
+                    current_device['size'] = stripped_line.split(':', 1)[1].strip()
+                elif stripped_line.startswith('product:'):
+                    current_device['model'] = stripped_line.split(':', 1)[1].strip()
+                elif stripped_line.startswith('vendor:'):
+                    current_device['vendor'] = stripped_line.split(':', 1)[1].strip()
+                elif stripped_line.startswith('clock:'):
+                    current_device['frequency'] = stripped_line.split(':', 1)[1].strip()
+
+        # 保存最后一个设备
+        if current_device and 'size' in current_device:
+            devices.append(current_device)
+
+        # 更新内存信息
+        for device in devices:
+            detail = {
+                'size': device.get('size', 'Unknown'),
+                'model': device.get('model', 'Unknown'),
+                'vendor': device.get('vendor', 'Unknown'),
+                'frequency': device.get('frequency', 'Unknown'),
+                'type': 'Unknown',
+                'speed': 'Unknown',
+                'voltage': 'Unknown'
+            }
+            mem_data['details'].append(detail)
+            mem_data['models'].append(detail['model'])
+            mem_data['vendors'].append(detail['vendor'])
+            mem_data['frequencies'].append(detail['frequency'])
+
+        if devices:
+            mem_data['installed'] = str(len(devices))
+
+        return mem_data
+
+    except Exception as e:
+        logger.error(f'解析lshw内存输出失败: {e}')
+        return mem_data
