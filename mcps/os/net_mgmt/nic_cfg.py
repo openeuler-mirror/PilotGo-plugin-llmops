@@ -70,3 +70,20 @@ def fetch_net_nic_config(interface=None):
     except Exception as e:
         logger.error(f'获取网卡静态配置失败: {e}')
         return f'获取网卡静态配置失败: {e}'
+def fetch_network_interfaces():
+    """
+    获取网络接口列表
+    """
+    interfaces = []
+
+    try:
+        # 读取/sys/class/net目录
+        net_dir = '/sys/class/net'
+        if os.path.exists(net_dir):
+            for item in os.listdir(net_dir):
+                interfaces.append(item)
+
+    except Exception as e:
+        logger.error(f'获取网络接口列表失败: {e}')
+
+    return interfaces
