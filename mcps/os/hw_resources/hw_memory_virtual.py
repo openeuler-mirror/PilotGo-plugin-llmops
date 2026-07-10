@@ -542,3 +542,40 @@ def fetch_virtual_memory_management():
     except Exception as e:
         logger.error(f'获取虚拟内存管理信息失败: {e}')
         return None
+def fetch_memory_mapping_info():
+    """
+    获取内存映射信息
+
+    返回:
+        内存映射信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                # 获取当前进程的内存映射
+                output = subprocess.run(['cat', '/proc/self/maps'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    mapping_types = {}
+                    for line in lines[:20]:
+                        if line.strip():
+                            parts = line.split()
+                            if len(parts) >= 5:
+                                perms = parts[1]
+                                if perms not in mapping_types:
+                                    mapping_types[perms] = 0
+                                mapping_types[perms] += 1
+
+                    output = []
+                    output.append("内存映射类型统计:")
+                    for perms, count in mapping_types.items():
+                        output.append(f"  {perms}: {count} 个映射")
+                    return '\n'.join(output)
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取内存映射信息失败: {e}')
+        return None
