@@ -15,6 +15,8 @@ def fetch_proc_ns(pid):
     """
     try:
         pid = str(int(pid))
+        if int(pid) <= 0:
+            return f'Error: invalid PID {pid} (must be positive)'
         ns_dir = f'/proc/{pid}/ns'
         if not os.path.exists(ns_dir):
             return f'Error: process {pid} not found'
