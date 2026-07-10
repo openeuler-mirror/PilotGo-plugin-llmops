@@ -306,3 +306,46 @@ def fetch_irq_config():
         logger.error(f'获取中断配置失败: {e}')
 
     return settings
+def fetch_irq_affinity():
+    """
+    获取中断亲和性
+    """
+    affinity = {}
+
+    try:
+        # 读取/proc/irq目录
+        irq_dir = '/proc/irq'
+        if os.path.exists(irq_dir):
+            for item in os.listdir(irq_dir):
+                if item.isdigit():
+                    irq = item
+                    affinity_path = os.path.join(irq_dir, irq, 'smp_affinity_list')
+                    if os.path.exists(affinity_path):
+                        try:
+                            with open(affinity_path, 'r') as f:
+                                val = f.read().strip()
+                                affinity[irq] = val
+                        except Exception:
+                            pass
+
+    except Exception as e:
+        logger.error(f'获取中断亲和性失败: {e}')
+
+    return affinity
+
+# 工具配置
+TOOL_CONFIG = {
+    "label": "fetch_perf_irq",
+    "function": fetch_perf_irq,
+    "description": "采集中断实时性能（中断次数/高频中断源/中断占用CPU/硬中断/软中断统计）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "interval": {
+                "type": "string",
+                "description": "采样间隔（秒），如 \"1\""
+            }
+        },
+        "required": []
+    }
+}
