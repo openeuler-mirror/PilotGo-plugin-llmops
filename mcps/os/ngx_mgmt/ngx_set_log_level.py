@@ -463,3 +463,217 @@ def reload_nginx_config() -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"重载Nginx配置失败: {e}")
         return False, f"重载失败: {e}"
+
+def set_nginx_log_level(log_level: str = None, disable_debug: bool = False, 
+                       enable_debug: bool = False, scope: str = 'main',
+                       server_index: int = 0, debug_log_path: str = None,
+                       reload_config: bool = True) -> str:
+    """
+    设置Nginx错误日志级别
+    
+    参数:
+        log_level: 要设置的日志级别
+        disable_debug: 是否关闭debug日志
+        enable_debug: 是否开启debug日志
+        scope: 作用域 (main/http/server)
+        server_index: server块索引
+        debug_log_path: debug日志文件路径
+        reload_config: 是否重载配置
+        
+    返回:
+        str: JSON格式的操作结果
+    """
+    try:
+        # 检查Nginx安装状态
+        if not verify_nginx_installation():
+            return json.dumps({
+                'status': 'error',
+                'message': 'Nginx未安装或未正确配置',
+                'suggestion': '请先安装并配置Nginx'
+            }, ensure_ascii=False, indent=2)
+        
+        # 获取Nginx配置路径
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            return json.dumps({
+                'status': 'error',
+                'message': '无法找到Nginx配置文件',
+                'suggestion': '请检查Nginx配置'
+            }, ensure_ascii=False, indent=2)
+        
+        # 备份配置文件
+        backup_path = save_config_file(cfg_filepath)
+        
+        # 获取当前配置
+        current_config = fetch_current_error_log_config(cfg_filepath)
+        
+        result_info = {
+            'status': 'success',
+            'config_file': cfg_filepath,
+            'backup_file': backup_path,
+            'current_config': current_config,
+            'changes': [],
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # 读取原始配置内容
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            original_content = f.read()
+        
+        new_content = original_content
+        
+        # 执行请求的操作
+        if disable_debug:
+            success, body = deactivate_debug_log(cfg_filepath)
+            if success:
+                new_content = body
+                result_info['changes'].append('关闭了debug日志')
+            else:
+                result_info['status'] = 'error'
+                result_info['message'] = body
+                return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+        elif enable_debug:
+            success, body = activate_debug_log(cfg_filepath, scope, server_index, debug_log_path)
+            if success:
+                new_content = body
+                result_info['changes'].append('开启了debug日志')
+            else:
+                result_info['status'] = 'error'
+                result_info['message'] = body
+                return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+        elif log_level:
+            success, body = modify_error_log_level(cfg_filepath, log_level, scope, server_index)
+            if success:
+                new_content = body
+                result_info['changes'].append(f'将{scope}作用域的日志级别设置为{log_level}')
+            else:
+                result_info['status'] = 'error'
+                result_info['message'] = body
+                return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+        # 检查配置是否发生变化
+        if new_content == original_content:
+            result_info['status'] = 'info'
+            result_info['message'] = '配置未发生变化'
+            return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+        # 语法检查
+        syntax_ok, syntax_msg = verify_nginx_syntax(new_content)
+        if not syntax_ok:
+            result_info['status'] = 'error'
+            result_info['message'] = f'语法检查失败: {syntax_msg}'
+            # 恢复备份
+            shutil.copy2(backup_path, cfg_filepath)
+            return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+        # 写入新配置
+        with open(cfg_filepath, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        
+        result_info['syntax_check'] = 'passed'
+        
+        # 重载配置
+        if reload_config:
+            reload_ok, reload_msg = reload_nginx_config()
+            if reload_ok:
+                result_info['reload_status'] = 'success'
+                result_info['reload_message'] = reload_msg
+            else:
+                result_info['reload_status'] = 'warning'
+                result_info['reload_message'] = reload_msg
+                result_info['message'] = '配置已更新但重载失败，请手动重载Nginx'
+        
+        return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+    except Exception as e:
+        logger.error(f"设置Nginx日志级别失败: {e}")
+        return json.dumps({
+            'status': 'error',
+            'message': f'设置日志级别失败: {e}',
+            'timestamp': datetime.now().isoformat()
+        }, ensure_ascii=False, indent=2)
+
+# 工具配置
+TOOL_CONFIG = {
+    'name': 'set_nginx_log_level',
+    'description': '设置Nginx错误日志级别（debug/info/warn/error/crit）、关闭/开启debug日志',
+    'category': 'Nginx',
+    'function': set_nginx_log_level,
+    'parameters': {
+        'log_level': {
+            'type': 'string',
+            'description': '要设置的日志级别',
+            'required': False,
+            'enum': SUPPORTED_LOG_LEVELS
+        },
+        'disable_debug': {
+            'type': 'boolean',
+            'description': '是否关闭debug日志',
+            'required': False,
+            'default': False
+        },
+        'enable_debug': {
+            'type': 'boolean',
+            'description': '是否开启debug日志',
+            'required': False,
+            'default': False
+        },
+        'scope': {
+            'type': 'string',
+            'description': '作用域: main(主配置)/http(http块)/server(server块)',
+            'required': False,
+            'default': 'main',
+            'enum': ['main', 'http', 'server']
+        },
+        'server_index': {
+            'type': 'integer',
+            'description': 'server块索引（仅当scope为server时有效）',
+            'required': False,
+            'default': 0
+        },
+        'debug_log_path': {
+            'type': 'string',
+            'description': 'debug日志文件路径（仅当开启debug日志时有效）',
+            'required': False,
+            'default': '/var/log/nginx/debug.log'
+        },
+        'reload_config': {
+            'type': 'boolean',
+            'description': '是否自动重载Nginx配置',
+            'required': False,
+            'default': True
+        }
+    },
+    'examples': [
+        {
+            'description': '将主配置错误日志级别设置为warn',
+            'parameters': {
+                'log_level': 'warn'
+            }
+        },
+        {
+            'description': '关闭debug日志',
+            'parameters': {
+                'disable_debug': True
+            }
+        },
+        {
+            'description': '在http块中开启debug日志',
+            'parameters': {
+                'enable_debug': True,
+                'scope': 'http',
+                'debug_log_path': '/var/log/nginx/http_debug.log'
+            }
+        },
+        {
+            'description': '设置第一个server块的错误日志级别为info',
+            'parameters': {
+                'log_level': 'info',
+                'scope': 'server',
+                'server_index': 0
+            }
+        }
+    ]
+}
