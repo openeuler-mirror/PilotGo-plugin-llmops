@@ -167,3 +167,113 @@ def is_package_installed(package_name):
 
     except Exception:
         return False
+def fetch_package_details(package_name):
+    """
+    获取RPM包的详细信息
+
+    参数:
+        package_name: 包名
+
+    返回:
+        包详情字典
+    """
+    try:
+        details = {
+            'name': package_name,
+            'version': 'Unknown',
+            'release': 'Unknown',
+            'arch': 'Unknown',
+            'vendor': 'Unknown',
+            'install_time': 'Unknown',
+            'dependencies': [],
+            'installation_path': 'Unknown',
+            'files': [],
+            'changes': 'Unknown',
+            'signature': 'Unknown'
+        }
+
+        # 获取基本信息
+        output = subprocess.run(['rpm', '-qi', package_name], capture_output=True, text=True)
+        if output.returncode == 0:
+            output = output.stdout
+            # 解析基本信息
+            for line in output.split('\n'):
+                if 'Version' in line:
+                    details['version'] = line.split(':', 1)[1].strip()
+                elif 'Release' in line:
+                    details['release'] = line.split(':', 1)[1].strip()
+                elif 'Architecture' in line:
+                    details['arch'] = line.split(':', 1)[1].strip()
+                elif 'Vendor' in line:
+                    details['vendor'] = line.split(':', 1)[1].strip()
+                elif 'Install Date' in line:
+                    details['install_time'] = line.split(':', 1)[1].strip()
+
+        # 获取依赖
+        output = subprocess.run(['rpm', '-qR', package_name], capture_output=True, text=True)
+        if output.returncode == 0:
+            deps = output.stdout.strip().split('\n')
+            details['dependencies'] = [dep for dep in deps if dep.strip()]
+
+        # 获取文件列表
+        output = subprocess.run(['rpm', '-ql', package_name], capture_output=True, text=True)
+        if output.returncode == 0:
+            files = output.stdout.strip().split('\n')
+            details['files'] = [file for file in files if file.strip()]
+
+            # 确定安装路径
+            if files:
+                # 找到第一个目录作为安装路径
+                for file in files:
+                    if os.filepath.isdir(file):
+                        details['installation_path'] = file
+                        break
+
+        # 获取版本变更
+        output = subprocess.run(['rpm', '-q', '--changelog', package_name], capture_output=True, text=True)
+        if output.returncode == 0:
+            details['changes'] = output.stdout.strip()[:500]  # 只取前500字符
+
+        # 获取签名信息
+        output = subprocess.run(['rpm', '-q', '--queryformat', '%{SIGPGP:pgpsig}\n', package_name], capture_output=True, text=True)
+        if output.returncode == 0:
+            signature = output.stdout.strip()
+            if signature:
+                details['signature'] = signature
+            else:
+                details['signature'] = '无签名'
+
+        return details
+
+    except Exception as e:
+        logger.error(f'获取RPM包详情失败: {e}')
+        return {
+            'name': package_name,
+            'dependencies': '获取依赖失败',
+            'installation_path': '获取安装路径失败',
+            'files': '获取文件列表失败',
+            'changes': '获取版本变更失败',
+            'signature': '获取签名信息失败'
+        }
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_rpm_info",
+    "function": fetch_app_rpm_info,
+    "description": "采集指定RPM包详情（包依赖/安装路径/文件列表/版本变更/签名信息）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "package_name": {
+                "type": "string",
+                "description": "要查询的RPM包名"
+            },
+            "info_type": {
+                "type": "string",
+                "description": "信息类型，可选值：dependencies（包依赖）、filepath（安装路径）、files（文件列表）、changes（版本变更）、signature（签名信息），不指定则获取所有信息",
+                "enum": ["dependencies", "filepath", "files", "changes", "signature"]
+            }
+        },
+        "required": ["package_name"]
+    }
+}
