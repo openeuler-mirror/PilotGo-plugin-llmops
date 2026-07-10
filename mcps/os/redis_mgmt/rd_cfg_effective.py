@@ -66,3 +66,41 @@ def analyze_config_line(line: str) -> Dict[str, Any]:
                     output['comment'] = value_parts[1].strip()
 
     return output
+def fetch_file_config(cfg_filepath: str) -> Dict[str, Any]:
+    """
+    获取配置文件中的配置项
+
+    参数:
+        cfg_filepath: 配置文件路径
+
+    返回:
+        配置文件配置项信息字典
+    """
+    output = {
+        'config': {},
+        'total_items': 0,
+        'message': '获取配置文件配置项'
+    }
+
+    try:
+        lines = read_config_file(cfg_filepath)
+
+        for line_num, line in enumerate(lines, 1):
+            parsed_line = analyze_config_line(line.rstrip('\n'))
+
+            if parsed_line['directive'] and not parsed_line['is_directive']:
+                output['config'][parsed_line['directive']] = {
+                    'val': parsed_line['val'],
+                    'line_number': line_num,
+                    'source': 'file',
+                    'is_commented': False
+                }
+
+        output['total_items'] = len(output['config'])
+        output['message'] = f'配置文件中找到 {output["total_items"]} 个配置项'
+
+    except Exception as e:
+        output['message'] = f'获取配置文件配置项时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
