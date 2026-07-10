@@ -308,3 +308,41 @@ def fetch_resource_usage(pids):
             'cpu': "未知",
             'memory': "未知"
         }
+
+def fetch_status_module_url():
+    """获取Nginx状态模块URL"""
+    try:
+        # 尝试从配置文件中获取状态模块配置
+        cfg_filepath = get_nginx_config_path()
+        if not cfg_filepath:
+            return None
+
+        with open(cfg_filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            body = f.read()
+
+        # 查找stub_status配置
+        status_location = re.search(r'location\s+([^\s]+)\s*{[^}]*stub_status[^}]*}', body, re.DOTALL)  # NOSONAR
+        if status_location:
+            location = status_location.group(1).strip()
+            # 查找监听端口
+            listen_match = re.search(r'listen\s+([^;]+);', body)  # NOSONAR
+            if listen_match:
+                listen = listen_match.group(1).strip()
+                # 处理默认端口
+                if listen == 'default_server' or listen == 'default':
+                    listen = '80'
+
+                # 构建URL
+                if ':' in listen:
+                    host, port = listen.split(':')
+                else:
+                    port = listen
+                    host = '127.0.0.1'
+
+                return f"http://{host}:{port}{location}"  # NOSONAR
+
+        # 如果找不到配置，尝试默认位置
+        return "http://127.0.0.1/nginx_status"  # NOSONAR
+    except Exception as e:
+        logger.warning(f'获取状态模块URL失败: {e}')
+        return None
