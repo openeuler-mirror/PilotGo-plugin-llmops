@@ -251,3 +251,32 @@ def fetch_high_frequency_irqs():
         logger.error(f'获取高频中断源失败: {e}')
 
     return high_freq_irqs
+def fetch_irq_cpu_usage():
+    """
+    获取中断占用CPU
+    """
+    usage = {}
+
+    try:
+        # 读取/proc/stat
+        with open('/proc/stat', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                if line.startswith('intr'):
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        # 总中断次数
+                        total_irqs = parts[1]
+                        usage['total'] = f"总中断次数: {total_irqs}"
+                elif line.startswith('softirq'):
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        # 总软中断次数
+                        total_softirqs = parts[1]
+                        usage['softirq_total'] = f"总软中断次数: {total_softirqs}"
+
+    except Exception as e:
+        logger.error(f'获取中断占用CPU失败: {e}')
+
+    return usage
