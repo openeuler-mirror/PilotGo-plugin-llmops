@@ -350,3 +350,56 @@ def fetch_upstart_service_info():
     except Exception as e:
         logger.error(f'获取upstart服务信息失败: {e}')
         return {}
+
+def fetch_generic_service_info():
+    """
+    获取通用服务信息
+
+    返回:
+        dict: 通用服务信息
+    """
+    try:
+        service_info = {}
+
+        # 检查进程是否存在
+        output = subprocess.run(['pgrep', '-f', 'nginx'], capture_output=True, text=True)
+        if output.returncode == 0:
+            service_info['status'] = '运行中'
+            pids = output.stdout.strip().split('\n')
+            service_info['pid'] = pids[0] if pids else 'Unknown'
+        else:
+            service_info['status'] = '未运行'
+
+        # 常见PID文件
+        pid_files = [
+            '/run/nginx.pid',
+            '/var/run/nginx.pid',
+            '/usr/local/nginx/logs/nginx.pid'
+        ]
+
+        for pid_file in pid_files:
+            if os.path.exists(pid_file):
+                service_info['pid_file'] = pid_file
+                break
+
+        # 控制命令
+        service_info['control_commands'] = {
+            'start': 'nginx',
+            'stop': 'nginx -s quit',
+            'restart': 'nginx -s reload',
+            'reload': 'nginx -s reload',
+            'status': 'pgrep -f nginx'
+        }
+
+        # 日志路径
+        service_info['log_paths'] = {
+            'system_log': '/var/log/messages',
+            'service_log': '/var/log/nginx/access.log',
+            'error_log': '/var/log/nginx/error.log'
+        }
+
+        return service_info
+
+    except Exception as e:
+        logger.error(f'获取通用服务信息失败: {e}')
+        return {}
