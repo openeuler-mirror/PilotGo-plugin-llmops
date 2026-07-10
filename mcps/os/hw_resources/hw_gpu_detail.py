@@ -417,3 +417,45 @@ def fetch_video_info_from_sys(card_name):
     except Exception as e:
         logger.error(f'从/sys获取显卡信息失败: {e}')
         return None
+def fetch_monitor_info():
+    """
+    获取显示器信息
+
+    返回:
+        显示器信息列表
+    """
+    try:
+        monitors = []
+
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['xrandr', '--verbose'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    linux_monitors = analyze_xrandr_output(output.stdout)
+                    monitors.extend(linux_monitors)
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Darwin':
+            try:
+                output = subprocess.run(['system_profiler', 'SPDisplaysDataType'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    mac_monitors = analyze_macos_monitor(output.stdout)
+                    monitors.extend(mac_monitors)
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Windows':
+            try:
+                output = subprocess.run(['wmic', 'path', 'Win32_DesktopMonitor', 'get', 'Name,ScreenWidth,ScreenHeight,PNPDeviceID'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    windows_monitors = analyze_windows_monitor(output.stdout)
+                    monitors.extend(windows_monitors)
+            except subprocess.SubprocessError:
+                pass
+
+        return monitors
+
+    except Exception as e:
+        logger.error(f'获取显示器信息失败: {e}')
+        return []
