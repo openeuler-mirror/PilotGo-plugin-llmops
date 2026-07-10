@@ -145,3 +145,71 @@ def analyze_config_block(body: str) -> Dict[str, Any]:
             settings[key] = val
     
     return settings
+
+def fetch_log_rotation_config() -> Dict[str, Any]:
+    """
+    获取日志轮转配置
+    
+    返回:
+        dict: 日志轮转配置信息
+    """
+    rotation_config = {
+        'logrotate_enabled': False,
+        'rotation_frequency': 'unknown',
+        'retention_days': 0,
+        'logrotate_files': [],
+        'custom_scripts': []
+    }
+    
+    try:
+        # 检查logrotate配置
+        logrotate_dir = '/etc/logrotate.d'
+        nginx_logrotate = os.path.join(logrotate_dir, 'nginx')
+        
+        if os.path.exists(nginx_logrotate):
+            rotation_config['logrotate_enabled'] = True
+            rotation_config['logrotate_files'].append(nginx_logrotate)
+            
+            with open(nginx_logrotate, 'r', encoding='utf-8') as f:
+                body = f.read()
+            
+            # 解析轮转频率
+            if 'daily' in body:
+                rotation_config['rotation_frequency'] = 'daily'
+            elif 'weekly' in body:
+                rotation_config['rotation_frequency'] = 'weekly'
+            elif 'monthly' in body:
+                rotation_config['rotation_frequency'] = 'monthly'
+            
+            # 解析保留天数
+            rotate_match = re.search(r'rotate\s+(\d+)', body)  # NOSONAR
+            if rotate_match:
+                rotation_config['retention_days'] = int(rotate_match.group(1))
+            
+            # 解析压缩配置
+            if 'compress' in body:
+                rotation_config['compression_enabled'] = True
+            else:
+                rotation_config['compression_enabled'] = False
+            
+            # 解析延迟压缩
+            if 'delaycompress' in body:
+                rotation_config['delayed_compression'] = True
+            else:
+                rotation_config['delayed_compression'] = False
+        
+        # 检查自定义轮转脚本
+        custom_scripts = [
+            '/etc/cron.daily/logrotate',
+            '/etc/cron.weekly/logrotate',
+            '/usr/local/bin/nginx-logrotate.sh'
+        ]
+        
+        for script in custom_scripts:
+            if os.path.exists(script):
+                rotation_config['custom_scripts'].append(script)
+        
+    except Exception as e:
+        logger.error(f"获取日志轮转配置失败: {e}")
+    
+    return rotation_config
