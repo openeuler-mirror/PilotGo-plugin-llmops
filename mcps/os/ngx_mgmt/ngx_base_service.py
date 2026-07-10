@@ -403,3 +403,80 @@ def fetch_generic_service_info():
     except Exception as e:
         logger.error(f'获取通用服务信息失败: {e}')
         return {}
+
+def verify_service_status():
+    """
+    检查服务状态
+
+    返回:
+        list: 状态检查结果
+    """
+    try:
+        checks = []
+
+        # 检查Nginx进程
+        output = subprocess.run(['pgrep', '-f', 'nginx'], capture_output=True, text=True)
+        if output.returncode == 0:
+            checks.append("✓ Nginx进程正在运行")
+            pids = output.stdout.strip().split('\n')
+            checks.append(f"  检测到 {len(pids)} 个进程")
+        else:
+            checks.append("✗ Nginx进程未运行")
+
+        # 检查服务管理
+        init_system = spot_init_system()
+        checks.append(f"✓ 检测到 {init_system} 服务管理系统")
+
+        # 检查配置文件
+        config_result = subprocess.run(['nginx', '-t'], capture_output=True, text=True, stderr=subprocess.STDOUT)
+        if config_result.returncode == 0:
+            checks.append("✓ Nginx配置文件语法正确")
+        else:
+            checks.append("✗ Nginx配置文件存在语法错误")
+
+        # 检查PID文件
+        pid_files = [
+            '/run/nginx.pid',
+            '/var/run/nginx.pid',
+            '/usr/local/nginx/logs/nginx.pid'
+        ]
+
+        pid_found = False
+        for pid_file in pid_files:
+            if os.path.exists(pid_file):
+                checks.append(f"✓ 找到PID文件: {pid_file}")
+                pid_found = True
+                break
+
+        if not pid_found:
+            checks.append("⚠ 未找到PID文件")
+
+        # 检查日志目录
+        log_dirs = ['/var/log/nginx', '/usr/local/nginx/logs']
+        log_found = False
+        for log_dir in log_dirs:
+            if os.path.exists(log_dir):
+                checks.append(f"✓ 找到日志目录: {log_dir}")
+                log_found = True
+                break
+
+        if not log_found:
+            checks.append("⚠ 未找到日志目录")
+
+        return checks
+
+    except Exception as e:
+        logger.error(f'检查服务状态失败: {e}')
+        return [f'检查服务状态失败: {e}']
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_base_service",
+    "function": fetch_nginx_base_service,
+    "description": "获取Nginx系统服务状态（开机自启/手动）、服务管理路径",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
