@@ -286,3 +286,48 @@ def fetch_nginx_uptime():
     except Exception as e:
         logger.error(f'获取Nginx运行时间失败: {e}')
         return 0
+
+def examine_connection_thresholds(connection_stats):
+    """分析连接数阈值"""
+    analysis = {
+        'max_connections_threshold': 'N/A',
+        'usage_percentage': 'N/A',
+        'threshold_status': 'N/A',
+        'worker_processes': 'N/A',
+        'worker_connections': 'N/A'
+    }
+
+    try:
+        # 获取Nginx配置信息
+        worker_info = fetch_nginx_worker_info()
+        analysis.update(worker_info)
+
+        if worker_info['worker_processes'] != 'N/A' and worker_info['worker_connections'] != 'N/A':
+            # 计算最大连接数阈值
+            # 理论最大值 = worker_processes * worker_connections
+            max_connections = worker_info['worker_processes'] * worker_info['worker_connections']
+            analysis['max_connections_threshold'] = max_connections
+
+            # 计算当前使用率
+            active_connections = connection_stats.get('active_connections', 0)
+            if active_connections != 'N/A' and active_connections > 0:
+                usage_percentage = (active_connections / max_connections) * 100
+                analysis['usage_percentage'] = f"{usage_percentage:.1f}%"
+
+                # 阈值状态判断
+                if usage_percentage >= 90:
+                    analysis['threshold_status'] = "🔴 危险 - 接近最大容量"
+                elif usage_percentage >= 80:
+                    analysis['threshold_status'] = "🟡 警告 - 高负载状态"
+                elif usage_percentage >= 60:
+                    analysis['threshold_status'] = "🟢 正常 - 中等负载"
+                else:
+                    analysis['threshold_status'] = "🟢 良好 - 低负载状态"
+            else:
+                analysis['threshold_status'] = "⚪ 未知 - 无法计算使用率"
+
+        return analysis
+
+    except Exception as e:
+        logger.error(f'分析连接阈值失败: {e}')
+        return analysis
