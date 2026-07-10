@@ -95,3 +95,55 @@ def render_nginx_config(body):
     except Exception as e:
         logger.error(f'格式化配置文件失败: {e}')
         return body
+
+def examine_config_structure(body):
+    """分析配置文件结构"""
+    try:
+        structure = []
+
+        # 解析全局配置
+        global_configs = derive_global_configs(body)
+        if global_configs:
+            structure.append('全局配置:')
+            for config in global_configs:
+                structure.append(f"  {config}")
+
+        # 解析events块
+        events_configs = derive_events_configs(body)
+        if events_configs:
+            structure.append('\nevents块配置:')
+            for config in events_configs:
+                structure.append(f"  {config}")
+
+        # 解析http块
+        http_configs = derive_http_configs(body)
+        if http_configs:
+            structure.append('\nhttp块配置:')
+            for config in http_configs:
+                structure.append(f"  {config}")
+
+        # 解析server块
+        server_configs = derive_server_configs(body)
+        if server_configs:
+            structure.append('\nserver块配置:')
+            for config in server_configs:
+                structure.append(f"  {config}")
+
+        # 解析location块
+        location_configs = derive_location_configs(body)
+        if location_configs:
+            structure.append('\nlocation块配置:')
+            for config in location_configs:
+                structure.append(f"  {config}")
+
+        # 解析include指令
+        include_configs = derive_include_configs(body)
+        if include_configs:
+            structure.append('\ninclude指令:')
+            for config in include_configs:
+                structure.append(f"  {config}")
+
+        return '\n'.join(structure) if structure else '无法解析配置文件结构'
+    except Exception as e:
+        logger.error(f'分析配置文件结构失败: {e}')
+        return f'分析配置文件结构失败: {e}'
