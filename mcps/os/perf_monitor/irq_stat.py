@@ -177,3 +177,30 @@ def load_irq_stats():
         logger.error(f'读取硬中断统计失败: {e}')
 
     return stats
+def load_softirq_stats():
+    """
+    读取软中断统计
+    """
+    stats = {}
+
+    try:
+        with open('/proc/softirqs', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    irq = parts[0].rstrip(':')
+                    # 计算所有CPU的软中断次数总和
+                    total = 0
+                    for part in parts[1:]:
+                        if part.isdigit():
+                            total += int(part)
+                        else:
+                            break
+                    stats[irq] = total
+
+    except Exception as e:
+        logger.error(f'读取软中断统计失败: {e}')
+
+    return stats
