@@ -162,3 +162,33 @@ def fetch_available_pip_commands():
 
     except Exception:
         return []
+def fetch_pip_packages(scope=None):
+    """
+    获取所有已安装的Pip包
+
+    参数:
+        scope: 作用域，可选值：system, user, None
+
+    返回:
+        Pip包信息列表
+    """
+    try:
+        packages = []
+        pip_commands = fetch_available_pip_commands()
+
+        for pip_cmd in pip_commands:
+            # 获取系统级包
+            if scope in [None, 'system']:
+                system_packages = fetch_packages_with_command(pip_cmd, '--system')
+                packages.extend(system_packages)
+
+            # 获取用户级包
+            if scope in [None, 'user']:
+                user_packages = fetch_packages_with_command(pip_cmd, '--user')
+                packages.extend(user_packages)
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'获取Pip包列表失败: {e}')
+        return []
