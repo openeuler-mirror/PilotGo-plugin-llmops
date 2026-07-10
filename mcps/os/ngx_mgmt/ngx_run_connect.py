@@ -433,3 +433,49 @@ def verify_connection_health(connection_stats, threshold_analysis):
     except Exception as e:
         logger.error(f'检查连接健康状态失败: {e}')
         return ["❌ 连接健康检查失败"]
+
+def fetch_system_connection_stats():
+    """获取系统级连接统计"""
+    stats = {'tcp_total': 'N/A', 'tcp_established': 'N/A', 'tcp_time_wait': 'N/A'}
+    try:
+        # 使用ss命令获取TCP统计
+        output = subprocess.run(['ss', '-s'], capture_output=True, text=True)
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if 'TCP:' in line:
+                    # 解析TCP统计
+                    parts = line.split(',')
+                    for part in parts:
+                        if 'estab' in part:
+                            estab_match = re.search(r'(\d+)', part)  # NOSONAR
+                            if estab_match:
+                                stats['tcp_established'] = int(estab_match.group(1))
+                        elif 'total' in part:
+                            total_match = re.search(r'(\d+)', part)  # NOSONAR
+                            if total_match:
+                                stats['tcp_total'] = int(total_match.group(1))
+
+                elif 'TIME-WAIT' in line:
+                    timewait_match = re.search(r'TIME-WAIT\s+(\d+)', line)  # NOSONAR
+                    if timewait_match:
+                        stats['tcp_time_wait'] = int(timewait_match.group(1))
+
+        # 如果ss命令失败，尝试使用netstat
+        if stats['tcp_total'] == 'N/A':
+            try:
+                output = subprocess.run(['netstat', '-an'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.strip().split('\n')
+                    established_count = sum(1 for line in lines if 'ESTABLISHED' in line)
+                    time_wait_count = sum(1 for line in lines if 'TIME_WAIT' in line)
+                    stats['tcp_established'] = established_count
+                    stats['tcp_time_wait'] = time_wait_count
+                    stats['tcp_total'] = len([line for line in lines if 'tcp' in line.lower()])
+            except Exception:
+                pass
+
+    except Exception as e:
+        logger.error(f'获取系统连接统计失败: {e}')
+
+    return stats
