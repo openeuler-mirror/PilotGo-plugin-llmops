@@ -356,3 +356,46 @@ def fetch_package_files(package_name):
 
     except Exception:
         return []
+def fetch_package_config_files(package_name):
+    """
+    获取包中的配置文件
+
+    参数:
+        package_name: 包名
+
+    返回:
+        配置文件列表
+    """
+    try:
+        output = subprocess.run(['rpm', '-qc', package_name], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            files = output.stdout.strip().split('\n')
+            return [file for file in files if file.strip()]
+
+        return []
+
+    except Exception:
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_rpm_check",
+    "function": fetch_app_rpm_check,
+    "description": "采集RPM包完整性（检查RPM包是否被篡改/文件缺失/配置文件变更）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "package_name": {
+                "type": "string",
+                "description": "要检查的RPM包名，不指定则检查所有包"
+            },
+            "check_type": {
+                "type": "string",
+                "description": "检查类型，可选值：tamper（检查是否被篡改）、missing（检查文件缺失）、config（检查配置文件变更），不指定则检查所有类型",
+                "enum": ["tamper", "missing", "config"]
+            }
+        },
+        "required": []
+    }
+}
