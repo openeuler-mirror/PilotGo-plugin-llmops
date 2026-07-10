@@ -191,3 +191,45 @@ def fetch_icmp_config():
         logger.error(f'获取ICMP配置失败: {e}')
 
     return settings
+def verify_icmp_status(icmp_stats):
+    """
+    检查ICMP协议状态
+    """
+    status_checks = []
+
+    try:
+        if icmp_stats:
+            # 检查ICMP接收错误数
+            if 'ICMP接收错误数' in icmp_stats:
+                errors = int(icmp_stats['ICMP接收错误数'])
+                if errors > 0:
+                    status_checks.append(f"注意: ICMP接收错误数为 {errors}")
+
+            # 检查ICMP发送错误数
+            if 'ICMP发送错误数' in icmp_stats:
+                errors = int(icmp_stats['ICMP发送错误数'])
+                if errors > 0:
+                    status_checks.append(f"注意: ICMP发送错误数为 {errors}")
+
+            # 检查ICMP目标不可达数
+            if 'ICMP接收目标不可达数' in icmp_stats:
+                unreach = int(icmp_stats['ICMP接收目标不可达数'])
+                if unreach > 0:
+                    status_checks.append(f"注意: ICMP接收目标不可达数为 {unreach}")
+
+    except Exception as e:
+        logger.error(f'检查ICMP协议状态失败: {e}')
+
+    return status_checks
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_icmp",
+    "function": fetch_net_icmp,
+    "description": "采集ICMP协议状态（ICMP包收发数/丢包率/错包率/ICMP类型统计）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
