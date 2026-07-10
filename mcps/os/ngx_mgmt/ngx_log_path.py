@@ -506,3 +506,62 @@ def render_file_size(size_bytes):
         i += 1
 
     return f"{size:.2f} {size_names[i]}"
+
+def fetch_nginx_config_info():
+    """
+    获取Nginx配置信息（从utils.py复制，用于独立使用）
+
+    返回:
+        dict: 包含配置文件路径和测试状态的字典
+    """
+    try:
+        # 测试配置文件
+        output = subprocess.run(['nginx', '-t'], capture_output=True, text=True, stderr=subprocess.STDOUT)
+
+        cfg_state = {
+            'config_file': 'Unknown',
+            'config_test': 'Unknown'
+        }
+
+        # 解析配置文件路径
+        if output.returncode == 0:
+            cfg_state['config_test'] = '配置正确'
+            # 尝试从输出中解析配置文件路径
+            config_match = re.search(r'file ([^\s]+) test is successful', output.stdout)  # NOSONAR
+            if config_match:
+                cfg_state['config_file'] = config_match.group(1)
+        else:
+            cfg_state['config_test'] = '配置有误'
+            # 即使测试失败也尝试获取配置文件路径
+            config_match = re.search(r'file ([^\s]+)', output.stdout)  # NOSONAR
+            if config_match:
+                cfg_state['config_file'] = config_match.group(1)
+
+        # 如果还是Unknown，尝试常见路径
+        if cfg_state['config_file'] == 'Unknown':
+            common_paths = ['/etc/nginx/nginx.conf', '/usr/local/nginx/conf/nginx.conf']
+            for path in common_paths:
+                if os.path.exists(path):
+                    cfg_state['config_file'] = path
+                    break
+
+        return cfg_state
+
+    except Exception as e:
+        logger.error(f'获取Nginx配置信息失败: {e}')
+        return {
+            'config_file': '获取失败',
+            'config_test': f'获取失败: {e}'
+        }
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_log_path",
+    "function": fetch_nginx_log_path,
+    "description": "获取Nginx访问日志和错误日志的存储路径、文件名称、日志格式的MCP工具，提供完整的日志配置信息",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
