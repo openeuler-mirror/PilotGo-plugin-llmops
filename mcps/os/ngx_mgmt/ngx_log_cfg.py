@@ -333,3 +333,62 @@ def analyze_log_format(format_str: str) -> Dict[str, Any]:
         logger.error(f"解析日志格式失败: {e}")
     
     return format_info
+
+def fetch_log_buffer_config(settings: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    获取日志缓冲配置
+    
+    参数:
+        settings: 解析后的配置信息
+        
+    返回:
+        dict: 日志缓冲配置
+    """
+    buffer_config = {
+        'buffer_enabled': False,
+        'buffer_size': 'unknown',
+        'flush_interval': 'unknown'
+    }
+    
+    try:
+        # 检查access_log中的buffer参数
+        if 'access_log' in settings['http_config']:
+            access_log_value = settings['http_config']['access_log']
+            if isinstance(access_log_value, list):
+                access_log_value = access_log_value[0]
+            
+            if 'buffer' in access_log_value:
+                buffer_config['buffer_enabled'] = True
+                
+                # 解析缓冲区大小
+                size_match = re.search(r'buffer=([\d]+[kKmMgG]?)', access_log_value)  # NOSONAR
+                if size_match:
+                    buffer_config['buffer_size'] = size_match.group(1)
+                
+                # 解析刷新间隔
+                flush_match = re.search(r'flush=([\d]+[smhd]?)', access_log_value)  # NOSONAR
+                if flush_match:
+                    buffer_config['flush_interval'] = flush_match.group(1)
+        
+        # 检查server块中的配置
+        for server_config in settings['server_configs']:
+            if 'access_log' in server_config:
+                access_log_value = server_config['access_log']
+                if isinstance(access_log_value, list):
+                    access_log_value = access_log_value[0]
+                
+                if 'buffer' in access_log_value and not buffer_config['buffer_enabled']:
+                    buffer_config['buffer_enabled'] = True
+                    
+                    size_match = re.search(r'buffer=([\d]+[kKmMgG]?)', access_log_value)  # NOSONAR
+                    if size_match:
+                        buffer_config['buffer_size'] = size_match.group(1)
+                    
+                    flush_match = re.search(r'flush=([\d]+[smhd]?)', access_log_value)  # NOSONAR
+                    if flush_match:
+                        buffer_config['flush_interval'] = flush_match.group(1)
+    
+    except Exception as e:
+        logger.error(f"获取日志缓冲配置失败: {e}")
+    
+    return buffer_config
