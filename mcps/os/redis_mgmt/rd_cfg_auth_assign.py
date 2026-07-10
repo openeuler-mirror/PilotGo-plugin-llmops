@@ -58,3 +58,43 @@ def set_redis_password(password: str) -> Dict[str, Any]:  # NOSONAR
         logger.error(output['message'])
 
     return output
+def activate_password_auth(enable: bool = True) -> Dict[str, Any]:  # NOSONAR
+    """
+    开启/关闭密码认证
+
+    参数:
+        enable: 是否开启密码认证
+
+    返回:
+        设置结果信息字典
+    """
+    output = {
+        'success': False,
+        'auth_enabled': enable,
+        'message': ''
+    }
+
+    try:
+        if enable:
+            get_output = execute_redis_command('CONFIG GET requirepass')
+            if get_output:
+                lines = get_output.split('\n')
+                if len(lines) >= 2 and lines[1]:
+                    output['message'] = '密码认证已开启'
+                    output['success'] = True
+                    return output
+
+            output['message'] = '密码认证开启失败：未设置密码'
+        else:
+            set_output = execute_redis_command('CONFIG SET requirepass ""')
+            if set_output and set_output == 'OK':
+                output['success'] = True
+                output['message'] = '密码认证已关闭'
+            else:
+                output['message'] = '密码认证关闭失败'
+
+    except Exception as e:
+        output['message'] = f'设置密码认证时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
