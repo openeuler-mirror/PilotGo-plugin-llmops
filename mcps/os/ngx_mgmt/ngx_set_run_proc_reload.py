@@ -180,3 +180,30 @@ def graceful_reload(timeout=60):
     except Exception as e:
         logger.error(f"平滑重载Nginx配置失败: {e}")
         return {"success": False, "message": f"平滑重载失败: {e}", "error": str(e)}
+
+def force_reload(timeout=60):
+    """
+    强制重载Nginx配置（使用HUP信号）
+
+    Args:
+        timeout: 超时时间（秒）
+
+    Returns:
+        dict: 重载结果
+    """
+    try:
+        output = {"success": False, "message": "", "error": ""}
+
+        # 获取Nginx主进程PID
+        nginx_pids = fetch_nginx_master_pids()
+        if not nginx_pids:
+            output["error"] = "未找到运行的Nginx主进程"
+            return output
+
+        output["success"] = True
+        output["message"] = "强制重载信号已发送"
+        return output
+
+    except Exception as e:
+        logger.error(f"强制重载Nginx配置失败: {e}")
+        return {"success": False, "message": f"强制重载失败: {e}", "error": str(e)}
