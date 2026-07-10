@@ -495,3 +495,26 @@ def certify_private_key(key_path):
         return output.returncode == 0
     except Exception:
         return False
+
+def save_config_file(config_file_path, site_name):
+    """备份配置文件"""
+    try:
+        # 安全验证：验证 config_file_path 路径参数（允许绝对路径）
+        valid, error_msg = validate_path_param(config_file_path, allow_absolute=True)
+        if not valid:
+            logger.error(f"save_config_file: config_file_path 路径验证失败：{error_msg}")
+            return None
+
+        backup_dir = '/tmp/nginx_ssl_backups'  # NOSONAR
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_filename = f"{site_name}_ssl_backup_{timestamp}.conf"
+        backup_path = os.path.join(backup_dir, backup_filename)
+
+        shutil.copy2(config_file_path, backup_path)
+        return backup_path
+    except Exception as e:
+        logger.error(f'备份配置文件失败：{e}')
+        return None
