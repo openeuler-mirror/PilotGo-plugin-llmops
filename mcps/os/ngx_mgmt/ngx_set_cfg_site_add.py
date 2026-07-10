@@ -227,3 +227,23 @@ def produce_site_config(site_name, port, root_path, server_names,
     except Exception as e:
         logger.error(f'生成站点配置失败: {str(e)}')
         return f"# 配置生成失败: {str(e)}"
+
+def produce_basic_config():
+    """生成基础配置"""
+    return [
+        "    # 基础静态文件配置",
+        "    location / {",
+        "        try_files $uri $uri/ =404;",
+        "    }",
+        "",
+        "    # 禁止访问隐藏文件",
+        "    location ~ /\\. {",
+        "        deny all;",
+        "    }",
+        "",
+        "    # 缓存静态文件",
+        "    location ~* \\.(jpg|jpeg|png|gif|ico|css|js)$ {",
+        "        expires 1y;",
+        "        add_header Cache-Control \"public, immutable\";",
+        "    }"
+    ]
