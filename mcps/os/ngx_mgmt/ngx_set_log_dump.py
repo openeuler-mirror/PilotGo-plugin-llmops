@@ -186,3 +186,49 @@ def fetch_log_files(log_type: str = 'access') -> List[Dict[str, Any]]:
         logger.error(f"获取日志文件列表失败: {e}")
     
     return log_files
+
+def analyze_time_range(start_time: Optional[str], end_time: Optional[str]) -> Tuple[Optional[datetime], Optional[datetime]]:
+    """
+    解析时间范围
+    
+    参数:
+        start_time: 开始时间字符串
+        end_time: 结束时间字符串
+        
+    返回:
+        tuple: (开始时间, 结束时间) 的datetime对象
+    """
+    start_dt = None
+    end_dt = None
+    
+    try:
+        if start_time:
+            # 尝试不同的时间格式
+            time_formats = [
+                '%Y-%m-%d %H:%M:%S',
+                '%Y-%m-%d %H:%M',
+                '%Y-%m-%d'
+            ]
+            
+            for time_format in time_formats:
+                try:
+                    start_dt = datetime.strptime(start_time, time_format)
+                    break
+                except ValueError:
+                    continue
+        
+        if end_time:
+            for time_format in time_formats:
+                try:
+                    end_dt = datetime.strptime(end_time, time_format)
+                    # 如果是日期格式，设置为当天的23:59:59
+                    if time_format == '%Y-%m-%d':
+                        end_dt = end_dt.replace(hour=23, minute=59, second=59)
+                    break
+                except ValueError:
+                    continue
+        
+    except Exception as e:
+        logger.error(f"解析时间范围失败: {e}")
+    
+    return start_dt, end_dt
