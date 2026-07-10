@@ -67,3 +67,23 @@ def fetch_nginx_config_path() -> Optional[str]:
     except Exception as e:
         logger.error(f"获取Nginx配置路径失败: {e}")
         return None
+
+def save_config_file(cfg_filepath: str) -> str:
+    """
+    备份配置文件
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        
+    返回:
+        str: 备份文件路径
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{cfg_filepath}.backup.{timestamp}"
+        shutil.copy2(cfg_filepath, backup_path)
+        logger.info(f"配置文件已备份到: {backup_path}")
+        return backup_path
+    except Exception as e:
+        logger.error(f"备份配置文件失败: {e}")
+        raise
