@@ -15,6 +15,8 @@ def fetch_proc_fd(pid):
     """
     try:
         pid = str(int(pid))
+        if int(pid) <= 0:
+            return f'Error: invalid PID {pid} (must be positive)'
         fd_dir = f'/proc/{pid}/fd'
         if not os.path.exists(fd_dir):
             return f'Error: process {pid} not found'
