@@ -377,3 +377,39 @@ def dump_logs_to_txt(logs: List[Dict[str, Any]], output_path: str) -> bool:
     except Exception as e:
         logger.error(f"导出TXT文件失败: {e}")
         return False
+
+def dump_logs_to_csv(logs: List[Dict[str, Any]], output_path: str) -> bool:
+    """
+    导出日志到CSV文件
+    
+    参数:
+        logs: 日志记录列表
+        output_path: 输出文件路径
+        
+    返回:
+        bool: 是否导出成功
+    """
+    try:
+        if not logs:
+            return False
+        
+        # 获取所有可能的字段
+        fieldnames = set()
+        for log in logs:
+            fieldnames.update(log.keys())
+        
+        # 移除raw_line字段，因为它包含原始行
+        fieldnames.discard('raw_line')
+        fieldnames = ['raw_line'] + sorted(fieldnames)  # 将raw_line放在第一列
+        
+        with open(output_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for log in logs:
+                writer.writerow(log)
+        
+        return True
+    except Exception as e:
+        logger.error(f"导出CSV文件失败: {e}")
+        return False
