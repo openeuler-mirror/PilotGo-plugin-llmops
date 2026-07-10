@@ -294,3 +294,59 @@ def fetch_sysvinit_service_info():
     except Exception as e:
         logger.error(f'获取sysvinit服务信息失败: {e}')
         return {}
+
+def fetch_upstart_service_info():
+    """
+    获取upstart服务信息
+
+    返回:
+        dict: upstart服务信息
+    """
+    try:
+        service_info = {}
+
+        # 获取服务状态
+        status_result = subprocess.run(['status', 'nginx'], capture_output=True, text=True)
+        if status_result.returncode == 0:
+            output = status_result.stdout.strip()
+            if 'start/running' in output:
+                service_info['status'] = '运行中'
+                pid_match = re.search(r'process\s+(\d+)', output)  # NOSONAR
+                if pid_match:
+                    service_info['pid'] = pid_match.group(1)
+            else:
+                service_info['status'] = '未运行'
+
+        # 检查配置文件
+        config_files = [
+            '/etc/init/nginx.conf',
+            '/etc/init/nginx.conf.override'
+        ]
+
+        for config_file in config_files:
+            if os.path.exists(config_file):
+                service_info['service_file'] = config_file
+                service_info['service_config_dir'] = '/etc/init'
+                break
+
+        # 控制命令
+        service_info['control_commands'] = {
+            'start': 'start nginx',
+            'stop': 'stop nginx',
+            'restart': 'restart nginx',
+            'reload': 'reload nginx',
+            'status': 'status nginx'
+        }
+
+        # 日志路径
+        service_info['log_paths'] = {
+            'system_log': '/var/log/syslog',
+            'service_log': '/var/log/nginx/access.log',
+            'error_log': '/var/log/nginx/error.log'
+        }
+
+        return service_info
+
+    except Exception as e:
+        logger.error(f'获取upstart服务信息失败: {e}')
+        return {}
