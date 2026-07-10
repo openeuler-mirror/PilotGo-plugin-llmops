@@ -190,3 +190,58 @@ def derive_syslog_timestamp(body: str, position: int) -> str:
     except Exception:
         pass
     return 'unknown'
+def examine_memory_pressure() -> Dict[str, Any]:
+    """分析内存压力情况"""
+    pressure = {}
+
+    try:
+        # 检查内存压力接口（Linux 4.20+）
+        if os.path.exists('/proc/pressure/memory'):
+            with open('/proc/pressure/memory', 'r') as f:
+                body = f.read()
+                pressure['memory_pressure'] = body.strip()
+
+                # 解析压力数据
+                for line in body.split('\n'):
+                    if line.startswith('some'):
+                        pressure['some_avg10'] = derive_pressure_value(line, 'avg10')
+                        pressure['some_avg60'] = derive_pressure_value(line, 'avg60')
+                        pressure['some_avg300'] = derive_pressure_value(line, 'avg300')
+                    elif line.startswith('full'):
+                        pressure['full_avg10'] = derive_pressure_value(line, 'avg10')
+                        pressure['full_avg60'] = derive_pressure_value(line, 'avg60')
+                        pressure['full_avg300'] = derive_pressure_value(line, 'avg300')
+
+        # 获取当前内存状态
+        with open('/proc/meminfo', 'r') as f:
+            body = f.read()
+
+        mem_total = 0
+        mem_available = 0
+
+        for line in body.split('\n'):
+            if line.startswith('MemTotal:'):
+                mem_total = analyze_mem_value(line)
+            elif line.startswith('MemAvailable:'):
+                mem_available = analyze_mem_value(line)
+
+        if mem_total > 0:
+            usage_percent = (mem_total - mem_available) / mem_total * 100
+            pressure['current_usage_percent'] = round(usage_percent, 2)
+            pressure['current_status'] = 'critical' if usage_percent > 95 else 'warning' if usage_percent > 80 else 'normal'
+
+        # 获取内存碎片信息
+        if os.path.exists('/proc/buddyinfo'):
+            with open('/proc/buddyinfo', 'r') as f:
+                pressure['buddyinfo'] = f.read().strip()
+
+        # 获取内存区域信息
+        if os.path.exists('/proc/zoneinfo'):
+            with open('/proc/zoneinfo', 'r') as f:
+                zone_content = f.read()
+                pressure['zoneinfo_summary'] = analyze_zoneinfo(zone_content)
+
+    except Exception as e:
+        pressure['error'] = str(e)
+
+    return pressure
