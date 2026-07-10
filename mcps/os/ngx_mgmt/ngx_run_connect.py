@@ -168,3 +168,44 @@ def fetch_stub_status_info():
     except Exception as e:
         logger.error(f'获取stub_status信息失败: {e}')
         return {'enabled': False, 'message': f'检测失败: {e}'}
+
+def fetch_connection_statistics():
+    """获取连接统计信息"""
+    stats = {
+        'active_connections': 'N/A',
+        'reading_connections': 'N/A',
+        'writing_connections': 'N/A',
+        'waiting_connections': 'N/A',
+        'total_connections': 'N/A',
+        'total_handshakes': 'N/A',
+        'total_requests': 'N/A',
+        'connections_per_second': 'N/A',
+        'requests_per_second': 'N/A'
+    }
+
+    try:
+        # 首先尝试通过stub_status获取
+        stub_info = fetch_stub_status_info()
+        if stub_info['enabled']:
+            stats.update(fetch_stub_status_stats(stub_info['location']))
+
+        # 补充系统级连接信息
+        system_stats = fetch_system_connection_stats()
+        if stats['active_connections'] == 'N/A' and system_stats['tcp_established'] != 'N/A':
+            # 估算活跃连接数（Nginx进程相关的ESTABLISHED连接）
+            nginx_connections = fetch_nginx_estimated_connections()
+            if nginx_connections > 0:
+                stats['active_connections'] = nginx_connections
+
+        # 计算连接率（如果可能）
+        if stats['total_connections'] != 'N/A' and stats['total_connections'] > 0:
+            # 获取Nginx运行时间
+            uptime = fetch_nginx_uptime()
+            if uptime > 0:
+                stats['connections_per_second'] = round(stats['total_connections'] / uptime, 2)
+
+        return stats
+
+    except Exception as e:
+        logger.error(f'获取连接统计失败: {e}')
+        return stats
