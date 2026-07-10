@@ -101,3 +101,58 @@ def load_hosts_file():
     except Exception as e:
         logger.error(f'读取hosts文件失败: {e}')
         return None
+def analyze_hosts_file(body):
+    """
+    解析hosts文件
+    """
+    parsed = {
+        'entries': [],  # IP-主机名映射条目
+        'comments': [],  # 注释
+        'custom_rules': [],  # 自定义解析规则
+        'blank_lines': 0  # 空行数量
+    }
+
+    try:
+        lines = body.split('\n')
+        for line_num, line in enumerate(lines, 1):
+            line = line.strip()
+
+            # 跳过空行
+            if not line:
+                parsed['blank_lines'] += 1
+                continue
+
+            # 处理注释
+            if line.startswith('#'):
+                # 提取注释内容
+                comment = line[1:].strip()
+                if comment:
+                    parsed['comments'].append(f"行 {line_num}: {comment}")
+                continue
+
+            # 处理IP-主机名映射
+            parts = line.split('#', 1)  # 分离注释
+            entry_part = parts[0].strip()
+
+            if entry_part:
+                entry_parts = entry_part.split()
+                if len(entry_parts) >= 2:
+                    ip = entry_parts[0]
+                    hostnames = entry_parts[1:]
+
+                    # 验证IP地址格式
+                    if is_valid_ip(ip):
+                        entry = {
+                            'ip': ip,
+                            'hostnames': hostnames,
+                            'line_num': line_num
+                        }
+                        parsed['entries'].append(entry)
+                    else:
+                        # 可能是自定义规则
+                        parsed['custom_rules'].append(f"行 {line_num}: {entry_part}")
+
+    except Exception as e:
+        logger.error(f'解析hosts文件失败: {e}')
+
+    return parsed
