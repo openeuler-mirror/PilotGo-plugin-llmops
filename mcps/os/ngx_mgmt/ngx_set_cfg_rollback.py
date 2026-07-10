@@ -319,3 +319,66 @@ def infer_original_path(filename: str, backup_path: str) -> str:
     except Exception as e:
         logger.error(f'推断原始路径失败: {e}')
         return '/etc/nginx/unknown.conf'
+
+def save_current_config(config_paths: Dict) -> Dict:
+    """备份当前配置（创建回滚点）"""
+    try:
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_dir = f"/tmp/nginx_rollback_backup_{timestamp}"  # NOSONAR
+
+        Path(backup_dir).mkdir(parents=True, exist_ok=True)
+
+        backup_files = []
+
+        # 备份主配置文件
+        if os.path.exists(config_paths['main_config']):
+            backup_path = os.path.join(backup_dir, f"current_{os.path.basename(config_paths['main_config'])}")
+            shutil.copy2(config_paths['main_config'], backup_path)
+            backup_files.append({
+                'original': config_paths['main_config'],
+                'backup': backup_path
+            })
+
+        # 备份虚拟主机配置
+        if config_paths['vhosts_dir'] != 'Unknown' and os.path.exists(config_paths['vhosts_dir']):
+            vhost_backup_dir = os.path.join(backup_dir, 'vhosts')
+            Path(vhost_backup_dir).mkdir(exist_ok=True)
+
+            for file in os.listdir(config_paths['vhosts_dir']):
+                if file.endswith('.conf'):
+                    original_path = os.path.join(config_paths['vhosts_dir'], file)
+                    backup_path = os.path.join(vhost_backup_dir, f"current_{file}")
+                    shutil.copy2(original_path, backup_path)
+                    backup_files.append({
+                        'original': original_path,
+                        'backup': backup_path
+                    })
+
+        # 备份conf.d配置
+        if config_paths['conf_d_dir'] != 'Unknown' and os.path.exists(config_paths['conf_d_dir']):
+            confd_backup_dir = os.path.join(backup_dir, 'conf.d')
+            Path(confd_backup_dir).mkdir(exist_ok=True)
+
+            for file in os.listdir(config_paths['conf_d_dir']):
+                if file.endswith('.conf'):
+                    original_path = os.path.join(config_paths['conf_d_dir'], file)
+                    backup_path = os.path.join(confd_backup_dir, f"current_{file}")
+                    shutil.copy2(original_path, backup_path)
+                    backup_files.append({
+                        'original': original_path,
+                        'backup': backup_path
+                    })
+
+        return {
+            'backup_dir': backup_dir,
+            'backup_files': backup_files,
+            'timestamp': timestamp
+        }
+
+    except Exception as e:
+        logger.error(f'备份当前配置失败: {e}')
+        return {
+            'backup_dir': None,
+            'backup_files': [],
+            'timestamp': datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        }
