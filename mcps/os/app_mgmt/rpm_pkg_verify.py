@@ -142,3 +142,19 @@ def is_rpm_based_system():
 
     except Exception:
         return False
+def is_package_installed(package_name):
+    """
+    检查RPM包是否已安装
+
+    参数:
+        package_name: 包名
+
+    返回:
+        bool: 是否已安装
+    """
+    try:
+        output = subprocess.run(['rpm', '-q', package_name], capture_output=True, text=True)
+        return output.returncode == 0
+
+    except Exception:
+        return False
