@@ -169,3 +169,82 @@ def fetch_current_connection_settings(config_content: str) -> Dict[str, Any]:
         logger.error(f"获取当前连接设置失败: {e}")
     
     return settings
+
+def analyze_connection_limits(config_content: str) -> Dict[str, Any]:
+    """
+    解析连接限制配置
+    
+    参数:
+        config_content: 配置文件内容
+        
+    返回:
+        dict: 连接限制配置
+    """
+    limits = {
+        'limit_conn_zone': {},
+        'limit_conn': {},
+        'limit_req_zone': {},
+        'limit_req': {}
+    }
+    
+    try:
+        # 解析limit_conn_zone
+        conn_zone_pattern = r'limit_conn_zone\s+(\$[^\s]+)\s+zone=([^:]+):(\d+)(?:\s+rate=([^\s;]+))?;'  # NOSONAR
+        conn_zone_matches = re.finditer(conn_zone_pattern, config_content)  # NOSONAR
+        
+        for match in conn_zone_matches:
+            variable = match.group(1)
+            zone_name = match.group(2)
+            zone_size = match.group(3)
+            rate = match.group(4) if match.group(4) else None
+            
+            limits['limit_conn_zone'][zone_name] = {
+                'variable': variable,
+                'size': zone_size,
+                'rate': rate
+            }
+        
+        # 解析limit_conn
+        limit_conn_pattern = r'limit_conn\s+([^\s;]+)\s+(\d+);'  # NOSONAR
+        limit_conn_matches = re.finditer(limit_conn_pattern, config_content)  # NOSONAR
+        
+        for match in limit_conn_matches:
+            zone_name = match.group(1)
+            max_conn = match.group(2)
+            limits['limit_conn'][zone_name] = max_conn
+        
+        # 解析limit_req_zone
+        req_zone_pattern = r'limit_req_zone\s+(\$[^\s]+)\s+zone=([^:]+):(\d+)(?:\s+rate=([^\s;]+))?;'  # NOSONAR
+        req_zone_matches = re.finditer(req_zone_pattern, config_content)  # NOSONAR
+        
+        for match in req_zone_matches:
+            variable = match.group(1)
+            zone_name = match.group(2)
+            zone_size = match.group(3)
+            rate = match.group(4) if match.group(4) else None
+            
+            limits['limit_req_zone'][zone_name] = {
+                'variable': variable,
+                'size': zone_size,
+                'rate': rate
+            }
+        
+        # 解析limit_req
+        limit_req_pattern = r'limit_req\s+(?:zone=([^\s;]+)|burst=(\d+)|nodelay)?(?:\s+zone=([^\s;]+)|burst=(\d+)|nodelay)?(?:\s+zone=([^\s;]+)|burst=(\d+)|nodelay)?;'  # NOSONAR
+        limit_req_matches = re.finditer(limit_req_pattern, config_content)  # NOSONAR
+        
+        for match in limit_req_matches:
+            zone_name = match.group(1) or match.group(3) or match.group(5)
+            burst = match.group(2) or match.group(4) or match.group(6)
+            nodelay = 'nodelay' in match.group(0)
+            
+            if zone_name:
+                limits['limit_req'][zone_name] = {
+                    'burst': burst,
+                    'nodelay': nodelay
+                }
+        
+    except Exception as e:
+        logger.error(f"解析连接限制配置失败: {e}")
+    
+    return limits
