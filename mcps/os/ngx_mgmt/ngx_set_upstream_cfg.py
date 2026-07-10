@@ -316,3 +316,36 @@ def save_config_file(cfg_filepath: str) -> Optional[str]:
     except Exception as e:
         logger.error(f"备份配置文件失败: {e}")
         return None
+
+def certify_nginx_config(config_content: str) -> Tuple[bool, str]:
+    """
+    验证Nginx配置语法
+    
+    参数:
+        config_content: 配置内容
+        
+    返回:
+        tuple: (是否有效, 错误信息)
+    """
+    try:
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False) as temp_file:
+            temp_file.write(config_content)
+            temp_file.flush()
+            temp_path = temp_file.name
+        
+        # 验证配置语法
+        output = subprocess.run(['nginx', '-t', '-c', temp_path], capture_output=True, text=True)
+        
+        # 删除临时文件
+        os.unlink(temp_path)
+        
+        if output.returncode == 0:
+            return True, "配置语法正确"
+        else:
+            err_text = output.stderr if output.stderr else output.stdout
+            return False, err_text
+            
+    except Exception as e:
+        logger.error(f"验证Nginx配置失败: {e}")
+        return False, str(e)
