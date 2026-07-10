@@ -225,3 +225,64 @@ def fetch_physical_memory_details():
             'frequencies': [],
             'details': []
         }
+def analyze_dmidecode_memory(output, mem_data):
+    """
+    解析dmidecode内存输出
+
+    参数:
+        output: dmidecode输出
+        mem_data: 内存信息字典
+
+    返回:
+        更新后的内存信息字典
+    """
+    try:
+        lines = output.split('\n')
+        current_device = None
+        devices = []
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Memory Device'):
+                if current_device:
+                    devices.append(current_device)
+                current_device = {}
+            elif current_device is not None and ':' in line:
+                key, val = line.split(':', 1)
+                key = key.strip()
+                val = val.strip()
+                current_device[key] = val
+
+        if current_device:
+            devices.append(current_device)
+
+        # 更新内存信息
+        installed_count = 0
+        for device in devices:
+            if device.get('Size', 'No Module Installed') != 'No Module Installed':
+                installed_count += 1
+
+                detail = {
+                    'size': device.get('Size', 'Unknown'),
+                    'model': device.get('Part Number', 'Unknown'),
+                    'vendor': device.get('Manufacturer', 'Unknown'),
+                    'frequency': device.get('Speed', 'Unknown'),
+                    'type': device.get('Type', 'Unknown'),
+                    'speed': device.get('Configured Clock Speed', 'Unknown'),
+                    'voltage': device.get('Voltage', 'Unknown')
+                }
+                mem_data['details'].append(detail)
+                mem_data['models'].append(detail['model'])
+                mem_data['vendors'].append(detail['vendor'])
+                mem_data['frequencies'].append(detail['frequency'])
+
+        if devices:
+            mem_data['slots'] = str(len(devices))
+            mem_data['installed'] = str(installed_count)
+            mem_data['available'] = str(len(devices) - installed_count)
+
+        return mem_data
+
+    except Exception as e:
+        logger.error(f'解析dmidecode内存输出失败: {e}')
+        return mem_data
