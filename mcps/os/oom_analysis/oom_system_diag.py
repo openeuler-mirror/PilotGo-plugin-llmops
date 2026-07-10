@@ -160,3 +160,20 @@ def examine_oom_events() -> List[Dict[str, Any]]:
         events.append({'error': str(e)})
 
     return events
+def derive_timestamp(body: str, position: int) -> str:
+    """从dmesg内容中提取时间戳"""
+    try:
+        # 查找最近的行首时间戳 [  123.456789]
+        lines_before = body[:position].split('\n')
+        for line in reversed(lines_before[-5:]):  # 检查前5行
+            match = re.match(r'\[\s*([\d.]+)\]', line)
+            if match:
+                seconds = float(match.group(1))
+                # 转换为可读格式
+                hours = int(seconds // 3600)
+                minutes = int((seconds % 3600) // 60)
+                secs = int(seconds % 60)
+                return f'{hours:02d}:{minutes:02d}:{secs:02d}'
+    except Exception:
+        pass
+    return 'unknown'
