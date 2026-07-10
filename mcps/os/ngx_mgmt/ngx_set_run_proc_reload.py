@@ -293,3 +293,46 @@ def save_current_config():
     except Exception as e:
         logger.error(f"备份Nginx配置失败: {e}")
         return {"success": False, "message": f"配置备份失败: {e}", "error": str(e)}
+
+def locate_include_files(config_file):
+    """
+    查找配置文件中的include文件
+
+    Args:
+        config_file: 主配置文件路径
+
+    Returns:
+        list: include文件路径列表
+    """
+    try:
+        include_files = []
+
+        with open(config_file, 'r', encoding='utf-8', errors='ignore') as f:
+            body = f.read()
+
+        # 匹配include指令
+        include_pattern = r'include\s+([^;]+);'  # NOSONAR
+        matches = re.findall(include_pattern, body)  # NOSONAR
+
+        config_dir = os.path.dirname(config_file)
+
+        for match in matches:
+            include_pattern = match.strip().strip('"').strip("'")
+
+            # 处理通配符
+            if '*' in include_pattern:
+                # 使用glob处理通配符
+                pattern_path = os.path.join(config_dir, include_pattern)
+                matched_files = glob.glob(pattern_path)
+                include_files.extend(matched_files)
+            else:
+                # 直接路径
+                include_path = os.path.join(config_dir, include_pattern)
+                if os.path.exists(include_path):
+                    include_files.append(include_path)
+
+        return sorted(set(include_files))  # 去重
+
+    except Exception as e:
+        logger.error(f"查找include文件失败: {e}")
+        return []
