@@ -27,8 +27,6 @@ def fetch_proc_io(pid):
         return f'=== I/O Stats for PID {pid} ===\n{content}'
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
-        return f'Permission denied reading /proc/{pid}/io'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
