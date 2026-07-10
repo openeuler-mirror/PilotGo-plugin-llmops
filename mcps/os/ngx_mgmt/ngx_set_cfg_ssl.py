@@ -583,3 +583,124 @@ def reload_nginx_config():
         logger.error(f'重载Nginx配置失败: {e}')
         output['error'] = str(e)
         return output
+
+def produce_ssl_config_report(site_name, action, output, **kwargs):
+    """生成SSL配置报告"""
+    try:
+        report = []
+        report.append('=== Nginx SSL配置报告 ===')
+        report.append(f'站点名称: {site_name}')
+        report.append(f'操作类型: {action}')
+        report.append(f'操作结果: {output["message"]}')
+        report.append('')
+
+        if action == 'activate_https':
+            report.append('HTTPS启用配置:')
+            report.append(f'  - 证书路径: {kwargs.get("cert_path", "使用默认路径")}')
+            report.append(f'  - 私钥路径: {kwargs.get("key_path", "使用默认路径")}')
+            report.append(f'  - HTTP重定向: {kwargs.get("redirect_http", True)}')
+            report.append(f'  - HTTP/2支持: {kwargs.get("http2_enabled", True)}')
+            report.append(f'  - SSL协议: {kwargs.get("protocols", "TLSv1.2 TLSv1.3")}')
+
+        elif action == 'update_cert':
+            report.append('证书更新信息:')
+            report.append(f'  - 新证书路径: {kwargs.get("cert_path")}')
+            report.append(f'  - 新私钥路径: {kwargs.get("key_path")}')
+
+        elif action == 'set_protocols':
+            report.append(f'SSL协议设置: {kwargs.get("protocols")}')
+
+        elif action == 'set_security':
+            report.append('安全策略设置:')
+            report.append(f'  - HSTS最大年龄: {kwargs.get("hsts_max_age", 31536000)}秒')
+            report.append(f'  - 包含子域名: {kwargs.get("hsts_include_subdomains", True)}')
+            report.append(f'  - HSTS预加载: {kwargs.get("hsts_preload", False)}')
+            report.append(f'  - OCSP装订: {kwargs.get("enable_ocsp_stapling", True)}')
+
+        report.append('')
+        report.append('后续操作建议:')
+        report.append('1. 检查网站HTTPS访问是否正常')
+        report.append('2. 使用SSL测试工具验证配置安全性')
+        report.append('3. 备份文件可在/tmp/nginx_ssl_backups目录找到')  # NOSONAR
+        report.append('======================')
+
+        return '\n'.join(report)
+    except Exception as e:
+        logger.error(f'生成配置报告失败: {e}')
+        return f'生成配置报告失败: {e}'
+
+# MCP工具配置
+TOOL_CONFIG = {
+    'name': 'ngx_set_cfg_ssl',
+    'function': produce_ssl_config_report,
+    'description': '配置Nginx SSL证书和HTTPS设置',
+    'version': '1.0.0',
+    'author': 'Kylin Ops MCP',
+    'parameters': {
+        'site_name': {
+            'type': 'string',
+            'required': True,
+            'description': '要配置的站点名称'
+        },
+        'action': {
+            'type': 'string',
+            'required': True,
+            'description': '操作类型: activate_https, deactivate_https, update_cert, set_protocols, set_ciphers, set_security'
+        },
+        'cert_path': {
+            'type': 'string',
+            'required': False,
+            'description': 'SSL证书文件路径（用于enable_https和update_cert操作）'
+        },
+        'key_path': {
+            'type': 'string',
+            'required': False,
+            'description': 'SSL私钥文件路径（用于enable_https和update_cert操作）'
+        },
+        'protocols': {
+            'type': 'string',
+            'required': False,
+            'default': 'TLSv1.2 TLSv1.3',
+            'description': 'SSL协议版本（用于set_protocols操作）'
+        },
+        'ciphers': {
+            'type': 'string',
+            'required': False,
+            'description': 'SSL加密套件（用于set_ciphers操作）'
+        },
+        'redirect_http': {
+            'type': 'boolean',
+            'required': False,
+            'default': True,
+            'description': '是否重定向HTTP到HTTPS（用于enable_https操作）'
+        },
+        'http2_enabled': {
+            'type': 'boolean',
+            'required': False,
+            'default': True,
+            'description': '是否启用HTTP/2（用于enable_https操作）'
+        }
+    },
+    'examples': [
+        {
+            'description': '启用站点HTTPS',
+            'code': 'adjust_nginx_ssl("example.com", "activate_https", cert_path="/path/to/cert.crt", key_path="/path/to/key.key")'
+        },
+        {
+            'description': '禁用站点HTTPS',
+            'code': 'adjust_nginx_ssl("example.com", "deactivate_https")'
+        },
+        {
+            'description': '更新SSL证书',
+            'code': 'adjust_nginx_ssl("example.com", "update_cert", cert_path="/new/cert.crt", key_path="/new/key.key")'
+        },
+        {
+            'description': '设置SSL协议',
+            'code': 'adjust_nginx_ssl("example.com", "set_protocols", protocols="TLSv1.3")'
+        },
+        {
+            'description': '设置安全策略',
+            'code': 'adjust_nginx_ssl("example.com", "set_security", hsts_max_age=63072000, enable_ocsp_stapling=True)'
+        }
+    ]
+}
