@@ -470,3 +470,60 @@ def analyze_windows_memory(output, mem_data):
     except Exception as e:
         logger.error(f'解析Windows内存输出失败: {e}')
         return mem_data
+def fetch_memory_usage():
+    """
+    获取内存使用情况
+
+    返回:
+        内存使用情况字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                with open('/proc/meminfo', 'r') as f:
+                    meminfo = {}
+                    for line in f:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            key = parts[0].rstrip(':')
+                            val = int(parts[1])
+                            meminfo[key] = val
+
+                    total = meminfo.get('MemTotal', 0)
+                    free = meminfo.get('MemFree', 0)
+                    buffers = meminfo.get('Buffers', 0)
+                    cached = meminfo.get('Cached', 0)
+                    used = total - free - buffers - cached
+
+                    total_gb = total / 1024 / 1024
+                    used_gb = used / 1024 / 1024
+                    free_gb = free / 1024 / 1024
+                    usage_percent = (used / total) * 100 if total > 0 else 0
+
+                    return '\n'.join([f"已用内存: {used_gb:.2f} GB ({usage_percent:.1f}%)", f"空闲内存: {free_gb:.2f} GB", f"缓冲区: {buffers / 1024 / 1024:.2f} GB", f"缓存: {cached / 1024 / 1024:.2f} GB"])
+            except Exception:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取内存使用情况失败: {e}')
+        return None
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "hw_memory_physical",
+    "function": fetch_hw_mem_physical,
+    "description": "采集物理内存信息，包括总容量、内存型号、厂商、频率、插槽数和已插插槽",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "mem_type": {
+                "type": "string",
+                "description": "信息类型，可选值：total（总容量）、model（内存型号）、vendor（厂商）、frequency（频率）、slots（插槽数）、installed（已插插槽），不指定则获取所有信息",
+                "enum": ["total", "model", "vendor", "frequency", "slots", "installed"]
+            }
+        },
+        "required": []
+    }
+}
