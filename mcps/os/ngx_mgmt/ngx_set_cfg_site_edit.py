@@ -119,3 +119,59 @@ def modify_nginx_site_config(site_name, port=None, root_path=None,
     except Exception as e:
         logger.error(f'修改Nginx站点配置失败: {e}')
         return f'修改Nginx站点配置失败: {e}'
+
+def certify_modify_parameters(site_name, port, root_path, server_names,
+                             proxy_target, enable_ssl, enable_php):
+    """验证修改参数"""
+    try:
+        # 验证站点名称
+        if not site_name or not isinstance(site_name, str):
+            return '站点名称必须为有效的字符串'
+
+        # 使用通用验证函数进行标识符验证
+        is_valid, error_msg = validate_identifier_param(site_name, allow_slash=False)
+        if not is_valid:
+            return f'站点名称格式不合法：{error_msg}'
+
+        # 验证端口
+        if port is not None:
+            if not isinstance(port, int) or port < 1 or port > 65535:
+                return '端口号必须是 1-65535 之间的整数'
+
+        # 验证根路径（如果提供）
+        if root_path is not None:
+            if not isinstance(root_path, str):
+                return '根路径必须为有效的字符串'
+            # 安全验证：验证 root_path 路径参数（允许绝对路径）
+            valid, error_msg = validate_path_param(root_path, allow_absolute=True)
+            if not valid:
+                return f'根路径不安全：{error_msg}'
+
+        # 验证服务器名称
+        if server_names is not None:
+            if isinstance(server_names, str):
+                server_names = [server_names]
+            elif not isinstance(server_names, list):
+                return '服务器名称必须为字符串或字符串列表'
+
+        # 验证代理目标（如果提供）
+        if proxy_target is not None:
+            if not isinstance(proxy_target, str):
+                return '代理目标地址必须为有效的字符串'
+            # 安全验证：验证 proxy_target 路径参数（允许绝对路径）
+            valid, error_msg = validate_path_param(proxy_target, allow_absolute=True)
+            if not valid:
+                return f'代理目标地址不安全：{error_msg}'
+
+        # 验证布尔参数
+        if enable_ssl is not None and not isinstance(enable_ssl, bool):
+            return 'enable_ssl 参数必须为布尔值'
+
+        if enable_php is not None and not isinstance(enable_php, bool):
+            return 'enable_php 参数必须为布尔值'
+
+        return None
+
+    except Exception as e:
+        logger.error(f'验证修改参数失败: {e}')
+        return f'参数验证失败: {e}'
