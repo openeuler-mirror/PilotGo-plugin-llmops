@@ -280,3 +280,82 @@ def fetch_redis_kernel_info(pid):
         logger.error(f'获取Redis内核适配信息失败: {e}')
 
     return kern_info
+def fetch_redis_modules_info(pid):
+    """
+    获取Redis支持的模块
+    """
+    modules_info = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'INFO', 'modules'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            module_count = 0
+            for line in info_lines:
+                if line.startswith('module:'):
+                    module_count += 1
+                    modules_info[f'模块{module_count}'] = line.split(':')[1]
+
+            if module_count == 0:
+                modules_info['模块状态'] = '无加载模块'
+
+        output = subprocess.run(['redis-cli', 'INFO', 'persistence'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('rdb_enabled:'):
+                    modules_info['RDB持久化'] = '启用' if line.split(':')[1] == '1' else '禁用'
+                elif line.startswith('aof_enabled:'):
+                    modules_info['AOF持久化'] = '启用' if line.split(':')[1] == '1' else '禁用'
+                elif line.startswith('loading:'):
+                    modules_info['加载状态'] = '加载中' if line.split(':')[1] == '1' else '未加载'
+
+        output = subprocess.run(['redis-cli', 'INFO', 'replication'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('role:'):
+                    modules_info['角色'] = line.split(':')[1]
+                elif line.startswith('connected_slaves:'):
+                    modules_info['连接从库数'] = line.split(':')[1]
+
+        output = subprocess.run(['redis-cli', 'INFO', 'cluster'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('cluster_enabled:'):
+                    modules_info['集群模式'] = '启用' if line.split(':')[1] == '1' else '禁用'
+
+        output = subprocess.run(['redis-cli', 'INFO', 'sentinel'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('sentinel:'):
+                    modules_info['哨兵模式'] = '启用' if line.split(':')[1] == '1' else '禁用'
+
+    except Exception as e:
+        logger.error(f'获取Redis模块信息失败: {e}')
+
+    return modules_info
+
+TOOL_CONFIG = {
+    "name": "fetch_redis_base_version",
+    "function": fetch_redis_base_version,
+    "description": "采集Redis版本、编译参数、内核适配信息、支持的模块（如持久化、集群模块）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "info_type": {
+                "type": "string",
+                "description": "指定要采集的信息类型，可选值：version（版本信息）、compile（编译参数）、kernel（内核适配）、modules（支持的模块）、all（所有信息）",
+                "enum": ["version", "compile", "kernel", "modules", "all"]
+            }
+        },
+        "required": []
+    }
+}
