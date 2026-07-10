@@ -232,3 +232,50 @@ def analyze_time_range(start_time: Optional[str], end_time: Optional[str]) -> Tu
         logger.error(f"解析时间范围失败: {e}")
     
     return start_dt, end_dt
+
+def analyze_log_line(line: str, log_format: str = 'combined') -> Optional[Dict[str, Any]]:
+    """
+    解析日志行
+    
+    参数:
+        line: 日志行内容
+        log_format: 日志格式
+        
+    返回:
+        dict: 解析后的日志字段字典
+    """
+    try:
+        if log_format in LOG_FORMAT_PARSERS:
+            pattern = LOG_FORMAT_PARSERS[log_format]
+            if pattern:
+                match = re.match(pattern, line.strip())  # NOSONAR
+                if match:
+                    if log_format == 'combined':
+                        return {
+                            'remote_addr': match.group(1),
+                            'remote_user': match.group(2),
+                            'time_local': match.group(3),
+                            'request': match.group(4),
+                            'status': match.group(5),
+                            'body_bytes_sent': match.group(6),
+                            'http_referer': match.group(7),
+                            'http_user_agent': match.group(8),
+                            'raw_line': line.strip()
+                        }
+                    elif log_format == 'main':
+                        return {
+                            'remote_addr': match.group(1),
+                            'remote_user': match.group(2),
+                            'time_local': match.group(3),
+                            'request': match.group(4),
+                            'status': match.group(5),
+                            'body_bytes_sent': match.group(6),
+                            'raw_line': line.strip()
+                        }
+        
+        # 如果预定义格式不匹配，尝试通用解析
+        return {'raw_line': line.strip()}
+        
+    except Exception as e:
+        logger.error(f"解析日志行失败: {e}")
+        return {'raw_line': line.strip()}
