@@ -370,3 +370,66 @@ def fetch_nginx_worker_info():
         details['worker_connections'] = 1024
 
     return details
+
+def verify_connection_health(connection_stats, threshold_analysis):
+    """检查连接健康状态"""
+    checks = []
+    try:
+        # 活跃连接数检查
+        active_connections = connection_stats.get('active_connections', 0)
+        if active_connections != 'N/A':
+            if active_connections == 0:
+                checks.append("⚠️  活跃连接数为0 - 可能无客户端访问")
+            elif active_connections < 10:
+                checks.append("✅ 活跃连接数较少 - 低负载状态")
+            elif active_connections < 100:
+                checks.append("✅ 活跃连接数正常 - 中等负载")
+            else:
+                checks.append("📈 活跃连接数较多 - 高负载状态")
+
+        # 等待连接数检查
+        waiting_connections = connection_stats.get('waiting_connections', 0)
+        if waiting_connections != 'N/A':
+            if waiting_connections > active_connections * 0.5:
+                checks.append("⚠️  等待连接数过多 - 可能存在性能瓶颈")
+            elif waiting_connections > 50:
+                checks.append("⚡ 等待连接数较多 - 建议优化处理速度")
+            else:
+                checks.append("✅ 等待连接数正常")
+
+        # 阈值状态检查
+        threshold_status = threshold_analysis.get('threshold_status', '')
+        if '危险' in threshold_status:
+            checks.append("🚨 连接数接近最大容量 - 需要立即扩容")
+        elif '警告' in threshold_status:
+            checks.append("⚠️  连接负载较高 - 建议监控并准备扩容")
+
+        # 连接率检查
+        connections_per_second = connection_stats.get('connections_per_second', 0)
+        if connections_per_second != 'N/A' and connections_per_second > 0:
+            if connections_per_second > 1000:
+                checks.append("🚀 连接率很高 - 高并发场景")
+            elif connections_per_second > 100:
+                checks.append("📈 连接率较高 - 中等并发")
+            else:
+                checks.append("📊 连接率正常 - 低并发场景")
+
+        # 读写连接比例检查
+        reading_connections = connection_stats.get('reading_connections', 0)
+        writing_connections = connection_stats.get('writing_connections', 0)
+        if reading_connections != 'N/A' and writing_connections != 'N/A':
+            if reading_connections > writing_connections * 2:
+                checks.append("📖 读取连接远多于写入 - 主要是静态内容请求")
+            elif writing_connections > reading_connections * 2:
+                checks.append("✍️  写入连接远多于读取 - 主要是上传/POST请求")
+            else:
+                checks.append("⚖️  读写连接比例均衡")
+
+        if not checks:
+            checks.append("ℹ️  暂无可用的连接健康检查信息")
+
+        return checks
+
+    except Exception as e:
+        logger.error(f'检查连接健康状态失败: {e}')
+        return ["❌ 连接健康检查失败"]
