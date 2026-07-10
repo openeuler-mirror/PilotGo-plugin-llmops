@@ -107,3 +107,161 @@ def fetch_hw_nic_module(module_type=None):
     except Exception as e:
         logger.error(f'获取网卡模块信息失败: {e}')
         return f'获取网卡模块信息失败: {e}'
+def fetch_module_details():
+    """
+    获取网卡模块详细信息
+
+    返回:
+        网卡模块详细信息字典
+    """
+    try:
+        mod_info = {
+            'modules': [],
+            'drivers': [],
+            'versions': [],
+            'statuses': [],
+            'parameters': []
+        }
+
+        if platform.system() == 'Linux':
+            # 尝试使用lsmod命令获取已加载模块
+            try:
+                output = subprocess.run(['lsmod'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    loaded_modules = analyze_lsmod_output(output.stdout)
+                    network_modules = filter_network_modules(loaded_modules)
+
+                    for module in network_modules:
+                        module_details = fetch_linux_module_details(module)
+                        if module_details:
+                            mod_info['modules'].append(module_details)
+                            mod_info['drivers'].append(module_details.get('driver', 'Unknown'))
+                            mod_info['versions'].append(module_details.get('ver', 'Unknown'))
+                            mod_info['statuses'].append(module_details.get('state', 'Unknown'))
+                            mod_info['parameters'].append(module_details.get('parameters', 'None'))
+            except subprocess.SubprocessError:
+                pass
+
+            # 尝试从/sys获取模块信息
+            try:
+                if os.filepath.exists('/sys/module'):
+                    modules = os.listdir('/sys/module')
+                    network_modules = [m for m in modules if is_network_module(m)]
+
+                    for module in network_modules:
+                        module_details = fetch_module_info_from_sys(module)
+                        if module_details:
+                            # 检查是否已经存在该模块
+                            existing = False
+                            for mod in mod_info['modules']:
+                                if mod.get('driver') == module_details.get('driver'):
+                                    existing = True
+                                    break
+                            if not existing:
+                                mod_info['modules'].append(module_details)
+                                mod_info['drivers'].append(module_details.get('driver', 'Unknown'))
+                                mod_info['versions'].append(module_details.get('ver', 'Unknown'))
+                                mod_info['statuses'].append(module_details.get('state', 'Unknown'))
+                                mod_info['parameters'].append(module_details.get('parameters', 'None'))
+            except Exception:
+                pass
+
+            # 尝试获取网卡驱动信息
+            try:
+                net_devices = os.listdir('/sys/class/net')
+                for dev in net_devices:
+                    if dev != 'lo':
+                        try:
+                            if os.filepath.exists(f'/sys/class/net/{dev}/device/driver'):
+                                driver_link = os.readlink(f'/sys/class/net/{dev}/device/driver')
+                                driver_name = driver_link.split('/')[-1]
+
+                                # 检查是否已经存在该驱动
+                                existing = False
+                                for mod in mod_info['modules']:
+                                    if mod.get('driver') == driver_name:
+                                        existing = True
+                                        break
+                                if not existing:
+                                    driver_details = {
+                                        'driver': driver_name,
+                                        'ver': 'Unknown',
+                                        'state': 'Loaded',
+                                        'dependencies': 'Unknown',
+                                        'refcount': 'Unknown',
+                                        'filepath': 'Unknown',
+                                        'parameters': 'Unknown'
+                                    }
+                                    mod_info['modules'].append(driver_details)
+                                    mod_info['drivers'].append(driver_name)
+                                    mod_info['versions'].append('Unknown')
+                                    mod_info['statuses'].append('Loaded')
+                                    mod_info['parameters'].append('Unknown')
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        elif platform.system() == 'Darwin':
+            # macOS系统
+            try:
+                # 获取kext信息
+                output = subprocess.run(['kextstat'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    network_kexts = analyze_kextstat_output(output.stdout)
+
+                    for kext in network_kexts:
+                        kext_details = {
+                            'driver': kext.get('label', 'Unknown'),
+                            'ver': kext.get('ver', 'Unknown'),
+                            'state': 'Loaded',
+                            'dependencies': 'Unknown',
+                            'refcount': kext.get('refs', 'Unknown'),
+                            'filepath': 'Unknown',
+                            'parameters': 'Unknown'
+                        }
+                        mod_info['modules'].append(kext_details)
+                        mod_info['drivers'].append(kext.get('label', 'Unknown'))
+                        mod_info['versions'].append(kext.get('ver', 'Unknown'))
+                        mod_info['statuses'].append('Loaded')
+                        mod_info['parameters'].append('Unknown')
+            except subprocess.SubprocessError:
+                pass
+
+        elif platform.system() == 'Windows':
+            # Windows系统
+            try:
+                # 获取网络适配器驱动
+                output = subprocess.run(['wmic', 'netadapter', 'get', 'Name,DriverName,NetConnectionStatus'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    windows_drivers = analyze_windows_netadapter(output.stdout)
+
+                    for driver in windows_drivers:
+                        driver_details = {
+                            'driver': driver.get('driver', 'Unknown'),
+                            'ver': 'Unknown',
+                            'state': driver.get('state', 'Unknown'),
+                            'dependencies': 'Unknown',
+                            'refcount': 'Unknown',
+                            'filepath': 'Unknown',
+                            'parameters': 'Unknown'
+                        }
+                        mod_info['modules'].append(driver_details)
+                        mod_info['drivers'].append(driver.get('driver', 'Unknown'))
+                        mod_info['versions'].append('Unknown')
+                        mod_info['statuses'].append(driver.get('state', 'Unknown'))
+                        mod_info['parameters'].append('Unknown')
+            except subprocess.SubprocessError:
+                pass
+
+        return mod_info
+
+    except Exception as e:
+        logger.error(f'获取网卡模块详细信息失败: {e}')
+        return {
+            'modules': [],
+            'drivers': [],
+            'versions': [],
+            'statuses': [],
+            'parameters': []
+        }
