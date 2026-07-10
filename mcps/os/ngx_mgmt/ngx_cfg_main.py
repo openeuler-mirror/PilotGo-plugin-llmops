@@ -259,3 +259,48 @@ def derive_http_configs(body):
     except Exception as e:
         logger.error(f'提取http配置失败: {e}')
         return []
+
+def derive_server_configs(body):
+    """提取server块配置"""
+    try:
+        server_configs = []
+
+        # 提取所有server块
+        server_pattern = r'server\s*\{([^{}]*)\}'  # NOSONAR
+        server_matches = re.findall(server_pattern, body, re.DOTALL)  # NOSONAR
+
+        for i, server_content in enumerate(server_matches, 1):
+            server_configs.append(f"服务器块 #{i}:")
+
+            # 移除location块，只保留server级别的配置
+            location_block_pattern = r'location\s+[^{]*\{[^{}]*\}'  # NOSONAR
+            server_content_clean = re.sub(location_block_pattern, '', server_content, flags=re.DOTALL)  # NOSONAR
+
+            # 常见的server配置项
+            patterns = {
+                'listen': r'listen\s+([^;]+);',
+                'server_name': r'server_name\s+([^;]+);',
+                'root': r'root\s+([^;]+);',
+                'index': r'index\s+([^;]+);',
+                'access_log': r'access_log\s+([^;]+);',
+                'error_log': r'error_log\s+([^;]+);',
+                'error_page': r'error_page\s+([^;]+);',
+                'try_files': r'try_files\s+([^;]+);',
+                'return': r'return\s+([^;]+);',
+                'rewrite': r'rewrite\s+([^;]+);'
+            }
+
+            for config_name, pattern in patterns.items():
+                matches = re.findall(pattern, server_content_clean)  # NOSONAR
+                for match in matches:
+                    server_configs.append(f"  {config_name}: {match.strip()}")
+
+            # 提取location块数量
+            location_matches = re.findall(r'location\s+[^{]*\{', server_content)  # NOSONAR
+            if location_matches:
+                server_configs.append(f"  location块数量: {len(location_matches)}")
+
+        return server_configs
+    except Exception as e:
+        logger.error(f'提取server配置失败: {e}')
+        return []
