@@ -92,3 +92,46 @@ def fetch_nginx_base_service():
     except Exception as e:
         logger.error(f'获取Nginx服务信息失败: {e}')
         return f'获取Nginx服务信息失败: {e}'
+
+def fetch_nginx_service_info():
+    """
+    获取Nginx服务详细信息
+
+    返回:
+        dict: 服务信息字典
+    """
+    try:
+        service_info = {
+            'status': 'Unknown',
+            'enabled': False,
+            'enabled_boot': False,
+            'description': 'Unknown',
+            'pid': 'Unknown',
+            'start_time': 'Unknown',
+            'service_file': 'Unknown',
+            'service_config_dir': 'Unknown',
+            'pid_file': 'Unknown',
+            'lock_file': 'Unknown',
+            'init_system': 'Unknown',
+            'control_commands': {},
+            'log_paths': {}
+        }
+
+        # 检测初始化系统类型
+        init_system = spot_init_system()
+        service_info['init_system'] = init_system
+
+        if init_system == 'systemd':
+            service_info.update(fetch_systemd_service_info())
+        elif init_system == 'sysvinit':
+            service_info.update(fetch_sysvinit_service_info())
+        elif init_system == 'upstart':
+            service_info.update(fetch_upstart_service_info())
+        else:
+            service_info.update(fetch_generic_service_info())
+
+        return service_info
+
+    except Exception as e:
+        logger.error(f'获取Nginx服务信息失败: {e}')
+        return service_info
