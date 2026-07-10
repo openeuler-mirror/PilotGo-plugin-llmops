@@ -187,3 +187,20 @@ def build_default_backup_path() -> str:
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     default_path = f"/tmp/nginx_backup_{timestamp}"  # NOSONAR
     return default_path
+
+def build_backup_directory(backup_path: str) -> Optional[str]:
+    """创建备份目录"""
+    try:
+        Path(backup_path).mkdir(parents=True, exist_ok=True)
+
+        # 创建子目录结构
+        subdirs = ['configs', 'sites', 'modules', 'logs']
+        for subdir in subdirs:
+            subdir_path = os.path.join(backup_path, subdir)
+            Path(subdir_path).mkdir(exist_ok=True)
+
+        return backup_path
+
+    except Exception as e:
+        logger.error(f'创建备份目录失败: {e}')
+        return None
