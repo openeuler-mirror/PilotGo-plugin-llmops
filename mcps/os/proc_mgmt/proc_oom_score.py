@@ -29,7 +29,6 @@ def fetch_proc_oom_score(pid):
         return '\n'.join(out)
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
         return f'Permission denied reading OOM scores for PID {pid}'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
