@@ -110,3 +110,88 @@ def fetch_nginx_log_path():
     except Exception as e:
         logger.error(f'获取Nginx日志路径信息失败: {e}')
         return f'获取Nginx日志路径信息失败: {e}'
+
+def analyze_nginx_log_config(config_file):
+    """
+    解析Nginx配置文件获取日志相关信息
+
+    参数:
+        config_file: Nginx主配置文件路径
+
+    返回:
+        dict: 包含日志路径、格式、轮转配置等信息的字典
+    """
+    try:
+        log_info = {
+            'access_logs': [],
+            'error_logs': [],
+            'log_formats': {},
+            'logrotate_config': [],
+            'directory_permissions': []
+        }
+
+        if not os.path.exists(config_file):
+            return log_info
+
+        # 读取配置文件内容
+        with open(config_file, 'r', encoding='utf-8') as f:
+            body = f.read()
+
+        # 解析访问日志配置
+        access_log_matches = re.findall(r'access_log\s+([^;]+);', body)  # NOSONAR
+        for match in access_log_matches:
+            access_log_info = analyze_access_log_directive(match.strip())
+            if access_log_info:
+                log_info['access_logs'].append(access_log_info)
+
+        # 解析错误日志配置
+        error_log_matches = re.findall(r'error_log\s+([^;]+);', body)  # NOSONAR
+        for match in error_log_matches:
+            error_log_info = analyze_error_log_directive(match.strip())
+            if error_log_info:
+                log_info['error_logs'].append(error_log_info)
+
+        # 解析日志格式定义
+        log_format_matches = re.findall(r'log_format\s+([^}]+)}', body)  # NOSONAR
+        for match in log_format_matches:
+            format_info = analyze_log_format_directive(match.strip())
+            if format_info:
+                log_info['log_formats'].update(format_info)
+
+        # 检查包含的配置文件
+        include_matches = re.findall(r'include\s+([^;]+);', body)  # NOSONAR
+        for match in include_matches:
+            include_pattern = match.strip()
+            # 处理通配符包含
+            if '*' in include_pattern:
+                included_files = glob.glob(include_pattern)
+                for included_file in included_files:
+                    if os.path.exists(included_file):
+                        included_info = analyze_included_log_config(included_file)
+                        log_info['access_logs'].extend(included_info['access_logs'])
+                        log_info['error_logs'].extend(included_info['error_logs'])
+                        log_info['log_formats'].update(included_info['log_formats'])
+            else:
+                if os.path.exists(include_pattern):
+                    included_info = analyze_included_log_config(include_pattern)
+                    log_info['access_logs'].extend(included_info['access_logs'])
+                    log_info['error_logs'].extend(included_info['error_logs'])
+                    log_info['log_formats'].update(included_info['log_formats'])
+
+        # 获取日志轮转配置
+        log_info['logrotate_config'] = fetch_logrotate_config()
+
+        # 检查日志目录权限
+        log_info['directory_permissions'] = verify_log_directory_permissions(log_info)
+
+        return log_info
+
+    except Exception as e:
+        logger.error(f'解析Nginx日志配置失败: {e}')
+        return {
+            'access_logs': [],
+            'error_logs': [],
+            'log_formats': {},
+            'logrotate_config': [],
+            'directory_permissions': [f'解析配置失败: {e}']
+        }
