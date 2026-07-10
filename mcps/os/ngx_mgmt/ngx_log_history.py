@@ -415,3 +415,29 @@ def query_log_content(log_files, start_dt, end_dt, ip_address, url_pattern, stat
     except Exception as e:
         logger.error(f'查询日志内容失败: {e}')
         return []
+
+def is_file_in_time_range(log_file, start_dt, end_dt):
+    """
+    检查文件时间范围是否在查询范围内
+
+    参数:
+        log_file: 日志文件信息
+        start_dt: 开始时间
+        end_dt: 结束时间
+
+    返回:
+        bool: 是否在时间范围内
+    """
+    try:
+        # 基于文件名和修改时间进行粗略判断
+        mtime = datetime.fromtimestamp(log_file['mtime_timestamp'])
+
+        # 如果文件修改时间早于开始时间，且不是当前日志文件，可以跳过
+        if mtime < start_dt and 'access.log' not in log_file['path'] and 'error.log' not in log_file['path']:
+            return False
+
+        return True
+
+    except Exception as e:
+        logger.error(f'检查文件时间范围失败: {e}')
+        return True  # 如果检查失败，默认处理该文件
