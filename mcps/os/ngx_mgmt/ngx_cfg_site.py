@@ -296,3 +296,19 @@ def derive_server_blocks(body):
     except Exception as e:
         logger.error(f'提取server块失败: {e}')
         return []
+
+def derive_location_blocks(body):
+    """提取location块"""
+    try:
+        location_blocks = []
+        # 使用正则表达式提取location块
+        pattern = r'location\s+([^{]*)\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'  # NOSONAR
+        matches = re.findall(pattern, body, re.DOTALL)  # NOSONAR
+
+        for match in matches:
+            location_blocks.append(f"location {match[0].strip()} {{ {match[1].strip()} }}")
+
+        return location_blocks
+    except Exception as e:
+        logger.error(f'提取location块失败: {e}')
+        return []
