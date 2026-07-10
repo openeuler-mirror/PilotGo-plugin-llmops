@@ -495,3 +495,38 @@ def build_grep_command(log_path, start_dt, end_dt, ip_address, url_pattern, stat
     except Exception as e:
         logger.error(f'构建grep命令失败: {e}')
         return None
+
+def analyze_log_time(log_line, log_type):
+    """
+    解析日志行的时间戳
+
+    参数:
+        log_line: 日志行
+        log_type: 日志类型
+
+    返回:
+        datetime: 解析出的时间
+    """
+    try:
+        if log_type == 'access':
+            # Nginx访问日志时间格式: [01/Jan/2023:00:00:00 +0800]
+            time_pattern = r'\[(\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2})'  # NOSONAR
+            match = re.search(time_pattern, log_line)  # NOSONAR
+            if match:
+                time_str = match.group(1)
+                return datetime.strptime(time_str, '%d/%b/%Y:%H:%M:%S')
+
+        elif log_type == 'error':
+            # Nginx错误日志时间格式: 2023/01/01 00:00:00
+            time_pattern = r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})'  # NOSONAR
+            match = re.search(time_pattern, log_line)  # NOSONAR
+            if match:
+                time_str = match.group(1)
+                return datetime.strptime(time_str, '%Y/%m/%d %H:%M:%S')
+
+        # 如果无法解析，返回None
+        return None
+
+    except Exception as e:
+        logger.error(f'解析日志时间失败: {e}')
+        return None
