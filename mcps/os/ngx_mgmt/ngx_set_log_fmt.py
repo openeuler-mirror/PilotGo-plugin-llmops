@@ -257,3 +257,71 @@ def certify_log_format(format_name: str, format_content: str) -> Tuple[bool, str
     except Exception as e:
         logger.error(f"验证日志格式失败: {e}")
         return False, f"验证失败: {e}"
+
+def add_log_format_to_config(cfg_filepath: str, format_name: str, 
+                           format_content: str, target_file: str = None) -> Tuple[bool, str]:
+    """
+    添加日志格式到配置文件
+    
+    参数:
+        cfg_filepath: 主配置文件路径
+        format_name: 格式名称
+        format_content: 格式内容
+        target_file: 目标配置文件路径
+        
+    返回:
+        tuple: (是否成功，修改后的内容)
+    """
+    try:
+        # 安全验证：验证 cfg_filepath 路径参数（允许绝对路径）
+        valid, err_text = validate_path_param(cfg_filepath, allow_absolute=True)
+        if not valid:
+            logger.error(f"add_log_format_to_config: cfg_filepath 路径验证失败：{err_text}")
+            return False, f"配置文件路径不安全：{err_text}"
+        
+        # 安全验证：验证 format_name 标识符参数
+        valid, err_text = validate_identifier_param(format_name)
+        if not valid:
+            logger.error(f"add_log_format_to_config: format_name 验证失败：{err_text}")
+            return False, f"格式名称不安全：{err_text}"
+        
+        target_file = cfg_filepath if target_file is None else target_file
+        # 安全验证：验证 target_file 路径参数（允许绝对路径）
+        valid, err_text = validate_path_param(target_file, allow_absolute=True)
+        if not valid:
+            logger.error(f"add_log_format_to_config: target_file 路径验证失败：{err_text}")
+            return False, f"目标文件路径不安全：{err_text}"
+        
+        if not os.path.exists(target_file):
+            # 如果目标文件不存在，创建它
+            os.makedirs(os.path.dirname(target_file), exist_ok=True)
+            with open(target_file, 'w', encoding='utf-8') as f:
+                f.write('# Nginx 日志格式配置\n\n')
+        
+        with open(target_file, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 检查是否已存在同名格式
+        existing_pattern = rf'log_format\s+{format_name}\s*{{[^}}]+}}'  # NOSONAR
+        if re.search(existing_pattern, body, re.DOTALL):  # NOSONAR
+            return False, f"格式名称 '{format_name}' 已存在"
+        
+        # 在http块内添加log_format指令
+        http_pattern = r'(http\s*\{)'  # NOSONAR
+        http_match = re.search(http_pattern, body)  # NOSONAR
+        
+        if http_match:
+            # 在http块开头添加
+            insert_pos = http_match.end()
+            log_format_line = f'\n    log_format {format_name} {{{format_content}}};\n'
+            new_content = body[:insert_pos] + log_format_line + body[insert_pos:]
+        else:
+            # 如果没有http块，在文件末尾添加
+            log_format_line = f'\nhttp {{\n    log_format {format_name} {{{format_content}}};\n}}\n'
+            new_content = body + log_format_line
+        
+        return True, new_content
+        
+    except Exception as e:
+        logger.error(f"添加日志格式到配置文件失败: {e}")
+        return False, f"添加失败: {e}"
