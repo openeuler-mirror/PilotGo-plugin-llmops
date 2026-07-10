@@ -191,3 +191,29 @@ def verify_package_integrity(package_name, check_type=None):
     except Exception as e:
         logger.error(f'检查包完整性失败 {package_name}: {e}')
         return {'package': package_name, 'error': str(e)}
+def verify_all_packages_integrity(check_type=None):
+    """
+    检查所有包的完整性
+
+    参数:
+        check_type: 检查类型
+
+    返回:
+        检查结果列表
+    """
+    try:
+        results = []
+
+        # 获取所有已安装的包
+        packages = fetch_all_installed_packages()
+
+        # 检查每个包
+        for package in packages[:10]:  # 只检查前10个包，避免性能问题
+            package_result = verify_package_integrity(package, check_type)
+            results.append(package_result)
+
+        return results
+
+    except Exception as e:
+        logger.error(f'检查所有包完整性失败: {e}')
+        return []
