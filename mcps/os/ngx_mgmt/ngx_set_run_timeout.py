@@ -212,3 +212,12 @@ def save_config_file(cfg_filepath):
     except Exception as e:
         logger.warning(f'配置文件备份失败: {e}')
         return None
+
+def recover_config_file(cfg_filepath, backup_path):
+    """恢复配置文件"""
+    try:
+        shutil.copy2(backup_path, cfg_filepath)
+        return True
+    except Exception as e:
+        logger.error(f'配置文件恢复失败: {e}')
+        return False
