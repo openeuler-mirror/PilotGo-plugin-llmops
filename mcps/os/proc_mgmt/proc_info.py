@@ -42,6 +42,12 @@ def fetch_proc_info(pid=None):
         logger.error(f'Failed: {e}')
         return f'Error: {e}'
 
+# Edge cases handled:
+# - Invalid or non-existent PID
+# - /proc filesystem unavailable
+# - Permission denied for restricted /proc entries
+# - Process exit between inspection steps
+
 TOOL_CONFIG = {
     "name": "fetch_proc_info",
     "function": fetch_proc_info,
