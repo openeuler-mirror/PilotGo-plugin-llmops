@@ -395,3 +395,35 @@ def analyze_swap_info(output):
     except Exception as e:
         logger.error(f'解析交换分区信息失败: {e}')
         return {}
+def analyze_macos_swap_info(output):
+    """
+    解析macOS交换分区信息
+
+    参数:
+        output: sysctl输出
+
+    返回:
+        交换分区信息字典
+    """
+    try:
+        swap_info = {}
+
+        # macOS的交换分区信息格式: "total = 1024.00M  used = 512.00M  free = 512.00M  (encrypted)"
+        parts = output.split()
+        if len(parts) >= 6:
+            total = parts[2]
+            used = parts[5]
+            free = parts[8]
+
+            swap_info['vm_swapfile'] = {
+                'type': 'file',
+                'size': total,
+                'used': used,
+                'priority': 'N/A'
+            }
+
+        return swap_info
+
+    except Exception as e:
+        logger.error(f'解析macOS交换分区信息失败: {e}')
+        return {}
