@@ -195,3 +195,104 @@ def analyze_existing_upstream_config(upstream_content: str) -> Dict[str, Any]:
         logger.error(f"解析现有上游服务配置失败: {e}")
     
     return settings
+
+def produce_upstream_config(
+    upstream_name: str,
+    servers: List[str],
+    load_balancing_method: Optional[str] = None,
+    hash_key: Optional[str] = None,
+    timeout_settings: Optional[Dict[str, str]] = None,
+    retry_settings: Optional[Dict[str, str]] = None,
+    fail_thresholds: Optional[Dict[str, str]] = None,
+    existing_config: Optional[Dict[str, Any]] = None
+) -> str:
+    """
+    生成上游服务配置
+    
+    参数:
+        upstream_name: 上游服务名称
+        servers: 服务器列表
+        load_balancing_method: 负载均衡方法
+        hash_key: 哈希键（仅用于hash方法）
+        timeout_settings: 超时设置
+        retry_settings: 重试设置
+        fail_thresholds: 熔断阈值设置
+        existing_config: 现有配置信息
+        
+    返回:
+        str: 生成的配置内容
+    """
+    try:
+        lines = [f"upstream {upstream_name} {{"]
+        
+        # 添加负载均衡策略
+        if load_balancing_method:
+            if load_balancing_method == 'ip_hash':
+                lines.append("    ip_hash;")
+            elif load_balancing_method == 'least_conn':
+                lines.append("    least_conn;")
+            elif load_balancing_method == 'hash' and hash_key:
+                lines.append(f"    hash {hash_key};")
+            elif load_balancing_method == 'sticky':
+                lines.append("    sticky;")
+        
+        # 添加服务器配置（包含熔断阈值）
+        for server in servers:
+            server_line = f"    server {server}"
+            
+            # 添加熔断阈值设置
+            if fail_thresholds:
+                if 'max_fails' in fail_thresholds:
+                    server_line += f" max_fails={fail_thresholds['max_fails']}"
+                if 'fail_timeout' in fail_thresholds:
+                    server_line += f" fail_timeout={fail_thresholds['fail_timeout']}"
+            
+            server_line += ";"
+            lines.append(server_line)
+        
+        # 添加超时设置
+        if timeout_settings:
+            for key, value in timeout_settings.items():
+                if key == 'connect_timeout':
+                    lines.append(f"    proxy_connect_timeout {value};")
+                elif key == 'send_timeout':
+                    lines.append(f"    proxy_send_timeout {value};")
+                elif key == 'read_timeout':
+                    lines.append(f"    proxy_read_timeout {value};")
+                elif key == 'keepalive_timeout':
+                    lines.append(f"    keepalive_timeout {value};")
+        
+        # 添加重试设置
+        if retry_settings:
+            for key, value in retry_settings.items():
+                if key == 'next_upstream':
+                    lines.append(f"    proxy_next_upstream {value};")
+                elif key == 'next_upstream_timeout':
+                    lines.append(f"    proxy_next_upstream_timeout {value};")
+                elif key == 'next_upstream_tries':
+                    lines.append(f"    proxy_next_upstream_tries {value};")
+        
+        # 保留现有配置中的其他设置
+        if existing_config:
+            # 保留健康检查配置
+            if existing_config.get('health_check'):
+                health_check = existing_config['health_check']
+                if health_check.get('enabled', False):
+                    lines.append("    health_check;")
+                    for key, value in health_check.items():
+                        if key != 'enabled' and value:
+                            lines.append(f"    health_check_{key} {value};")
+            
+            # 保留其他配置
+            if 'other_configs' in existing_config:
+                for key, value in existing_config['other_configs'].items():
+                    if key not in ['max_fails', 'fail_timeout']:  # 这些已经在服务器配置中处理
+                        lines.append(f"    {key} {value};")
+        
+        lines.append("}")
+        
+        return "\n".join(lines)
+        
+    except Exception as e:
+        logger.error(f"生成上游服务配置失败: {e}")
+        return ""
