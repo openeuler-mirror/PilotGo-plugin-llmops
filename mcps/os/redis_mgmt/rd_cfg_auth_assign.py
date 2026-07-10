@@ -257,3 +257,20 @@ def remove_acl_user(username: str) -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def fetch_redis_version() -> str:
+    """
+    获取Redis版本
+
+    返回:
+        Redis版本字符串
+    """
+    try:
+        info_out = execute_redis_command('INFO server')
+        if info_out:
+            info_map = parse_redis_info(info_out)
+            if 'server.redis_version' in info_map:
+                return info_map['server.redis_version']
+    except Exception as e:
+        logger.warning(f"获取Redis版本失败: {e}")
+
+    return '0.0.0'
