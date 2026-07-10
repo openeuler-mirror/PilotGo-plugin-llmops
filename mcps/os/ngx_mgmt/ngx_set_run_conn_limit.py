@@ -675,3 +675,34 @@ def render_output(output: Dict[str, Any]) -> str:
         output_lines.append(f"监听队列长度: {prev_settings.get('listen_backlog', '默认')} -> {new_settings.get('listen_backlog', '默认')}")
     
     return '\n'.join(output_lines)
+
+def render_bytes(bytes_count: int) -> str:
+    """
+    格式化字节数为易读格式
+    
+    参数:
+        bytes_count: 字节数
+        
+    返回:
+        str: 格式化后的字符串
+    """
+    if bytes_count == 0:
+        return "0 B"
+    
+    units = ['B', 'KB', 'MB', 'GB', 'TB']
+    unit_index = 0
+    
+    while bytes_count >= 1024 and unit_index < len(units) - 1:
+        bytes_count /= 1024
+        unit_index += 1
+    
+    return f"{bytes_count:.1f} {units[unit_index]}"
+
+# 工具配置
+TOOL_CONFIG = {
+    'name': 'set_nginx_connection_limits',
+    'description': '设置Nginx的工作连接数、文件描述符限制、单IP连接限制等参数',
+    'category': 'Nginx',
+    'function': set_nginx_connection_limits,
+    'output_format': 'json'
+}
