@@ -204,3 +204,85 @@ def build_backup_directory(backup_path: str) -> Optional[str]:
     except Exception as e:
         logger.error(f'创建备份目录失败: {e}')
         return None
+
+def gather_all_config_files(config_paths: Dict) -> List[Dict]:
+    """收集所有配置文件"""
+    config_files = []
+
+    try:
+        # 主配置文件
+        if os.path.exists(config_paths['main_config']):
+            config_files.append({
+                'type': 'main_config',
+                'path': config_paths['main_config'],
+                'description': 'Nginx主配置文件'
+            })
+
+        # 配置根目录下的所有.conf文件
+        if config_paths['config_root'] != 'Unknown':
+            config_root = config_paths['config_root']
+            for root, dirs, files in os.walk(config_root):
+                for file in files:
+                    if file.endswith('.conf'):
+                        full_path = os.path.join(root, file)
+                        relative_path = os.path.relpath(full_path, config_root)
+                        config_files.append({
+                            'type': 'config_file',
+                            'path': full_path,
+                            'description': f'配置文件: {relative_path}'
+                        })
+
+        # 虚拟主机目录
+        if config_paths['vhosts_dir'] != 'Unknown' and os.path.exists(config_paths['vhosts_dir']):
+            for file in os.listdir(config_paths['vhosts_dir']):
+                if file.endswith('.conf'):
+                    full_path = os.path.join(config_paths['vhosts_dir'], file)
+                    config_files.append({
+                        'type': 'vhost_config',
+                        'path': full_path,
+                        'description': f'虚拟主机配置: {file}'
+                    })
+
+        # conf.d目录
+        if config_paths['conf_d_dir'] != 'Unknown' and os.path.exists(config_paths['conf_d_dir']):
+            for file in os.listdir(config_paths['conf_d_dir']):
+                if file.endswith('.conf'):
+                    full_path = os.path.join(config_paths['conf_d_dir'], file)
+                    config_files.append({
+                        'type': 'conf_d_config',
+                        'path': full_path,
+                        'description': f'conf.d配置: {file}'
+                    })
+
+        # 检查mime.types文件
+        mime_types_path = os.path.join(config_paths['config_root'], 'mime.types')
+        if os.path.exists(mime_types_path):
+            config_files.append({
+                'type': 'mime_types',
+                'path': mime_types_path,
+                'description': 'MIME类型配置文件'
+            })
+
+        # 检查fastcgi_params文件
+        fastcgi_params_path = os.path.join(config_paths['config_root'], 'fastcgi_params')
+        if os.path.exists(fastcgi_params_path):
+            config_files.append({
+                'type': 'fastcgi_params',
+                'path': fastcgi_params_path,
+                'description': 'FastCGI参数文件'
+            })
+
+        # 检查proxy_params文件
+        proxy_params_path = os.path.join(config_paths['config_root'], 'proxy_params')
+        if os.path.exists(proxy_params_path):
+            config_files.append({
+                'type': 'proxy_params',
+                'path': proxy_params_path,
+                'description': '代理参数文件'
+            })
+
+        return config_files
+
+    except Exception as e:
+        logger.error(f'收集配置文件失败: {e}')
+        return []
