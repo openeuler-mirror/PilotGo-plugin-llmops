@@ -163,3 +163,31 @@ def display_hosts_entry(output, entry):
     output.append(f"  行 {entry.get('line_num')}:")
     output.append(f"    IP地址: {entry.get('ip')}")
     output.append(f"    主机名: {', '.join(entry.get('hostnames'))}")
+def fetch_hosts_stats(parsed_hosts):
+    """
+    获取hosts文件统计信息
+    """
+    stats = {}
+
+    try:
+        stats['总条目数'] = len(parsed_hosts.get('entries', []))
+        stats['注释行数'] = len(parsed_hosts.get('comments', []))
+        stats['空行数'] = parsed_hosts.get('blank_lines', 0)
+        stats['自定义规则数'] = len(parsed_hosts.get('custom_rules', []))
+
+        # 统计IP类型
+        ipv4_count = 0
+        ipv6_count = 0
+        for entry in parsed_hosts.get('entries', []):
+            ip = entry.get('ip')
+            if ':' in ip:
+                ipv6_count += 1
+            else:
+                ipv4_count += 1
+        stats['IPv4条目数'] = ipv4_count
+        stats['IPv6条目数'] = ipv6_count
+
+    except Exception as e:
+        logger.error(f'获取hosts文件统计失败: {e}')
+
+    return stats
