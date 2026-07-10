@@ -122,3 +122,89 @@ def save_config_file(cfg_filepath: str,
         logger.error(output['message'])
 
     return output
+def redis_config_backup(cfg_filepath: Optional[str] = None,
+                       backup_path: Optional[str] = None,
+                       note: Optional[str] = None,
+                       compress: bool = False) -> Dict[str, Any]:
+    """
+    备份当前配置文件（按时间戳命名，支持指定备份路径、压缩存储）
+
+    参数:
+        cfg_filepath: 配置文件路径，如果为None则自动获取
+        backup_path: 备份文件路径，如果为None则自动生成
+        note: 版本备注
+        compress: 是否压缩备份文件
+
+    返回:
+        格式化的备份结果字典
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'data': {},
+        'timestamp': datetime.now().isoformat()
+    }
+
+    try:
+        rd_cli = get_redis_cli_command()
+        if not rd_cli:
+            output['message'] = '未找到redis-cli命令'
+            return output
+
+        if not cfg_filepath:
+            cfg_filepath = get_redis_config_file()
+            if not cfg_filepath:
+                output['message'] = '无法获取Redis配置文件路径'
+                return output
+
+        backup_result = save_config_file(cfg_filepath, backup_path, note, compress)
+        output['data'] = backup_result
+        output['success'] = backup_result['success']
+        output['message'] = backup_result['message']
+
+    except Exception as e:
+        output['message'] = f'备份配置文件时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
+
+TOOL_CONFIG = {
+    'name': 'rd_cfg_backup',
+    'function': redis_config_backup,
+    'description': '备份当前配置文件（按时间戳命名，支持指定备份路径、压缩存储）',
+    'parameters': {
+        'cfg_filepath': {
+            'type': 'string',
+            'description': '配置文件路径',
+            'required': False
+        },
+        'backup_path': {
+            'type': 'string',
+            'description': '备份文件路径',
+            'required': False
+        },
+        'note': {
+            'type': 'string',
+            'description': '版本备注',
+            'required': False
+        },
+        'compress': {
+            'type': 'boolean',
+            'description': '是否压缩备份文件',
+            'default': False
+        }
+    },
+    'returns': {
+        'type': 'object',
+        'description': '备份结果字典'
+    }
+}
+
+if __name__ == '__main__':
+    cfg_filepath = sys.argv[1] if len(sys.argv) > 1 else None
+    backup_path = sys.argv[2] if len(sys.argv) > 2 else None
+    note = sys.argv[3] if len(sys.argv) > 3 else None
+    compress = sys.argv[4].lower() == 'true' if len(sys.argv) > 4 else False
+
+    output = redis_config_backup(cfg_filepath, backup_path, note, compress)
+    print(json.dumps(output, indent=2, ensure_ascii=False))
