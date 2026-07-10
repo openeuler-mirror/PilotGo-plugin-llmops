@@ -98,3 +98,67 @@ def activate_password_auth(enable: bool = True) -> Dict[str, Any]:  # NOSONAR
         logger.error(output['message'])
 
     return output
+def build_acl_user(username: str,
+                    password: Optional[str] = None,  # NOSONAR
+                    enabled: bool = True,
+                    categories: Optional[List[str]] = None,
+                    commands: Optional[List[str]] = None,
+                    keys: Optional[List[str]] = None) -> Dict[str, Any]:
+    """
+    创建ACL用户
+
+    参数:
+        username: 用户名
+        password: 密码  # NOSONAR
+        enabled: 是否启用
+        categories: 权限类别列表
+        commands: 命令权限列表
+        keys: 键权限列表
+
+    返回:
+        创建结果信息字典
+    """
+    output = {
+        'success': False,
+        'username': username,
+        'message': ''
+    }
+
+    try:
+        acl_command = f'ACL SETUSER {username}'
+
+        if enabled:
+            acl_command += ' on'
+        else:
+            acl_command += ' off'
+
+        if password:  # NOSONAR
+            acl_command += f' >{password}'  # NOSONAR
+        else:
+            acl_command += ' nopass'
+
+        if categories:
+            for category in categories:
+                acl_command += f' @{category}'
+
+        if commands:
+            for command in commands:
+                acl_command += f' +{command}'
+
+        if keys:
+            for key in keys:
+                acl_command += f' ~{key}'
+
+        set_output = execute_redis_command(acl_command)
+
+        if set_output and set_output == 'OK':
+            output['success'] = True
+            output['message'] = f'ACL用户 {username} 创建成功'
+        else:
+            output['message'] = f'创建ACL用户 {username} 失败'
+
+    except Exception as e:
+        output['message'] = f'创建ACL用户时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
