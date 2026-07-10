@@ -271,3 +271,33 @@ def verify_special_entries():
         logger.error(f'检查特殊条目失败: {e}')
 
     return special_entries
+def is_valid_ip(ip):
+    """
+    验证IP地址格式
+    """
+    try:
+        # 检查IPv4
+        if '.' in ip:
+            parts = ip.split('.')
+            if len(parts) == 4:
+                return all(0 <= int(part) <= 255 for part in parts)
+        # 检查IPv6
+        elif ':' in ip:
+            # 简单的IPv6格式检查
+            return True
+    except Exception:
+        pass
+
+    return False
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_net_hosts",
+    "function": fetch_net_hosts,
+    "description": "采集hosts配置（/etc/hosts/IP-主机名映射/注释/自定义解析规则）",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
