@@ -15,16 +15,35 @@ def fetch_proc_info(pid=None):
         Process information string
     """
     try:
-        if pid:
-            pid = str(int(pid))
-        if int(pid) <= 0:
-            return f'Error: invalid PID {pid} (must be positive)'
+        if pid is not None:
+            pid = int(pid)
+            if pid <= 0:
+                return f'Error: invalid PID {pid} (must be positive)'
             path = f'/proc/{pid}/status'
             if not os.path.exists(path):
                 return f'Error: process {pid} not found'
             with open(path) as f:
-                content = f.read()
-            return f'=== Status for PID {pid} ===\n{content.strip()}'
+                content = f.read().strip()
+            exe = ''
+            try:
+                exe = os.readlink(f'/proc/{pid}/exe')
+            except (OSError, PermissionError):
+                pass
+            out = [f'=== Process Info for PID {pid} ===']
+            out.append(f'Name: {content.split(chr(10))[0].split(":")[1].strip() if ":" in content.split(chr(10))[0] else "?"}')
+            out.append(f'Exe:  {exe or "?"}')
+            try:
+                with open(f'/proc/{pid}/cmdline', 'rb') as f:
+                    cmdline = f.read().replace(b"\\x00", b" ").decode("utf-8", errors="replace").strip()
+                out.append(f'Cmd:  {cmdline or "?"}')
+            except (OSError, PermissionError):
+                out.append('Cmd:  ?')
+            for line in content.split(chr(10)):
+                key = line.split(':', 1)[0].strip() if ':' in line else ''
+                if key in ('State', 'Pid', 'PPid', 'Threads', 'VmRSS', 'VmSize'):
+                    out.append(line)
+            return chr(10).join(out)
+
         result = subprocess.run(['ps', 'aux', '--no-headers'], capture_output=True, text=True)
         if result.returncode != 0:
             return f'Error: ps failed: {result.stderr}'
