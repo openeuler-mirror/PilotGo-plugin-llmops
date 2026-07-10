@@ -85,3 +85,45 @@ def fetch_nginx_runtime_status():
     except Exception as e:
         logger.error(f'获取Nginx运行时状态失败: {e}')
         return f'获取Nginx运行时状态失败: {e}'
+
+def fetch_process_status(pids):
+    """获取进程状态"""
+    try:
+        master_count = 0
+        worker_count = 0
+        total_count = 0
+        uptime = "未知"
+
+        for pid in pids:
+            try:
+                proc = psutil.Process(pid)
+                cmdline = ' '.join(proc.cmdline()).lower()
+
+                if 'master' in cmdline:
+                    master_count += 1
+                    # 获取主进程启动时间
+                    create_time = proc.create_time()
+                    start_time = datetime.fromtimestamp(create_time)
+                    uptime_delta = datetime.now() - start_time
+                    uptime = f"{uptime_delta.days}天 {uptime_delta.seconds//3600}小时 {(uptime_delta.seconds%3600)//60}分钟"
+                elif 'worker' in cmdline:
+                    worker_count += 1
+
+                total_count += 1
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        return {
+            'count': total_count,
+            'master': master_count,
+            'workers': worker_count,
+            'uptime': uptime
+        }
+    except Exception as e:
+        logger.error(f'获取进程状态失败: {e}')
+        return {
+            'count': 0,
+            'master': 0,
+            'workers': 0,
+            'uptime': "未知"
+        }
