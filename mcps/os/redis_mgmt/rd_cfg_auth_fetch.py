@@ -225,3 +225,84 @@ def fetch_password_encryption() -> Dict[str, Any]:  # NOSONAR
         logger.error(output['message'])
 
     return output
+def redis_config_auth_get(action: str = 'all') -> Dict[str, Any]:
+    """
+    采集认证配置（是否开启密码、密码加密方式、ACL规则列表）
+
+    参数:
+        action: 操作类型，可选值：
+               - "config": 获取认证配置
+               - "users": 获取ACL用户列表
+               - "rules": 获取ACL规则列表
+               - "encryption": 获取密码加密方式
+               - "all": 获取所有认证信息
+
+    返回:
+        格式化的认证配置信息字典
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'data': {},
+        'timestamp': datetime.now().isoformat()
+    }
+
+    try:
+        rd_cli = get_redis_cli_command()
+        if not rd_cli:
+            output['message'] = '未找到redis-cli命令'
+            return output
+
+        test_output = execute_redis_command('PING')
+        if not test_output or test_output.upper() != 'PONG':
+            output['message'] = '无法连接到Redis服务器'
+            return output
+
+        if action in ['config', 'all']:
+            config_result = fetch_auth_config()
+            output['data']['auth_config'] = config_result
+
+        if action in ['users', 'all']:
+            users_result = fetch_acl_users()
+            output['data']['acl_users'] = users_result
+
+        if action in ['rules', 'all']:
+            rules_result = fetch_acl_rules()
+            output['data']['acl_rules'] = rules_result
+
+        if action in ['encryption', 'all']:
+            encryption_result = fetch_password_encryption()  # NOSONAR
+            output['data']['password_encryption'] = encryption_result  # NOSONAR
+
+        output['success'] = True
+        output['message'] = '认证配置采集成功'
+
+    except Exception as e:
+        output['message'] = f'采集认证配置时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
+
+TOOL_CONFIG = {
+    'name': 'rd_cfg_auth_fetch',
+    'function': redis_config_auth_get,
+    'description': '采集认证配置（是否开启密码、密码加密方式、ACL规则列表）',
+    'parameters': {
+        'action': {
+            'type': 'string',
+            'description': '操作类型',
+            'enum': ['config', 'users', 'rules', 'encryption', 'all'],
+            'default': 'all'
+        }
+    },
+    'returns': {
+        'type': 'object',
+        'description': '认证配置信息字典'
+    }
+}
+
+if __name__ == '__main__':
+    action = sys.argv[1] if len(sys.argv) > 1 else 'all'
+
+    output = redis_config_auth_get(action)
+    print(json.dumps(output, indent=2, ensure_ascii=False))
