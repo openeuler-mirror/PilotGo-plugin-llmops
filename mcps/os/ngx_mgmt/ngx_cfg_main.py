@@ -343,3 +343,31 @@ def derive_location_configs(body):
     except Exception as e:
         logger.error(f'提取location配置失败: {e}')
         return []
+
+def derive_include_configs(body):
+    """提取include指令"""
+    try:
+        include_configs = []
+
+        # 查找所有include指令
+        include_matches = re.findall(r'include\s+([^;]+);', body)  # NOSONAR
+
+        for include in include_matches:
+            include_configs.append(f"包含文件: {include.strip()}")
+
+        return include_configs
+    except Exception as e:
+        logger.error(f'提取include配置失败: {e}')
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_nginx_config_main",
+    "function": fetch_nginx_config_main,
+    "description": "获取Nginx主配置文件(nginx.conf)的完整内容并格式化输出",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
