@@ -263,3 +263,33 @@ def analyze_dmidecode_baseboard(output, mobo_info):
     except Exception as e:
         logger.error(f'解析dmidecode主板输出失败: {e}')
         return mobo_info
+def analyze_lshw_baseboard(output, mobo_info):
+    """
+    解析lshw主板输出
+
+    参数:
+        output: lshw输出
+        mobo_info: 主板信息字典
+
+    返回:
+        更新后的主板信息字典
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            stripped_line = line.strip()
+            if stripped_line.startswith('vendor:'):
+                mobo_info['vendor'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('product:'):
+                mobo_info['model'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('serial:'):
+                mobo_info['serial'] = stripped_line.split(':', 1)[1].strip()
+            elif stripped_line.startswith('version:'):
+                mobo_info['form_factor'] = stripped_line.split(':', 1)[1].strip()
+
+        return mobo_info
+
+    except Exception as e:
+        logger.error(f'解析lshw主板输出失败: {e}')
+        return mobo_info
