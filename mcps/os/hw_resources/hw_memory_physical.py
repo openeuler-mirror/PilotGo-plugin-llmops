@@ -427,3 +427,46 @@ def analyze_macos_memory(output, mem_data):
     except Exception as e:
         logger.error(f'解析macOS内存输出失败: {e}')
         return mem_data
+def analyze_windows_memory(output, mem_data):
+    """
+    解析Windows内存输出
+
+    参数:
+        output: wmic输出
+        mem_data: 内存信息字典
+
+    返回:
+        更新后的内存信息字典
+    """
+    try:
+        lines = output.strip().split('\n')[1:]
+        devices = []
+
+        for line in lines:
+            if line.strip():
+                parts = [part.strip() for part in line.split() if part.strip()]
+                if len(parts) >= 5:
+                    detail = {
+                        'size': f"{int(parts[0]) / 1024 / 1024 / 1024:.2f} GB",
+                        'model': parts[2],
+                        'vendor': parts[1],
+                        'frequency': f"{parts[3]} MHz",
+                        'type': 'Unknown',
+                        'speed': f"{parts[4]} MHz",
+                        'voltage': 'Unknown'
+                    }
+                    devices.append(detail)
+                    mem_data['details'].append(detail)
+                    mem_data['models'].append(detail['model'])
+                    mem_data['vendors'].append(detail['vendor'])
+                    mem_data['frequencies'].append(detail['frequency'])
+
+        if devices:
+            mem_data['installed'] = str(len(devices))
+            mem_data['slots'] = str(len(devices))
+
+        return mem_data
+
+    except Exception as e:
+        logger.error(f'解析Windows内存输出失败: {e}')
+        return mem_data
