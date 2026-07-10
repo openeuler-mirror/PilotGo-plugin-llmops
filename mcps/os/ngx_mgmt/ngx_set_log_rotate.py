@@ -387,3 +387,24 @@ def setup_cron_job(script_path: str, rotation_type: str, rotation_value: str) ->
     except Exception as e:
         logger.error(f"设置定时任务失败: {e}")
         return False
+
+def _test_rotation_config() -> bool:
+    """
+    测试日志切割配置
+    
+    返回:
+        bool: 测试是否成功
+    """
+    try:
+        # 测试 logrotate 配置语法
+        output = subprocess.run(['logrotate', '-d', '/etc/logrotate.d/nginx'], 
+                              capture_output=True, text=True)
+        if output.returncode == 0:
+            logger.info("logrotate 配置语法测试通过")
+            return True
+        else:
+            logger.error(f"logrotate 配置语法测试失败：{output.stderr}")
+            return False
+    except Exception as e:
+        logger.error(f"测试日志切割配置失败：{e}")
+        return False
