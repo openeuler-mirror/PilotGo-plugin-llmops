@@ -170,3 +170,21 @@ def fetch_dnat_rules():
         logger.error(f'获取DNAT规则失败: {e}')
 
     return rules
+def display_rule_info(output, index, rule):
+    """
+    显示规则信息
+    """
+    output.append(f"  {index}.")
+    output.append(f"    链: {rule.get('链', '未知')}")
+    output.append(f"    目标: {rule.get('目标', '未知')}")
+    output.append(f"    协议: {rule.get('协议', '未知')}")
+    output.append(f"    源IP: {rule.get('源IP', '未知')}")
+    output.append(f"    目标IP: {rule.get('目标IP', '未知')}")
+    if '转换地址' in rule:
+        output.append(f"    转换地址: {rule['转换地址']}")
+    if '源端口' in rule:
+        output.append(f"    源端口: {rule['源端口']}")
+    if '目标端口' in rule:
+        output.append(f"    目标端口: {rule['目标端口']}")
+    if '动作' in rule:
+        output.append(f"    动作: {rule['动作']}")
