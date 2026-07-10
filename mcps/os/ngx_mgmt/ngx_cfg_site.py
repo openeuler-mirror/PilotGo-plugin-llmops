@@ -280,3 +280,19 @@ def derive_server_names(body):
     except Exception as e:
         logger.error(f'提取服务器名称失败: {e}')
         return []
+
+def derive_server_blocks(body):
+    """提取所有server块"""
+    try:
+        server_blocks = []
+        # 使用正则表达式提取server块
+        pattern = r'server\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}'  # NOSONAR
+        matches = re.findall(pattern, body, re.DOTALL)  # NOSONAR
+
+        for match in matches:
+            server_blocks.append(match.strip())
+
+        return server_blocks
+    except Exception as e:
+        logger.error(f'提取server块失败: {e}')
+        return []
