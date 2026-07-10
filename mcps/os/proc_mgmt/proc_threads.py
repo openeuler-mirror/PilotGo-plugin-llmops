@@ -4,7 +4,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('proc_threads')
 
-def fetch_proc_threads(pid):
+def fetch_proc_threads(pid, fmt=None):
     """List threads of a process from /proc/<pid>/task/.
 
     Args:
@@ -50,7 +50,7 @@ TOOL_CONFIG = {
     "parameters": {
         "type": "object",
         "properties": {
-            "pid": {"type": "string", "description": "Target PID, e.g. '1234'"}
+            "format": {"type": "string", "description": "Output: text/json/summary", "enum": ["text","json","summary"]}, "pid": {"type": "string", "description": "Target PID, e.g. '1234'"}
         },
         "required": ["pid"]
     }
