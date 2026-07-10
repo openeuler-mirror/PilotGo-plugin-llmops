@@ -360,3 +360,38 @@ def fetch_virtual_memory_details():
             'swap_used': 'Unknown',
             'swap_free': 'Unknown'
         }
+def analyze_swap_info(output):
+    """
+    解析交换分区信息
+
+    参数:
+        output: swapon输出
+
+    返回:
+        交换分区信息字典
+    """
+    try:
+        swap_info = {}
+        lines = output.strip().split('\n')
+
+        for line in lines[1:]:
+            parts = line.split()
+            if len(parts) >= 5:
+                swap_device = parts[0]
+                swap_type = parts[1]
+                swap_size = parts[2]
+                swap_used = parts[3]
+                swap_priority = parts[4]
+
+                swap_info[swap_device] = {
+                    'type': swap_type,
+                    'size': swap_size,
+                    'used': swap_used,
+                    'priority': swap_priority
+                }
+
+        return swap_info
+
+    except Exception as e:
+        logger.error(f'解析交换分区信息失败: {e}')
+        return {}
