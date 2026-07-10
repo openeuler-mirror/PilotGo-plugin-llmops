@@ -88,3 +88,41 @@ def build_nginx_site_config(site_name, port=80, root_path="/var/www/html",
     except Exception as e:
         logger.error(f'创建Nginx站点配置失败: {str(e)}')
         return f'创建Nginx站点配置失败: {str(e)}'
+
+def certify_create_parameters(site_name, port, root_path, server_names,
+                             config_type, enable_ssl, enable_php,
+                             enable_proxy, proxy_target):
+    """验证创建参数"""
+    try:
+        # 验证站点名称
+        if not site_name or not re.match(r'^[a-zA-Z0-9_-]+$', site_name):  # NOSONAR
+            return '站点名称只能包含字母、数字、下划线和连字符'
+
+        # 验证端口
+        if not isinstance(port, int) or port < 1 or port > 65535:
+            return '端口号必须是1-65535之间的整数'
+
+        # 验证根路径
+        if not root_path or not isinstance(root_path, str):
+            return '根路径必须为有效的字符串'
+
+        # 验证配置类型
+        valid_config_types = ["basic", "php", "proxy", "static"]
+        if config_type not in valid_config_types:
+            return f'配置类型必须是: {", ".join(valid_config_types)}'
+
+        # 验证代理配置
+        if enable_proxy and not proxy_target:
+            return '启用代理时，必须指定代理目标地址'
+
+        # 服务器名称处理
+        if server_names is None:
+            server_names = [site_name]
+        elif isinstance(server_names, str):
+            server_names = [server_names]
+
+        return None
+
+    except Exception as e:
+        logger.error(f'验证参数失败: {str(e)}')
+        return f'参数验证失败: {str(e)}'
