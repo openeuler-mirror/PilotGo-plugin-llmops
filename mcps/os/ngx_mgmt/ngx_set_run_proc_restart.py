@@ -375,3 +375,17 @@ def examine_process_changes(pre_processes, post_processes):
         return f"新增: {len(new_processes)}, 终止: {len(terminated_processes)}, 保持: {len(preserved_processes)}"
     except Exception as e:
         return f"分析失败: {e}"
+
+def verify_connection_preservation(pre_processes, post_processes):
+    """检查连接保持情况"""
+    try:
+        pre_connections = sum(p.get('connections', 0) for p in pre_processes)
+        post_connections = sum(p.get('connections', 0) for p in post_processes)
+
+        if pre_connections > 0:
+            preservation_rate = (post_connections / pre_connections) * 100
+            return f"{preservation_rate:.1f}% 连接保持"
+        else:
+            return "无活跃连接"
+    except Exception as e:
+        return f"检查失败: {e}"
