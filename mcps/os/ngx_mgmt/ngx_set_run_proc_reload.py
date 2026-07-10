@@ -468,3 +468,76 @@ def fetch_nginx_all_pids():
     except Exception as e:
         logger.error(f"获取Nginx进程PID失败: {e}")
         return []
+
+def examine_reload_recommendations():
+    """
+    分析并推荐重载策略
+
+    Returns:
+        dict: 推荐策略
+    """
+    try:
+        proc_info = get_nginx_process_info()
+        if proc_info["status"] != "运行中":
+            return {"recommendation": "无法重载", "reason": "Nginx服务未运行"}
+
+        cfg_state = get_nginx_config_info()
+        current_time = datetime.now().strftime("%H:%M")
+
+        recommendations = []
+
+        # 根据配置修改时间推荐
+        config_file = cfg_state.get('config_file', '')
+        if config_file and os.path.exists(config_file):
+            mtime = os.path.getmtime(config_file)
+            mod_time = datetime.fromtimestamp(mtime)
+            now = datetime.now()
+            time_diff = (now - mod_time).total_seconds() / 60  # 分钟
+
+            if time_diff < 5:  # 最近5分钟内修改
+                recommendations.append({
+                    "type": "graceful",
+                    "priority": "high",
+                    "reason": f"配置文件最近修改({time_diff:.1f}分钟前)，建议立即重载"
+                })
+
+        # 根据时间推荐
+        hour = datetime.now().hour
+        if 2 <= hour <= 5:  # 凌晨时段
+            recommendations.append({
+                "type": "graceful",
+                "priority": "medium",
+                "reason": "当前为业务低峰期，适合进行配置重载"
+            })
+        elif 9 <= hour <= 18:  # 工作时间
+            recommendations.append({
+                "type": "graceful",
+                "priority": "high",
+                "reason": "当前为业务高峰期，必须使用平滑重载"
+            })
+
+        # 默认推荐
+        if not recommendations:
+            recommendations.append({
+                "type": "graceful",
+                "priority": "high",
+                "reason": "平滑重载是最安全的重载方式"
+            })
+
+        # 选择优先级最高的推荐
+        priority_map = {"high": 3, "medium": 2, "low": 1}
+        best_recommendation = max(recommendations, key=lambda x: priority_map[x["priority"]])
+
+        return {
+            "current_status": {
+                "nginx_running": proc_info["status"] == "运行中",
+                "config_file": config_file,
+                "current_time": current_time
+            },
+            "recommendations": recommendations,
+            "best_recommendation": best_recommendation
+        }
+
+    except Exception as e:
+        logger.error(f"分析重载推荐失败: {e}")
+        return {"error": f"分析失败: {e}"}
