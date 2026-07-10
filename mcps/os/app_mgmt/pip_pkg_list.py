@@ -142,3 +142,23 @@ def fetch_app_pip_list(pip_info=None, scope=None):
     except Exception as e:
         logger.error(f'获取Pip包信息失败: {e}')
         return f'获取Pip包信息失败: {e}'
+def fetch_available_pip_commands():
+    """
+    获取可用的pip命令
+
+    返回:
+        可用的pip命令列表
+    """
+    try:
+        pip_commands = []
+
+        # 检查常见的pip命令
+        for cmd in ['pip3', 'pip', 'pip2']:
+            output = subprocess.run(['which', cmd], capture_output=True, text=True)
+            if output.returncode == 0:
+                pip_commands.append(cmd)
+
+        return pip_commands
+
+    except Exception:
+        return []
