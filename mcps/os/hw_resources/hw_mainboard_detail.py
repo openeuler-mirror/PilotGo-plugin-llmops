@@ -408,3 +408,25 @@ def analyze_chipset_info(output):
     except Exception as e:
         logger.error(f'解析芯片组信息失败: {e}')
         return 'Unknown'
+def analyze_macos_chipset(output):
+    """
+    解析macOS芯片组信息
+
+    参数:
+        output: system_profiler输出
+
+    返回:
+        芯片组信息字符串
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            if 'Bridge' in line or 'Chipset' in line:
+                return line.strip()
+
+        return 'Unknown'
+
+    except Exception as e:
+        logger.error(f'解析macOS芯片组信息失败: {e}')
+        return 'Unknown'
