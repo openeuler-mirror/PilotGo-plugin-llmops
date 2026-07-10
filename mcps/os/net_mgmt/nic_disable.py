@@ -111,3 +111,93 @@ def is_interface_down(interface):
         pass
 
     return False
+def fetch_down_interface_info(interface):
+    """
+    获取禁用网卡的详细信息
+    """
+    # 安全校验：验证 interface 参数
+    is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+    if not is_valid:
+        logger.error(f'网络接口名称不合法：{error_msg}')
+        return {}
+
+    details = {}
+
+    try:
+        # 获取操作状态
+        operstate_path = f'/sys/class/net/{interface}/operstate'
+        if os.path.exists(operstate_path):
+            with open(operstate_path, 'r') as f:
+                operstate = f.read().strip()
+                details['操作状态'] = operstate
+
+        # 获取链路状态
+        carrier_path = f'/sys/class/net/{interface}/carrier'
+        if os.path.exists(carrier_path):
+            with open(carrier_path, 'r') as f:
+                carrier = f.read().strip()
+                details['链路状态'] = '连接' if carrier == '1' else '断开'
+
+        # 获取MAC地址
+        addr_path = f'/sys/class/net/{interface}/address'
+        if os.path.exists(addr_path):
+            with open(addr_path, 'r') as f:
+                mac = f.read().strip()
+                details['MAC地址'] = mac
+
+        # 获取接口类型
+        if os.path.exists(f'/sys/class/net/{interface}/type'):
+            with open(f'/sys/class/net/{interface}/type', 'r') as f:
+                type_val = f.read().strip()
+                type_map = {
+                    '1': '以太网',
+                    '24': 'IEEE 802.11无线',
+                    '512': 'PPP',
+                    '768': 'IPIP隧道',
+                    '769': 'GRE隧道',
+                    '772': 'VLAN',
+                    '776': 'LOOPBACK',
+                    '778': '桥接',
+                    '783': 'bond',
+                    '784': 'TUN',
+                    '785': 'TAP'
+                }
+                details['接口类型'] = type_map.get(type_val, f'未知类型 ({type_val})')
+
+        # 获取MTU
+        mtu_path = f'/sys/class/net/{interface}/mtu'
+        if os.path.exists(mtu_path):
+            with open(mtu_path, 'r') as f:
+                mtu = f.read().strip()
+                details['MTU'] = mtu
+
+        # 检查是否有配置文件
+        config_files = locate_interface_config_files(interface)
+        if config_files:
+            details['配置文件'] = ', '.join(config_files)
+        else:
+            details['配置文件'] = '无'
+
+        # 尝试获取IP配置（如果有）
+        try:
+            output = subprocess.run(['ip', 'addr', 'show', interface], capture_output=True, text=True)
+            if output.returncode == 0:
+                lines = output.stdout.strip().split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if 'inet ' in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            details['IP配置'] = parts[1]
+                            break
+        except Exception:
+            pass
+
+        details.setdefault('IP配置', '无')
+        # 分析可能的禁用原因
+        details['可能的禁用原因'] = examine_interface_disable_reason(interface)
+
+    except Exception as e:
+        logger.error(f'获取禁用网卡信息失败: {e}')
+
+    return details
