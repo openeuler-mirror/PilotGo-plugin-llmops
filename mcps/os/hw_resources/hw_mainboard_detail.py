@@ -538,3 +538,26 @@ def fetch_mobo_pci_info():
     except Exception as e:
         logger.error(f'获取主板PCI设备信息失败: {e}')
         return None
+def fetch_mobo_sata_info():
+    """
+    获取主板SATA设备信息
+
+    返回:
+        主板SATA设备信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['lspci', '-nn'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    sata_info = [line.strip() for line in lines if 'SATA' in line or 'IDE' in line or 'AHCI' in line]
+                    return '\n'.join(sata_info[:10])
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取主板SATA设备信息失败: {e}')
+        return None
