@@ -192,3 +192,49 @@ def fetch_pip_packages(scope=None):
     except Exception as e:
         logger.error(f'获取Pip包列表失败: {e}')
         return []
+def fetch_packages_with_command(pip_cmd, user_flag=None):
+    """
+    使用指定的pip命令获取包信息
+
+    参数:
+        pip_cmd: pip命令
+        user_flag: 用户标志
+
+    返回:
+        Pip包信息列表
+    """
+    try:
+        packages = []
+
+        # 构建命令
+        cmd = [pip_cmd, 'list', '--format=json']
+        if user_flag:
+            cmd.append(user_flag)
+
+        # 执行命令
+        output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+
+        if output.returncode == 0:
+            try:
+                pkg_list = json.loads(output.stdout)
+                for pkg in pkg_list:
+                    pkg_info = {
+                        'name': pkg.get('name'),
+                        'version': pkg.get('version'),
+                        'scope': 'user' if user_flag == '--user' else 'system',
+                        'location': fetch_package_location(pip_cmd, pkg.get('name')),
+                        'dependencies': fetch_package_dependencies(pip_cmd, pkg.get('name'))
+                    }
+                    packages.append(pkg_info)
+            except json.JSONDecodeError:
+                pass
+
+        return packages
+
+    except Exception as e:
+        logger.error(f'使用{pip_cmd}获取包信息失败: {e}')
+        return []
