@@ -485,3 +485,12 @@ def modify_cache_path_line(line, params, cache_type):
     new_line += f" max_size={new_max_size};"
 
     return new_line
+
+def certify_nginx_config():
+    """验证 Nginx 配置文件语法（无外部参数，使用内部固定命令）"""
+    try:
+        # 该函数无外部参数，直接使用 nginx -t 检查默认配置
+        output = subprocess.run(['nginx', '-t'], capture_output=True, text=True)
+        return {'valid': True} if output.returncode == 0 else {'valid': False, 'error': output.stderr}
+    except Exception as e:
+        return {'valid': False, 'error': str(e)}
