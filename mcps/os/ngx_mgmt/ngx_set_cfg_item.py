@@ -659,3 +659,120 @@ def fetch_config_item_recommendations(item_name: str) -> Dict:
             "found": False,
             "error": f"获取推荐值失败: {e}"
         }
+
+def produce_set_config_report(set_result: Dict) -> str:
+    """
+    生成配置设置报告
+    
+    Args:
+        set_result: 设置操作结果
+    
+    Returns:
+        str: 格式化报告
+    """
+    try:
+        report = []
+        report.append("=== Nginx配置项设置报告 ===")
+        report.append(f"操作时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report.append(f"配置类型: {set_result.get('config_type', 'N/A')}")
+        report.append(f"配置项: {set_result.get('item_name', 'N/A')}")
+        report.append(f"设置值: {set_result.get('item_value', 'N/A')}")
+        
+        if set_result.get('site_name'):
+            report.append(f"站点名称: {set_result.get('site_name')}")
+        if set_result.get('context'):
+            report.append(f"上下文: {set_result.get('context')}")
+        
+        report.append(f"操作结果: {'成功' if set_result.get('success') else '失败'}")
+        
+        # 变更详情
+        changes = set_result.get('changes_made', [])
+        if changes:
+            report.append(f"\n变更详情:")
+            for change in changes:
+                report.append(f"  文件: {change.get('file')}")
+                report.append(f"  操作: {change.get('action')}")
+                if change.get('old_value'):
+                    report.append(f"  原值: {change.get('old_value')}")
+                report.append(f"  新值: {change.get('new_value')}")
+                report.append("")
+        
+        # 验证结果
+        if set_result.get('validation_result'):
+            report.append(f"配置验证: {set_result.get('validation_result')}")
+        
+        # 重载结果
+        if set_result.get('reload_result'):
+            report.append(f"配置重载: {set_result.get('reload_result')}")
+        
+        # 备份信息
+        if set_result.get('backup_path'):
+            report.append(f"配置备份: {set_result.get('backup_path')}")
+        
+        if set_result.get('error'):
+            report.append(f"\n错误信息:")
+            report.append(f"  {set_result.get('error')}")
+        
+        report.append("========================")
+        return '\n'.join(report)
+        
+    except Exception as e:
+        logger.error(f"生成配置设置报告失败: {e}")
+        return f"生成报告失败: {e}"
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "set_config_item",
+    "function": set_config_item,
+    "description": "设置指定配置项取值，支持主配置/站点配置/模块配置精准修改",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "config_type": {
+                "type": "string",
+                "enum": ["main", "site", "module"],
+                "description": "配置类型：main(主配置)/site(站点配置)/module(模块配置)",
+                "default": "main"
+            },
+            "item_name": {
+                "type": "string",
+                "description": "配置项名称"
+            },
+            "item_value": {
+                "type": "string",
+                "description": "配置项值"
+            },
+            "site_name": {
+                "type": "string",
+                "description": "站点名称（当config_type为site时使用）",
+                "required": False
+            },
+            "context": {
+                "type": "string",
+                "description": "上下文（http/server/location等）",
+                "required": False
+            },
+            "config_file": {
+                "type": "string",
+                "description": "指定配置文件路径（可选）",
+                "required": False
+            },
+            "backup": {
+                "type": "boolean",
+                "description": "是否备份配置文件，默认True",
+                "default": True
+            },
+            "reload_config": {
+                "type": "boolean",
+                "description": "是否重载配置，默认True",
+                "default": True
+            },
+            "validate_syntax": {
+                "type": "boolean",
+                "description": "是否验证配置语法，默认True",
+                "default": True
+            }
+        },
+        "required": ["config_type", "item_name", "item_value"]
+    }
+}
