@@ -94,3 +94,31 @@ def fetch_perf_irq(interval=None):
     except Exception as e:
         logger.error(f'获取中断实时性能失败: {e}')
         return f'获取中断实时性能失败: {e}'
+def fetch_hardirq_stats(interval):
+    """
+    获取硬中断统计
+    """
+    stats = {}
+
+    try:
+        # 第一次读取
+        first_irqs = load_irq_stats()
+
+        # 等待指定间隔
+        time.sleep(interval)
+
+        # 第二次读取
+        second_irqs = load_irq_stats()
+
+        # 计算中断频率
+        for irq, count in second_irqs.items():
+            if irq in first_irqs:
+                diff = count - first_irqs[irq]
+                if diff > 0:
+                    frequency = diff / interval
+                    stats[irq] = frequency
+
+    except Exception as e:
+        logger.error(f'获取硬中断统计失败: {e}')
+
+    return stats
