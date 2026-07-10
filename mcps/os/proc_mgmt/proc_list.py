@@ -60,10 +60,9 @@ def fetch_proc_list(sort_by=None, limit=None):
         return f'Failed to list processes: {e}'
 
 # Edge cases handled:
-# - Invalid or non-existent PID
-# - /proc filesystem unavailable
-# - Permission denied for restricted /proc entries
-# - Process exit between inspection steps
+# - Invalid sort_by values
+# - Non-numeric limit values
+# - ps command unavailable
 
 TOOL_CONFIG = {
     "name": "fetch_proc_list",

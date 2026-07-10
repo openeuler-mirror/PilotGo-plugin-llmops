@@ -36,10 +36,9 @@ def fetch_proc_tree():
         return f'Error: {e}'
 
 # Edge cases handled:
-# - Invalid or non-existent PID
-# - /proc filesystem unavailable
-# - Permission denied for restricted /proc entries
-# - Process exit between inspection steps
+# - pstree command unavailable (fallback to /proc scan)
+# - /proc filesystem not mounted
+# - Orphaned processes
 
 TOOL_CONFIG = {
     "name": "fetch_proc_tree",
