@@ -151,3 +151,32 @@ def reload_nginx_config(reload_type="graceful", config_check=True, backup_config
             "message": f"重载配置失败: {e}",
             "error": str(e)
         }
+
+def graceful_reload(timeout=60):
+    """
+    平滑重载Nginx配置
+
+    Args:
+        timeout: 超时时间（秒）
+
+    Returns:
+        dict: 重载结果
+    """
+    try:
+        output = {"success": False, "message": "", "error": ""}
+
+        # 使用nginx -s reload命令进行平滑重载
+        cmd_result = execute_command(['nginx', '-s', 'reload'], timeout=timeout)
+
+        if cmd_result["success"]:
+            output["success"] = True
+            output["message"] = "平滑重载命令执行成功"
+        else:
+            output["error"] = cmd_result.get("error", "重载命令执行失败")
+            output["message"] = f"平滑重载失败: {output['error']}"
+
+        return output
+
+    except Exception as e:
+        logger.error(f"平滑重载Nginx配置失败: {e}")
+        return {"success": False, "message": f"平滑重载失败: {e}", "error": str(e)}
