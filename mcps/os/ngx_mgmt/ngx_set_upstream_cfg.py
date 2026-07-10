@@ -370,3 +370,225 @@ def reload_nginx() -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"重载Nginx配置失败: {e}")
         return False, str(e)
+
+def set_upstream_config(
+    upstream_name: str,
+    servers: List[str],
+    load_balancing_method: Optional[str] = None,
+    hash_key: Optional[str] = None,
+    timeout_settings: Optional[Dict[str, str]] = None,
+    retry_settings: Optional[Dict[str, str]] = None,
+    fail_thresholds: Optional[Dict[str, str]] = None
+) -> Dict[str, Any]:
+    """
+    设置上游服务配置
+    
+    参数:
+        upstream_name: 上游服务名称
+        servers: 服务器列表
+        load_balancing_method: 负载均衡方法 (round-robin, ip_hash, least_conn, hash, sticky)
+        hash_key: 哈希键（仅用于hash方法）
+        timeout_settings: 超时设置字典
+            - connect_timeout: 连接超时时间
+            - send_timeout: 发送超时时间
+            - read_timeout: 读取超时时间
+            - keepalive_timeout: 长连接超时时间
+        retry_settings: 重试设置字典
+            - next_upstream: 重试条件
+            - next_upstream_timeout: 重试超时时间
+            - next_upstream_tries: 重试次数
+        fail_thresholds: 熔断阈值设置字典
+            - max_fails: 最大失败次数
+            - fail_timeout: 熔断超时时间
+        
+    返回:
+        dict: 操作结果
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'backup_file': None,
+        'config_changed': False,
+        'nginx_reloaded': False
+    }
+    
+    try:
+        # 检查Nginx是否安装
+        if not verify_nginx_installed():
+            output['message'] = "Nginx未安装或未在PATH中"
+            return output
+        
+        # 获取配置文件路径
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            output['message'] = "无法找到Nginx配置文件"
+            return output
+        
+        # 读取配置文件内容
+        config_content = load_nginx_config(cfg_filepath)
+        if not config_content:
+            output['message'] = "无法读取Nginx配置文件"
+            return output
+        
+        # 查找现有的upstream配置
+        upstream_content, start_pos, end_pos = locate_upstream_block(upstream_name, config_content)
+        existing_config = None
+        
+        if upstream_content:
+            # 解析现有配置
+            existing_config = analyze_existing_upstream_config(upstream_content)
+            logger.info(f"找到现有的上游服务配置: {upstream_name}")
+        else:
+            logger.info(f"未找到现有的上游服务配置，将创建新的配置: {upstream_name}")
+        
+        # 生成新的配置
+        new_upstream_config = produce_upstream_config(
+            upstream_name=upstream_name,
+            servers=servers,
+            load_balancing_method=load_balancing_method,
+            hash_key=hash_key,
+            timeout_settings=timeout_settings,
+            retry_settings=retry_settings,
+            fail_thresholds=fail_thresholds,
+            existing_config=existing_config
+        )
+        
+        if not new_upstream_config:
+            output['message'] = "生成新的上游服务配置失败"
+            return output
+        
+        # 备份配置文件
+        backup_path = save_config_file(cfg_filepath)
+        if backup_path:
+            output['backup_file'] = backup_path
+        
+        # 构建新的配置文件内容
+        if upstream_content:  # 替换现有配置
+            new_config_content = (config_content[:start_pos] + 
+                                new_upstream_config + 
+                                config_content[end_pos:])
+        else:  # 添加新配置（添加到文件末尾）
+            new_config_content = config_content.rstrip() + "\n\n" + new_upstream_config + "\n"
+        
+        # 验证配置语法
+        is_valid, validation_msg = certify_nginx_config(new_config_content)
+        if not is_valid:
+            output['message'] = f"配置语法验证失败: {validation_msg}"
+            return output
+        
+        # 写入新的配置文件
+        with open(cfg_filepath, 'w', encoding='utf-8') as f:
+            f.write(new_config_content)
+        
+        output['config_changed'] = True
+        logger.info(f"上游服务配置已更新: {upstream_name}")
+        
+        # 重新加载Nginx配置
+        reload_success, reload_msg = reload_nginx()
+        output['nginx_reloaded'] = reload_success
+        output['message'] = reload_msg
+        
+        if reload_success:
+            output['success'] = True
+            logger.info(f"Nginx配置重载成功: {upstream_name}")
+        else:
+            logger.error(f"Nginx配置重载失败: {reload_msg}")
+        
+    except Exception as e:
+        err_text = f"设置上游服务配置失败: {e}"
+        output['message'] = err_text
+        logger.error(err_text)
+    
+    return output
+
+# MCP工具配置
+TOOL_CONFIG = {
+    "name": "set_upstream_config",
+    "function": set_upstream_config,
+    "description": "设置Nginx上游服务的负载均衡策略、超时时间、重试次数、熔断阈值等配置参数",
+    "version": "1.0.0",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "upstream_name": {
+                "type": "string",
+                "description": "上游服务名称"
+            },
+            "servers": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "description": "服务器列表，格式: ['192.168.1.1:80', '192.168.1.2:8080']"
+            },
+            "load_balancing_method": {
+                "type": "string",
+                "enum": ["round-robin", "ip_hash", "least_conn", "hash", "sticky"],
+                "description": "负载均衡策略"
+            },
+            "hash_key": {
+                "type": "string",
+                "description": "哈希键（仅用于hash负载均衡方法）"
+            },
+            "timeout_settings": {
+                "type": "object",
+                "properties": {
+                    "connect_timeout": {"type": "string", "description": "连接超时时间，如: 30s"},
+                    "send_timeout": {"type": "string", "description": "发送超时时间，如: 30s"},
+                    "read_timeout": {"type": "string", "description": "读取超时时间，如: 30s"},
+                    "keepalive_timeout": {"type": "string", "description": "长连接超时时间，如: 65s"}
+                },
+                "description": "超时时间设置"
+            },
+            "retry_settings": {
+                "type": "object",
+                "properties": {
+                    "next_upstream": {"type": "string", "description": "重试条件，如: error timeout"},
+                    "next_upstream_timeout": {"type": "string", "description": "重试超时时间，如: 0"},
+                    "next_upstream_tries": {"type": "string", "description": "重试次数，如: 3"}
+                },
+                "description": "重试机制设置"
+            },
+            "fail_thresholds": {
+                "type": "object",
+                "properties": {
+                    "max_fails": {"type": "string", "description": "最大失败次数，如: 3"},
+                    "fail_timeout": {"type": "string", "description": "熔断超时时间，如: 10s"}
+                },
+                "description": "熔断阈值设置"
+            }
+        },
+        "required": ["upstream_name", "servers"]
+    },
+    "examples": [
+        {
+            "name": "set_upstream_config",
+            "parameters": {
+                "upstream_name": "backend_servers",
+                "servers": ["192.168.1.10:80", "192.168.1.11:80", "192.168.1.12:80"],  # NOSONAR
+                "load_balancing_method": "least_conn"
+            }
+        },
+        {
+            "name": "set_upstream_config",
+            "parameters": {
+                "upstream_name": "api_servers",
+                "servers": ["10.0.1.10:8080", "10.0.1.11:8080"],  # NOSONAR
+                "load_balancing_method": "ip_hash",
+                "timeout_settings": {
+                    "connect_timeout": "30s",
+                    "send_timeout": "30s",
+                    "read_timeout": "30s"
+                },
+                "retry_settings": {
+                    "next_upstream": "error timeout",
+                    "next_upstream_tries": "3"
+                },
+                "fail_thresholds": {
+                    "max_fails": "3",
+                    "fail_timeout": "10s"
+                }
+            }
+        }
+    ]
+}
