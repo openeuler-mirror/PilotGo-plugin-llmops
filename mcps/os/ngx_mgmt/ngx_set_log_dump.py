@@ -357,3 +357,23 @@ def load_log_file(file_path: str, max_lines: int = 10000) -> List[str]:
         logger.error(f"读取日志文件失败: {file_path}, 错误: {e}")
     
     return lines
+
+def dump_logs_to_txt(logs: List[Dict[str, Any]], output_path: str) -> bool:
+    """
+    导出日志到TXT文件
+    
+    参数:
+        logs: 日志记录列表
+        output_path: 输出文件路径
+        
+    返回:
+        bool: 是否导出成功
+    """
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            for log in logs:
+                f.write(log.get('raw_line', '') + '\n')
+        return True
+    except Exception as e:
+        logger.error(f"导出TXT文件失败: {e}")
+        return False
