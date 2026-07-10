@@ -232,3 +232,26 @@ def load_disk_stats(device):
         logger.error(f'读取磁盘统计信息失败: {e}')
 
     return stats
+def fetch_disk_usage():
+    """
+    获取磁盘使用率
+    """
+    usage = {}
+
+    try:
+        # 使用df命令获取磁盘使用率
+        output = subprocess.run(['df', '-h'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines[1:]:  # 跳过表头
+                parts = line.split()
+                if len(parts) >= 6:
+                    device = parts[0]
+                    use_percent = parts[4]
+                    usage[device] = use_percent
+
+    except Exception as e:
+        logger.error(f'获取磁盘使用率失败: {e}')
+
+    return usage
