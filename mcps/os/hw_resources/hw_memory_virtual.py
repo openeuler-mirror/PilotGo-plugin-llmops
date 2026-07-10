@@ -427,3 +427,36 @@ def analyze_macos_swap_info(output):
     except Exception as e:
         logger.error(f'解析macOS交换分区信息失败: {e}')
         return {}
+def analyze_windows_swap_info(output):
+    """
+    解析Windows交换分区信息
+
+    参数:
+        output: wmic输出
+
+    返回:
+        交换分区信息字典
+    """
+    try:
+        swap_info = {}
+        lines = output.strip().split('\n')[1:]
+
+        for line in lines:
+            if line.strip():
+                parts = [part.strip() for part in line.split() if part.strip()]
+                if len(parts) >= 2:
+                    swap_file = parts[0]
+                    swap_size = parts[1]
+
+                    swap_info[swap_file] = {
+                        'type': 'file',
+                        'size': f"{int(swap_size) / 1024 / 1024:.2f} GB",
+                        'used': 'Unknown',
+                        'priority': 'N/A'
+                    }
+
+        return swap_info
+
+    except Exception as e:
+        logger.error(f'解析Windows交换分区信息失败: {e}')
+        return {}
