@@ -349,3 +349,24 @@ def certify_nginx_config(config_content: str) -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"验证Nginx配置失败: {e}")
         return False, str(e)
+
+def reload_nginx() -> Tuple[bool, str]:
+    """
+    重新加载Nginx配置
+    
+    返回:
+        tuple: (是否成功, 错误信息)
+    """
+    try:
+        # 尝试平滑重载
+        output = subprocess.run(['nginx', '-s', 'reload'], capture_output=True, text=True)
+        
+        if output.returncode == 0:
+            return True, "Nginx配置重载成功"
+        else:
+            err_text = output.stderr if output.stderr else output.stdout
+            return False, err_text
+            
+    except Exception as e:
+        logger.error(f"重载Nginx配置失败: {e}")
+        return False, str(e)
