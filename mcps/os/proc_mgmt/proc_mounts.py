@@ -19,14 +19,21 @@ def fetch_proc_mounts(target=None):
         out.append(f'{"Device":<20} {"Mount Point":<25} {"Type":<10} {"Options"}')
         out.append('-' * 80)
         count = 0
+        type_stats = {}
         for line in lines:
             parts = line.split()
             if len(parts) >= 4:
                 if target and target not in line:
                     continue
                 out.append(f'{parts[0]:<20} {parts[1]:<25} {parts[2]:<10} {parts[3]}')
+                fstype = parts[2]
+                type_stats[fstype] = type_stats.get(fstype, 0) + 1
                 count += 1
         out.append(f'\nTotal: {count} mounts')
+        if type_stats:
+            out.append('Filesystem types:')
+            for fs, cnt in sorted(type_stats.items()):
+                out.append(f'  {fs}: {cnt}')
         return '\n'.join(out)
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
@@ -39,10 +46,9 @@ def fetch_proc_mounts(target=None):
         return f'Error: {e}'
 
 # Edge cases handled:
-# - Invalid or non-existent PID
 # - /proc filesystem unavailable
-# - Permission denied for restricted /proc entries
-# - Process exit between inspection steps
+# - Empty mount table
+# - Target filter with no matches
 
 TOOL_CONFIG = {
     "name": "fetch_proc_mounts",
