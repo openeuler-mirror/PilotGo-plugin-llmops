@@ -89,3 +89,54 @@ def fetch_nginx_config_path() -> Optional[str]:
     except Exception as e:
         logger.error(f"获取Nginx配置路径失败: {e}")
         return None
+
+def fetch_log_format_info(config_path: str) -> Dict[str, str]:
+    """
+    获取Nginx日志格式定义
+    
+    参数:
+        config_path: 配置文件路径
+        
+    返回:
+        dict: 日志格式名称到格式字符串的映射
+    """
+    log_formats = {}
+    
+    try:
+        if not os.path.exists(config_path):
+            return log_formats
+        
+        body = Path(config_path).read_text(encoding='utf-8')
+        
+        # 解析log_format指令
+        log_format_pattern = r'log_format\s+(\w+)\s+([^;]+);'  # NOSONAR
+        matches = re.findall(log_format_pattern, body)  # NOSONAR
+        
+        for name, format_string in matches:
+            log_formats[name] = format_string.strip().strip('"\'')
+        
+        # 检查包含的文件
+        include_pattern = r'include\s+([^;]+);'  # NOSONAR
+        includes = re.findall(include_pattern, body)  # NOSONAR
+        
+        for include in includes:
+            include_path = include.strip().strip('"\'')
+            if not os.path.isabs(include_path):
+                include_path = os.path.join(os.path.dirname(config_path), include_path)
+            
+            # 处理通配符
+            if '*' in include_path:
+                import glob
+                included_files = glob.glob(include_path)
+                for included_file in included_files:
+                    if os.path.exists(included_file):
+                        included_formats = fetch_log_format_info(included_file)
+                        log_formats.update(included_formats)
+            elif os.path.exists(include_path):
+                included_formats = fetch_log_format_info(include_path)
+                log_formats.update(included_formats)
+        
+    except Exception as e:
+        logger.error(f"获取日志格式信息失败: {e}")
+    
+    return log_formats
