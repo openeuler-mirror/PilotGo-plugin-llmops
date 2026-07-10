@@ -313,3 +313,34 @@ main() {{
 main "$@"
 """
     return script_content
+
+def setup_custom_script(script_content: str, script_name: str = 'nginx-log-rotate') -> str:
+    """
+    安装自定义切割脚本
+    
+    参数:
+        script_content: 脚本内容
+        script_name: 脚本名称
+        
+    返回:
+        str: 脚本安装路径
+    """
+    try:
+        script_dir = '/usr/local/bin'
+        if not os.path.exists(script_dir):
+            os.makedirs(script_dir, exist_ok=True)
+        
+        script_path = os.path.join(script_dir, script_name)
+        
+        # 写入脚本
+        with open(script_path, 'w', encoding='utf-8') as f:
+            f.write(script_content)
+        
+        # 设置执行权限
+        os.chmod(script_path, 0o755)  # NOSONAR
+        logger.info(f"自定义切割脚本已安装到: {script_path}")
+        return script_path
+        
+    except Exception as e:
+        logger.error(f"安装自定义脚本失败: {e}")
+        raise
