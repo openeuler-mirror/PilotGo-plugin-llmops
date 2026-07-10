@@ -248,3 +248,22 @@ def fetch_stub_status_stats(status_url):
         logger.error(f'获取stub_status统计失败: {e}')
 
     return stats
+
+def fetch_nginx_estimated_connections():
+    """估算Nginx的ESTABLISHED连接数"""
+    try:
+        nginx_connections = 0
+        # 获取所有Nginx进程的连接
+        for proc in psutil.process_iter(['pid', 'name', 'connections']):
+            try:
+                if proc.details['name'] and 'nginx' in proc.details['name'].lower():
+                    connections = proc.details.get('connections', [])
+                    if connections:
+                        established = [conn for conn in connections if conn.status == 'ESTABLISHED']
+                        nginx_connections += len(established)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return nginx_connections
+    except Exception as e:
+        logger.error(f'估算Nginx连接数失败: {e}')
+        return 0
