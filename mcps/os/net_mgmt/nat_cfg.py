@@ -1,0 +1,82 @@
+import logging
+import subprocess
+import time
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+logger = logging.getLogger('net_snat_dnat')
+
+def fetch_net_snat_dnat():
+    """
+    采集SNAT/DNAT规则（地址转换规则/源/目标IP/端口/协议/生效链）
+
+    返回:
+        格式化的SNAT/DNAT规则信息字符串
+    """
+    try:
+        # 基本信息
+        output = []
+        output.append('=== SNAT/DNAT规则 ===')
+
+        # 采集SNAT规则
+        snat_rules = fetch_snat_rules()
+        if snat_rules:
+            output.append('\nSNAT规则:')
+            for i, rule in enumerate(snat_rules[:20], 1):
+                display_rule_info(output, i, rule)
+            if len(snat_rules) > 20:
+                output.append(f"  ... 还有 {len(snat_rules) - 20} 条SNAT规则")
+        else:
+            output.append('\nSNAT规则: 无')
+
+        # 采集DNAT规则
+        dnat_rules = fetch_dnat_rules()
+        if dnat_rules:
+            output.append('\nDNAT规则:')
+            for i, rule in enumerate(dnat_rules[:20], 1):
+                display_rule_info(output, i, rule)
+            if len(dnat_rules) > 20:
+                output.append(f"  ... 还有 {len(dnat_rules) - 20} 条DNAT规则")
+        else:
+            output.append('\nDNAT规则: 无')
+
+        # 采集规则统计
+        rule_stats = fetch_rule_stats(snat_rules, dnat_rules)
+        if rule_stats:
+            output.append('\n规则统计:')
+            for key, value in rule_stats.items():
+                output.append(f"  {key}: {value}")
+
+        # 检查规则状态
+        rule_checks = verify_rule_status(snat_rules, dnat_rules)
+        if rule_checks:
+            output.append('\n规则状态检查:')
+            for check in rule_checks:
+                output.append(f"  - {check}")
+
+        # 分析规则配置
+        rule_analysis = examine_rule_config(snat_rules, dnat_rules)
+        if rule_analysis:
+            output.append('\n规则配置分析:')
+            for analysis in rule_analysis:
+                output.append(f"  - {analysis}")
+
+        # 检查规则安全性
+        rule_security = verify_rule_security(snat_rules, dnat_rules)
+        if rule_security:
+            output.append('\n规则安全性检查:')
+            for check in rule_security:
+                output.append(f"  - {check}")
+
+        # 显示采样时间
+        output.append('\n采样时间:')
+        output.append(f"  {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        output.append('=====================')
+        return '\n'.join(output)
+
+    except Exception as e:
+        logger.error(f'获取SNAT/DNAT规则失败: {e}')
+        return f'获取SNAT/DNAT规则失败: {e}'
