@@ -376,3 +376,84 @@ def certify_config_value(item_name: str, item_value: str) -> Dict:
     except Exception as e:
         logger.error(f"验证配置项值失败: {e}")
         return {"valid": False, "error": f"验证失败: {e}"}
+
+def modify_config_file(config_file: str, item_name: str, item_value: str, context: str = None) -> Dict:
+    """
+    更新配置文件中的配置项
+    
+    Args:
+        config_file: 配置文件路径
+        item_name: 配置项名称
+        item_value: 配置项值
+        context: 上下文
+    
+    Returns:
+        dict: 更新结果
+    """
+    try:
+        # 读取原文件内容
+        with open(config_file, 'r', encoding='utf-8', errors='ignore') as f:
+            body = f.read()
+        
+        original_content = body
+        
+        # 构建配置项模式
+        if context:
+            # 在指定上下文中查找和替换
+            pattern = rf'({context}\s*{{[^}}]*){item_name}\s+([^;\n]+)([^}}]*}})'  # NOSONAR
+            replacement = rf'\1{item_name} {item_value}\3'
+            
+            # 检查是否匹配
+            if re.search(pattern, body, re.DOTALL):  # NOSONAR
+                body = re.sub(pattern, replacement, body, flags=re.DOTALL)  # NOSONAR
+                action = "updated_in_context"
+            else:
+                # 在上下文中添加新配置项
+                pattern = rf'({context}\s*{{)([^}}]*)(}})'  # NOSONAR
+                replacement = rf'\1\2    {item_name} {item_value};\n\3'
+                body = re.sub(pattern, replacement, body, flags=re.DOTALL)  # NOSONAR
+                action = "added_to_context"
+        else:
+            # 全局查找和替换
+            pattern = rf'{item_name}\s+([^;\n]+)'  # NOSONAR
+            replacement = f'{item_name} {item_value}'
+            
+            # 检查是否匹配
+            if re.search(pattern, body):  # NOSONAR
+                body = re.sub(pattern, replacement, body)  # NOSONAR
+                action = "updated"
+            else:
+                # 在文件末尾添加新配置项
+                body = body.rstrip() + f'\n{item_name} {item_value};\n'
+                action = "added"
+        
+        # 检查内容是否发生变化
+        if body == original_content:
+            return {
+                "success": False,
+                "error": f"配置项 '{item_name}' 未找到且无法自动添加"
+            }
+        
+        # 写入新内容
+        with open(config_file, 'w', encoding='utf-8') as f:
+            f.write(body)
+        
+        # 获取旧值（如果有）
+        old_value = None
+        if action.startswith("updated"):
+            old_match = re.search(rf'{item_name}\s+([^;\n]+)', original_content)  # NOSONAR
+            if old_match:
+                old_value = old_match.group(1).strip()
+        
+        return {
+            "success": True,
+            "action": action,
+            "old_value": old_value
+        }
+        
+    except Exception as e:
+        logger.error(f"更新配置文件失败: {e}")
+        return {
+            "success": False,
+            "error": f"更新配置文件失败: {e}"
+        }
