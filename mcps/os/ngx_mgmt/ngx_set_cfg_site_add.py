@@ -277,3 +277,29 @@ def produce_proxy_config(proxy_target):
         "        proxy_set_header X-Forwarded-Proto $scheme;",
         "    }"
     ]
+
+def produce_static_config():
+    """生成静态文件配置"""
+    return [
+        "    # 优化静态文件服务",
+        "    location / {",
+        "        try_files $uri $uri/ =404;",
+        "    }",
+        "",
+        "    # Gzip压缩",
+        "    gzip on;",
+        "    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;",
+        "",
+        "    # 静态文件缓存",
+        "    location ~* \\.(jpg|jpeg|png|gif|ico|css|js)$ {",
+        "        expires 1y;",
+        "        add_header Cache-Control \"public, immutable\";",
+        "    }",
+        "",
+        "    # 字体文件缓存",
+        "    location ~* \\.(woff|woff2|ttf|eot|svg)$ {",
+        "        expires 1y;",
+        "        add_header Cache-Control \"public, immutable\";",
+        "        add_header Access-Control-Allow-Origin \"*\";",
+        "    }"
+    ]
