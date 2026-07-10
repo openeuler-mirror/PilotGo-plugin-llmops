@@ -129,3 +129,12 @@ def spot_package_manager():
             return pm
 
     return None
+def fetch_system_info():
+    """
+    获取系统基本信息
+    """
+    try:
+        distro = platform.dist()
+        return f"{distro[0]} {distro[1]}" if distro[0] else platform.platform()
+    except Exception:
+        return '未知'
