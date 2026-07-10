@@ -483,3 +483,26 @@ def verify_log_directory_permissions(log_info):
     except Exception as e:
         logger.error(f'检查日志目录权限失败: {e}')
         return [f'检查日志目录权限失败: {e}']
+
+def render_file_size(size_bytes):
+    """
+    格式化文件大小
+
+    参数:
+        size_bytes: 字节大小
+
+    返回:
+        str: 格式化后的文件大小
+    """
+    if size_bytes == 0:
+        return "0 B"
+
+    size_names = ["B", "KB", "MB", "GB", "TB"]
+    i = 0
+    size = float(size_bytes)
+
+    while size >= 1024 and i < len(size_names) - 1:
+        size /= 1024
+        i += 1
+
+    return f"{size:.2f} {size_names[i]}"
