@@ -243,3 +243,29 @@ def verify_rule_status(snat_rules, dnat_rules):
         logger.error(f'检查规则状态失败: {e}')
 
     return checks
+def examine_rule_config(snat_rules, dnat_rules):
+    """
+    分析规则配置
+    """
+    analysis = []
+
+    try:
+        # 分析SNAT规则
+        if snat_rules:
+            analysis.append(f"SNAT规则主要分布在以下链: {', '.join(set(rule.get('链', '') for rule in snat_rules))}")
+
+        # 分析DNAT规则
+        if dnat_rules:
+            analysis.append(f"DNAT规则主要分布在以下链: {', '.join(set(rule.get('链', '') for rule in dnat_rules))}")
+
+        # 分析协议分布
+        protocols = set()
+        for rule in snat_rules + dnat_rules:
+            protocols.add(rule.get('协议', ''))
+        if protocols:
+            analysis.append(f"规则涉及的协议: {', '.join(protocols)}")
+
+    except Exception as e:
+        logger.error(f'分析规则配置失败: {e}')
+
+    return analysis
