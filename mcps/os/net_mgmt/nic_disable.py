@@ -82,3 +82,32 @@ def fetch_network_interfaces():
         logger.error(f'获取网络接口列表失败: {e}')
 
     return interfaces
+def is_interface_down(interface):
+    """
+    检查接口是否禁用
+    """
+    # 安全校验：验证 interface 参数
+    is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+    if not is_valid:
+        logger.error(f'网络接口名称不合法：{error_msg}')
+        return False
+
+    try:
+        # 检查 operstate
+        operstate_path = f'/sys/class/net/{interface}/operstate'
+        if os.path.exists(operstate_path):
+            with open(operstate_path, 'r') as f:
+                operstate = f.read().strip()
+                return operstate != 'up'
+
+        # 检查 carrier
+        carrier_path = f'/sys/class/net/{interface}/carrier'
+        if os.path.exists(carrier_path):
+            with open(carrier_path, 'r') as f:
+                carrier = f.read().strip()
+                return carrier != '1'
+
+    except Exception:
+        pass
+
+    return False
