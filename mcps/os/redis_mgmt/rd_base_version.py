@@ -140,3 +140,58 @@ def fetch_redis_version_via_cli():
         logger.error(f'通过redis-cli获取版本信息失败: {e}')
 
     return ver_data
+def fetch_redis_version_info(pid):
+    """
+    获取Redis版本信息
+    """
+    ver_data = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'INFO', 'server'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('redis_version:'):
+                    ver_data['Redis版本'] = line.split(':')[1]
+                elif line.startswith('redis_git_sha1:'):
+                    ver_data['Git SHA1'] = line.split(':')[1]
+                elif line.startswith('redis_git_dirty:'):
+                    ver_data['Git Dirty'] = line.split(':')[1]
+                elif line.startswith('redis_build_id:'):
+                    ver_data['Build ID'] = line.split(':')[1]
+                elif line.startswith('os:'):
+                    ver_data['操作系统'] = line.split(':')[1]
+                elif line.startswith('arch_bits:'):
+                    ver_data['架构位数'] = line.split(':')[1]
+                elif line.startswith('multiplexing_api:'):
+                    ver_data['多路复用API'] = line.split(':')[1]
+                elif line.startswith('gcc_version:'):
+                    ver_data['GCC版本'] = line.split(':')[1]
+                elif line.startswith('process_id:'):
+                    ver_data['进程ID'] = line.split(':')[1]
+                elif line.startswith('run_id:'):
+                    ver_data['运行ID'] = line.split(':')[1]
+                elif line.startswith('tcp_port:'):
+                    ver_data['TCP端口'] = line.split(':')[1]
+                elif line.startswith('uptime_in_seconds:'):
+                    ver_data['运行时长(秒)'] = line.split(':')[1]
+                elif line.startswith('uptime_in_days:'):
+                    ver_data['运行时长(天)'] = line.split(':')[1]
+
+        exe_path = f'/proc/{pid}/exe'
+        if os.path.exists(exe_path):
+            output = subprocess.run(['readlink', exe_path], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                ver_data['可执行文件路径'] = output.stdout.strip()
+
+                output = subprocess.run([output.stdout.strip(), '--version'], capture_output=True, text=True, timeout=5)
+
+                if output.returncode == 0:
+                    ver_data['版本字符串'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取Redis版本信息失败: {e}')
+
+    return ver_data
