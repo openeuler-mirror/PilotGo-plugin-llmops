@@ -330,3 +330,138 @@ def reload_nginx_config(method):
         return {'success': True} if output.returncode == 0 else {'success': False, 'error': output.stderr}
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+def fetch_timeout_config_recommendations():
+    """获取超时时间配置推荐值"""
+    recommendations = {
+        'client_body_timeout': '60s',
+        'client_header_timeout': '60s',
+        'keepalive_timeout': '75s',
+        'send_timeout': '60s',
+        'proxy_connect_timeout': '60s',
+        'proxy_send_timeout': '60s',
+        'proxy_read_timeout': '60s',
+        'fastcgi_connect_timeout': '60s',
+        'fastcgi_send_timeout': '60s',
+        'fastcgi_read_timeout': '60s',
+        'client_max_body_size': '10m'
+    }
+    return recommendations
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "set_nginx_runtime_timeout",
+    "function": set_nginx_runtime_timeout,
+    "description": "设置Nginx的各种超时时间配置，包括请求/连接/发送/接收超时时间、客户端保持连接超时时间",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "client_body_timeout": {
+                "type": "string",
+                "description": "客户端请求体超时时间（如：60s, 5m, 1h）"
+            },
+            "client_header_timeout": {
+                "type": "string",
+                "description": "客户端请求头超时时间（如：60s, 5m, 1h）"
+            },
+            "keepalive_timeout": {
+                "type": "string",
+                "description": "客户端保持连接超时时间（如：75s, 5m）"
+            },
+            "send_timeout": {
+                "type": "string",
+                "description": "发送超时时间（如：60s, 5m）"
+            },
+            "proxy_connect_timeout": {
+                "type": "string",
+                "description": "代理连接超时时间（如：60s, 5m）"
+            },
+            "proxy_send_timeout": {
+                "type": "string",
+                "description": "代理发送超时时间（如：60s, 5m）"
+            },
+            "proxy_read_timeout": {
+                "type": "string",
+                "description": "代理读取超时时间（如：60s, 5m）"
+            },
+            "fastcgi_connect_timeout": {
+                "type": "string",
+                "description": "FastCGI连接超时时间（如：60s, 5m）"
+            },
+            "fastcgi_send_timeout": {
+                "type": "string",
+                "description": "FastCGI发送超时时间（如：60s, 5m）"
+            },
+            "fastcgi_read_timeout": {
+                "type": "string",
+                "description": "FastCGI读取超时时间（如：60s, 5m）"
+            },
+            "uwsgi_connect_timeout": {
+                "type": "string",
+                "description": "uWSGI连接超时时间（如：60s, 5m）"
+            },
+            "uwsgi_send_timeout": {
+                "type": "string",
+                "description": "uWSGI发送超时时间（如：60s, 5m）"
+            },
+            "uwsgi_read_timeout": {
+                "type": "string",
+                "description": "uWSGI读取超时时间（如：60s, 5m）"
+            },
+            "scgi_connect_timeout": {
+                "type": "string",
+                "description": "SCGI连接超时时间（如：60s, 5m）"
+            },
+            "scgi_send_timeout": {
+                "type": "string",
+                "description": "SCGI发送超时时间（如：60s, 5m）"
+            },
+            "scgi_read_timeout": {
+                "type": "string",
+                "description": "SCGI读取超时时间（如：60s, 5m）"
+            },
+            "resolver_timeout": {
+                "type": "string",
+                "description": "DNS解析超时时间（如：30s, 5m）"
+            },
+            "client_max_body_size": {
+                "type": "string",
+                "description": "客户端最大请求体大小（如：10m, 100m, 1g）"
+            },
+            "reload_method": {
+                "type": "string",
+                "enum": ["graceful", "restart", "none"],
+                "description": "重载方式：graceful(平滑重载)、restart(重启服务)、none(不重载)"
+            }
+        },
+        "required": []
+    }
+}
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "ngx_set_run_timeout",
+    "function": set_nginx_runtime_timeout,
+    "description": "设置Nginx的各种超时时间配置，包括请求/连接/发送/接收超时时间、客户端保持连接超时时间",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "client_body_timeout": {
+                "type": "string",
+                "description": "客户端请求体超时时间（如：60s, 5m, 1h）"
+            },
+            "client_header_timeout": {
+                "type": "string",
+                "description": "客户端请求头超时时间（如：60s, 5m, 1h）"
+            },
+            "keepalive_timeout": {
+                "type": "string",
+                "description": "客户端保持连接超时时间（如：75s, 5m）"
+            },
+            "send_timeout": {
+                "type": "string",
+                "description": "发送超时时间（如：60s, 5m）"
+            },
+        }
+    }
+}
