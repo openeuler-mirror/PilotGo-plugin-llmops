@@ -190,3 +190,67 @@ def compare_configs(file_config: Dict[str, Any],
         logger.error(output['message'])
 
     return output
+def fetch_effective_config(cfg_filepath: Optional[str] = None) -> Dict[str, Any]:
+    """
+    获取当前生效的所有配置项（区分配置文件设置与运行时动态设置）
+
+    参数:
+        cfg_filepath: 配置文件路径，如果为None则自动获取
+
+    返回:
+        生效配置信息字典
+    """
+    output = {
+        'file_config': {},
+        'runtime_config': {},
+        'comparison': {},
+        'effective_config': {},
+        'message': '获取生效配置'
+    }
+
+    try:
+        if not cfg_filepath:
+            cfg_filepath = get_redis_config_file()
+            if not cfg_filepath:
+                output['message'] = '无法获取Redis配置文件路径'
+                return output
+
+        file_config = fetch_file_config(cfg_filepath)
+        output['file_config'] = file_config
+
+        runtime_config = fetch_runtime_config()
+        output['runtime_config'] = runtime_config
+
+        comparison = compare_configs(file_config, runtime_config)
+        output['comparison'] = comparison
+
+        for item in runtime_config['config']:
+            if item in file_config['config']:
+                if file_config['config'][item]['val'] == runtime_config['config'][item]['val']:
+                    output['effective_config'][item] = {
+                        'val': runtime_config['config'][item]['val'],
+                        'source': 'file',
+                        'is_modified': False
+                    }
+                else:
+                    output['effective_config'][item] = {
+                        'val': runtime_config['config'][item]['val'],
+                        'source': 'runtime',
+                        'is_modified': True,
+                        'original_value': file_config['config'][item]['val']
+                    }
+            else:
+                output['effective_config'][item] = {
+                    'val': runtime_config['config'][item]['val'],
+                    'source': 'runtime',
+                    'is_modified': True,
+                    'original_value': None
+                }
+
+        output['message'] = f'生效配置获取完成，共 {len(output["effective_config"])} 个配置项'
+
+    except Exception as e:
+        output['message'] = f'获取生效配置时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
