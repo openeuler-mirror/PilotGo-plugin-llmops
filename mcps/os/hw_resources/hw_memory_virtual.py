@@ -482,3 +482,40 @@ def render_swap_info(swap_info):
     except Exception as e:
         logger.error(f'格式化交换分区信息失败: {e}')
         return "格式化交换分区信息失败"
+def fetch_swap_usage():
+    """
+    获取交换分区使用情况
+
+    返回:
+        交换分区使用情况字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                with open('/proc/meminfo', 'r') as f:
+                    meminfo = {}
+                    for line in f:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            key = parts[0].rstrip(':')
+                            val = int(parts[1])
+                            meminfo[key] = val
+
+                    swap_total = meminfo.get('SwapTotal', 0)
+                    swap_free = meminfo.get('SwapFree', 0)
+                    swap_used = swap_total - swap_free
+
+                    total_gb = swap_total / 1024 / 1024
+                    used_gb = swap_used / 1024 / 1024
+                    free_gb = swap_free / 1024 / 1024
+                    usage_percent = (swap_used / swap_total) * 100 if swap_total > 0 else 0
+
+                    return '\n'.join([f"交换分区已用: {used_gb:.2f} GB ({usage_percent:.1f}%)", f"交换分区空闲: {free_gb:.2f} GB"])
+            except Exception:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取交换分区使用情况失败: {e}')
+        return None
