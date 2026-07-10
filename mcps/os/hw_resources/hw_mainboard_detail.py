@@ -382,3 +382,29 @@ def analyze_windows_baseboard(output, mobo_info):
     except Exception as e:
         logger.error(f'解析Windows主板输出失败: {e}')
         return mobo_info
+def analyze_chipset_info(output):
+    """
+    解析芯片组信息
+
+    参数:
+        output: lspci输出
+
+    返回:
+        芯片组信息字符串
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            if 'Host bridge' in line or 'PCI bridge' in line:
+                colon_index = line.find(':')
+                if colon_index != -1:
+                    chipset = line[colon_index + 1:].strip()
+                    if chipset:
+                        return chipset
+
+        return 'Unknown'
+
+    except Exception as e:
+        logger.error(f'解析芯片组信息失败: {e}')
+        return 'Unknown'
