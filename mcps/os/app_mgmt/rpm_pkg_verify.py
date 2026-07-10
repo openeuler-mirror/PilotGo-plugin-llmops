@@ -317,3 +317,21 @@ def verify_package_config(package_name):
             'changed_files': [],
             'reason': str(e)
         }
+def fetch_all_installed_packages():
+    """
+    获取所有已安装的包
+
+    返回:
+        包名列表
+    """
+    try:
+        output = subprocess.run(['rpm', '-qa', '--queryformat', '%{NAME}\n'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            packages = output.stdout.strip().split('\n')
+            return [pkg for pkg in packages if pkg.strip()]
+
+        return []
+
+    except Exception:
+        return []
