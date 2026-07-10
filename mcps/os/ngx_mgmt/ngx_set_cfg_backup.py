@@ -117,3 +117,67 @@ def verify_nginx_installation() -> Dict:
             'installed': False,
             'suggestion': f'检查安装状态时出错: {e}'
         }
+
+def fetch_config_paths() -> Dict:
+    """获取Nginx配置路径信息"""
+    try:
+        cfg_state = {
+            'config_root': 'Unknown',
+            'main_config': 'Unknown',
+            'vhosts_dir': 'Unknown',
+            'conf_d_dir': 'Unknown'
+        }
+
+        # 常见配置路径
+        common_config_paths = [
+            '/etc/nginx/nginx.conf',
+            '/usr/local/nginx/conf/nginx.conf',
+            '/usr/local/etc/nginx/nginx.conf',
+            '/opt/nginx/conf/nginx.conf'
+        ]
+
+        # 检查nginx -t输出获取配置文件路径
+        try:
+            output = subprocess.run(['nginx', '-t'], capture_output=True, text=True, stderr=subprocess.STDOUT)
+            if output.returncode == 0 or output.returncode == 1:
+                output = output.stdout.strip()
+                config_match = re.search(r'file ([^\s]+) test', output)  # NOSONAR
+                if config_match:
+                    config_file = config_match.group(1)
+                    cfg_state['main_config'] = config_file
+                    cfg_state['config_root'] = os.path.dirname(config_file)
+        except Exception:
+            pass
+
+        # 如果通过nginx -t没有获取到，检查常见路径
+        if cfg_state['main_config'] == 'Unknown':
+            for config_path in common_config_paths:
+                if os.path.exists(config_path):
+                    cfg_state['main_config'] = config_path
+                    cfg_state['config_root'] = os.path.dirname(config_path)
+                    break
+
+        # 如果找到了配置根目录，检查子目录
+        if cfg_state['config_root'] != 'Unknown':
+            config_root = cfg_state['config_root']
+
+            # 检查sites-enabled/sites-available (Debian/Ubuntu风格)
+            if os.path.exists(os.path.join(config_root, 'sites-enabled')):
+                cfg_state['vhosts_dir'] = os.path.join(config_root, 'sites-enabled')
+            elif os.path.exists(os.path.join(config_root, 'conf.d')):
+                cfg_state['vhosts_dir'] = os.path.join(config_root, 'conf.d')
+
+            # 检查conf.d目录
+            if os.path.exists(os.path.join(config_root, 'conf.d')):
+                cfg_state['conf_d_dir'] = os.path.join(config_root, 'conf.d')
+
+        return cfg_state
+
+    except Exception as e:
+        logger.error(f'获取配置路径信息失败: {e}')
+        return {
+            'config_root': '获取失败',
+            'main_config': '获取失败',
+            'vhosts_dir': '获取失败',
+            'conf_d_dir': '获取失败'
+        }
