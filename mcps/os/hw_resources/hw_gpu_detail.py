@@ -505,3 +505,24 @@ def analyze_xrandr_output(output):
     except Exception as e:
         logger.error(f'解析xrandr输出失败: {e}')
         return []
+def fetch_opengl_info():
+    """
+    获取OpenGL信息
+
+    返回:
+        OpenGL信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['glxinfo', '-B'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    return output.stdout
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取OpenGL信息失败: {e}')
+        return None
