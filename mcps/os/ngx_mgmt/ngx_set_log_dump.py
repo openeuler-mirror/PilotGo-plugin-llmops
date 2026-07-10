@@ -279,3 +279,56 @@ def analyze_log_line(line: str, log_format: str = 'combined') -> Optional[Dict[s
     except Exception as e:
         logger.error(f"解析日志行失败: {e}")
         return {'raw_line': line.strip()}
+
+def filter_logs(logs: List[Dict[str, Any]], 
+                ip_address: Optional[str] = None,
+                url_pattern: Optional[str] = None,
+                status_code: Optional[str] = None,
+                start_time: Optional[datetime] = None,
+                end_time: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    """
+    过滤日志记录
+    
+    参数:
+        logs: 日志记录列表
+        ip_address: IP地址过滤
+        url_pattern: URL模式过滤
+        status_code: 状态码过滤
+        start_time: 开始时间
+        end_time: 结束时间
+        
+    返回:
+        list: 过滤后的日志记录
+    """
+    filtered_logs = []
+    
+    for log in logs:
+        # 时间过滤
+        if 'time_local' in log:
+            try:
+                log_time = datetime.strptime(log['time_local'], '%d/%b/%Y:%H:%M:%S %z')
+                if start_time and log_time < start_time:
+                    continue
+                if end_time and log_time > end_time:
+                    continue
+            except ValueError:
+                pass  # 时间解析失败，不过滤
+        
+        # IP地址过滤
+        if ip_address and 'remote_addr' in log:
+            if ip_address not in log['remote_addr']:
+                continue
+        
+        # 状态码过滤
+        if status_code and 'status' in log:
+            if status_code != log['status']:
+                continue
+        
+        # URL模式过滤
+        if url_pattern and 'request' in log:
+            if not re.search(url_pattern, log['request']):  # NOSONAR
+                continue
+        
+        filtered_logs.append(log)
+    
+    return filtered_logs
