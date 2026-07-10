@@ -290,3 +290,44 @@ def analyze_zoneinfo(body: str) -> Dict[str, Any]:
         summary['error'] = str(e)
 
     return summary
+def produce_analysis_summary(oom_events: List[Dict], memory_pressure: Dict) -> Dict[str, Any]:
+    """生成分析总结"""
+    summary = {
+        'oom_risk_level': 'low',
+        'oom_frequency': 'none',
+        'primary_cause': 'unknown',
+        'affected_processes': []
+    }
+
+    try:
+        # 评估OOM风险等级
+        if oom_events:
+            if len(oom_events) > 5:
+                summary['oom_frequency'] = 'high'
+                summary['oom_risk_level'] = 'critical'
+            elif len(oom_events) > 1:
+                summary['oom_frequency'] = 'medium'
+                summary['oom_risk_level'] = 'warning'
+            else:
+                summary['oom_frequency'] = 'low'
+                summary['oom_risk_level'] = 'warning'
+
+        # 分析内存压力
+        if memory_pressure.get('current_usage_percent', 0) > 95:
+            summary['oom_risk_level'] = 'critical'
+            summary['primary_cause'] = 'memory_exhaustion'
+        elif memory_pressure.get('some_avg10', 0) > 80:
+            summary['oom_risk_level'] = 'warning'
+            summary['primary_cause'] = 'memory_pressure'
+
+        # 收集受影响的进程
+        affected = set()
+        for event in oom_events:
+            if 'process_name' in event:
+                affected.add(event['process_name'])
+        summary['affected_processes'] = list(affected)
+
+    except Exception as e:
+        summary['error'] = str(e)
+
+    return summary
