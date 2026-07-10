@@ -135,3 +135,33 @@ def fetch_nginx_service_info():
     except Exception as e:
         logger.error(f'获取Nginx服务信息失败: {e}')
         return service_info
+
+def spot_init_system():
+    """
+    检测系统初始化系统类型
+
+    返回:
+        str: 初始化系统类型
+    """
+    try:
+        # 检查systemd
+        if os.path.exists('/run/systemd/system'):
+            return 'systemd'
+
+        # 检查systemctl命令
+        output = subprocess.run(['which', 'systemctl'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return 'systemd'
+
+        # 检查upstart
+        if os.path.exists('/sbin/upstart') or os.path.exists('/etc/init'):
+            return 'upstart'
+
+        # 检查sysvinit
+        if os.path.exists('/etc/init.d'):
+            return 'sysvinit'
+
+        return 'unknown'
+
+    except Exception:
+        return 'unknown'
