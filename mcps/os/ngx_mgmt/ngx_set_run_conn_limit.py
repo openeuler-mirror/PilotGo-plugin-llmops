@@ -621,3 +621,57 @@ def resume_nginx() -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"重启Nginx失败: {e}")
         return False, f"重启失败: {e}"
+
+def render_output(output: Dict[str, Any]) -> str:
+    """
+    格式化输出结果
+    
+    参数:
+        output: 操作结果
+        
+    返回:
+        str: 格式化后的输出
+    """
+    if not output['success']:
+        return f"错误: {output['message']}"
+    
+    output_lines = []
+    output_lines.append("=== Nginx连接限制设置结果 ===")
+    output_lines.append(f"操作状态: {output['message']}")
+    output_lines.append(f"重载方式: {output['reload_method']}")
+    output_lines.append(f"操作时间: {output['timestamp']}")
+    output_lines.append("")
+    
+    # 系统信息
+    sys_info = output['system_info']
+    output_lines.append("=== 系统连接信息 ===")
+    output_lines.append(f"文件描述符限制: {sys_info.get('file_descriptor_limit', 'N/A')}")
+    output_lines.append(f"当前打开文件数: {sys_info.get('current_open_files', 'N/A')}")
+    output_lines.append(f"TCP连接数: {sys_info.get('tcp_connections', 'N/A')}")
+    output_lines.append(f"可用内存: {render_bytes(sys_info.get('memory_available', 0))}")
+    output_lines.append(f"CPU核心数: {sys_info.get('cpu_cores', 'N/A')}")
+    output_lines.append(f"推荐工作连接数: {sys_info.get('recommended_worker_connections', 'N/A')}")
+    output_lines.append(f"推荐文件限制: {sys_info.get('recommended_file_limit', 'N/A')}")
+    output_lines.append("")
+    
+    # 配置变更
+    prev_settings = output['previous_settings']
+    new_settings = output['new_settings']
+    
+    output_lines.append("=== 配置变更 ===")
+    output_lines.append(f"工作连接数: {prev_settings['worker_connections']} -> {new_settings['worker_connections']}")
+    
+    if prev_settings.get('worker_rlimit_nofile') != new_settings.get('worker_rlimit_nofile'):
+        output_lines.append(f"文件描述符限制: {prev_settings.get('worker_rlimit_nofile', '未设置')} -> {new_settings.get('worker_rlimit_nofile', '未设置')}")
+    
+    # 检查单IP限制变更
+    prev_ip_limit = prev_settings.get('limit_conn', {}).get('perip', '未设置')
+    new_ip_limit = new_settings.get('limit_conn', {}).get('perip', '未设置')
+    if prev_ip_limit != new_ip_limit:
+        output_lines.append(f"单IP连接限制: {prev_ip_limit} -> {new_ip_limit}")
+    
+    # 检查监听队列变更
+    if prev_settings.get('listen_backlog') != new_settings.get('listen_backlog'):
+        output_lines.append(f"监听队列长度: {prev_settings.get('listen_backlog', '默认')} -> {new_settings.get('listen_backlog', '默认')}")
+    
+    return '\n'.join(output_lines)
