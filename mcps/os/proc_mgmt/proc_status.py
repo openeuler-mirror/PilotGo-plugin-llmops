@@ -4,7 +4,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('proc_status')
 
-def fetch_proc_status(pid, fmt=None):
+def fetch_proc_status(pid, format=None):
     """Read /proc/<pid>/status showing human-readable process status.
 
     Args:
