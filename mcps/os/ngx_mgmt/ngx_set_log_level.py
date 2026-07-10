@@ -305,3 +305,35 @@ def modify_error_log_level(cfg_filepath: str, log_level: str, scope: str = 'main
     except Exception as e:
         logger.error(f"修改错误日志级别失败: {e}")
         return False, f"修改失败: {e}"
+
+def deactivate_debug_log(cfg_filepath: str) -> Tuple[bool, str]:
+    """
+    关闭debug日志（将debug级别提升为info）
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        
+    返回:
+        tuple: (是否成功, 修改后的内容)
+    """
+    try:
+        if not os.path.exists(cfg_filepath):
+            return False, "配置文件不存在"
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        # 将所有debug级别的error_log替换为info级别
+        pattern = r'(error_log\s+[^;\n]+)\s+debug;'  # NOSONAR
+        replacement = r'\1 info;'
+        new_content = re.sub(pattern, replacement, body)  # NOSONAR
+        
+        # 检查是否进行了修改
+        if new_content == body:
+            return True, "未找到debug级别的日志配置，无需修改"
+        
+        return True, new_content
+        
+    except Exception as e:
+        logger.error(f"关闭debug日志失败: {e}")
+        return False, f"关闭debug日志失败: {e}"
