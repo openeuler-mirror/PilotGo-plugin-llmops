@@ -565,3 +565,21 @@ def certify_nginx_config(config_file_path):
         logger.error(f'验证Nginx配置失败: {e}')
         output['error'] = str(e)
         return output
+
+def reload_nginx_config():
+    """重载Nginx配置"""
+    try:
+        output = {'success': False, 'error': ''}
+        cmd = ['nginx', '-s', 'reload']
+        process = subprocess.run(cmd, capture_output=True, text=True)
+
+        if process.returncode == 0:
+            output['success'] = True
+        else:
+            output['error'] = process.stderr
+
+        return output
+    except Exception as e:
+        logger.error(f'重载Nginx配置失败: {e}')
+        output['error'] = str(e)
+        return output
