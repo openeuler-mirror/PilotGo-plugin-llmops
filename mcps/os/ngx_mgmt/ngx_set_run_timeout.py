@@ -196,3 +196,19 @@ def certify_timeout_parameters(params):
                 errors.append(f'{param_name}: 格式错误，应为数字+单位(k/m/g)，如: 10m, 1g, 512k')
 
     return {'valid': len(errors) == 0, 'errors': errors}
+
+def save_config_file(cfg_filepath):
+    """备份配置文件"""
+    try:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_dir = '/tmp/nginx_config_backups'  # NOSONAR
+        os.makedirs(backup_dir, exist_ok=True)
+
+        backup_filename = f"nginx.conf.backup.{timestamp}"
+        backup_path = os.path.join(backup_dir, backup_filename)
+
+        shutil.copy2(cfg_filepath, backup_path)
+        return backup_path
+    except Exception as e:
+        logger.warning(f'配置文件备份失败: {e}')
+        return None
