@@ -306,3 +306,73 @@ def locate_site_config(main_config_path: str, site_name: str) -> Optional[str]:
     except Exception as e:
         logger.error(f'查找站点配置失败: {e}')
         return None
+
+def certify_config_value(item_name: str, item_value: str) -> Dict:
+    """
+    验证配置项值格式
+    
+    Args:
+        item_name: 配置项名称
+        item_value: 配置项值
+    
+    Returns:
+        dict: 验证结果
+    """
+    try:
+        # 常见配置项验证规则
+        validation_rules = {
+            'worker_processes': {
+                'pattern': r'^(auto|\d+)$',
+                'error': '必须是"auto"或正整数'
+            },
+            'worker_connections': {
+                'pattern': r'^\d+$',
+                'error': '必须是正整数'
+            },
+            'keepalive_timeout': {
+                'pattern': r'^\d+$',
+                'error': '必须是正整数（秒）'
+            },
+            'client_max_body_size': {
+                'pattern': r'^\d+[kmgKMG]?$',
+                'error': '必须是数字或带单位（如10m）'
+            },
+            'sendfile': {
+                'pattern': r'^(on|off)$',
+                'error': '必须是"on"或"off"'
+            },
+            'tcp_nopush': {
+                'pattern': r'^(on|off)$',
+                'error': '必须是"on"或"off"'
+            },
+            'tcp_nodelay': {
+                'pattern': r'^(on|off)$',
+                'error': '必须是"on"或"off"'
+            },
+            'gzip': {
+                'pattern': r'^(on|off)$',
+                'error': '必须是"on"或"off"'
+            },
+            'listen': {
+                'pattern': r'^(\d+)(?::\d+)?(\s+[a-z]+)*$',
+                'error': '必须是端口号或端口号加选项'
+            },
+            'server_name': {
+                'pattern': r'^[a-zA-Z0-9.*_-]+(?:\s+[a-zA-Z0-9.*_-]+)*$',
+                'error': '必须是有效的域名或通配符'
+            }
+        }
+        
+        rule = validation_rules.get(item_name)
+        if rule:
+            if not re.match(rule['pattern'], item_value):  # NOSONAR
+                return {
+                    "valid": False,
+                    "error": f"配置项 '{item_name}' 的值 '{item_value}' 格式错误：{rule['error']}"
+                }
+        
+        return {"valid": True}
+        
+    except Exception as e:
+        logger.error(f"验证配置项值失败: {e}")
+        return {"valid": False, "error": f"验证失败: {e}"}
