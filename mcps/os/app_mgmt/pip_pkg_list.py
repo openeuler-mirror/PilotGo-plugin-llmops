@@ -238,3 +238,26 @@ def fetch_packages_with_command(pip_cmd, user_flag=None):
     except Exception as e:
         logger.error(f'使用{pip_cmd}获取包信息失败: {e}')
         return []
+def fetch_package_location(pip_cmd, package_name):
+    """
+    获取包的安装路径
+
+    参数:
+        pip_cmd: pip命令
+        package_name: 包名
+
+    返回:
+        安装路径
+    """
+    try:
+        output = subprocess.run([pip_cmd, 'show', package_name], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            for line in output.stdout.split('\n'):
+                if line.startswith('Location:'):
+                    return line.split(':', 1)[1].strip()
+
+        return 'Unknown'
+
+    except Exception:
+        return 'Unknown'
