@@ -303,3 +303,17 @@ def produce_static_config():
         "        add_header Access-Control-Allow-Origin \"*\";",
         "    }"
     ]
+
+def produce_ssl_config(site_name):
+    """生成SSL配置"""
+    return [
+        "",
+        "    # SSL配置",
+        f"    ssl_certificate /etc/ssl/certs/{site_name}.crt;",
+        f"    ssl_certificate_key /etc/ssl/private/{site_name}.key;",
+        "    ssl_protocols TLSv1.2 TLSv1.3;",
+        "    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;",
+        "    ssl_prefer_server_ciphers off;",
+        "    ssl_session_cache shared:SSL:10m;",
+        "    ssl_session_timeout 10m;"
+    ]
