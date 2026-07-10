@@ -126,3 +126,43 @@ def certify_create_parameters(site_name, port, root_path, server_names,
     except Exception as e:
         logger.error(f'验证参数失败: {str(e)}')
         return f'参数验证失败: {str(e)}'
+
+def determine_config_dir(main_config, user_config_dir):
+    """确定配置文件目录"""
+    try:
+        # 如果用户指定了目录，直接使用
+        if user_config_dir:
+            if os.path.isdir(user_config_dir):
+                return user_config_dir
+            logger.warning(f'用户指定的目录不存在: {user_config_dir}')
+
+        # 常见的站点配置目录
+        common_dirs = [
+            '/etc/nginx/conf.d',
+            '/etc/nginx/sites-available',
+            '/usr/local/nginx/conf/conf.d',
+            '/usr/local/nginx/conf/vhosts'
+        ]
+
+        # 检查主配置文件所在目录的兄弟目录
+        main_dir = os.path.dirname(main_config)
+        sibling_dirs = [
+            os.path.join(main_dir, 'conf.d'),
+            os.path.join(main_dir, 'sites-available'),
+            os.path.join(main_dir, 'vhosts')
+        ]
+
+        # 合并所有可能的目录
+        all_dirs = common_dirs + sibling_dirs
+
+        # 查找存在的目录
+        for dir_path in all_dirs:
+            if os.path.isdir(dir_path):
+                return dir_path
+
+        # 如果都找不到，使用主配置文件所在目录
+        return main_dir
+
+    except Exception as e:
+        logger.error(f'确定配置文件目录失败: {str(e)}')
+        return None
