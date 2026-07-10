@@ -220,3 +220,26 @@ def fetch_rule_stats(snat_rules, dnat_rules):
         logger.error(f'获取规则统计失败: {e}')
 
     return stats
+def verify_rule_status(snat_rules, dnat_rules):
+    """
+    检查规则状态
+    """
+    checks = []
+
+    try:
+        # 检查规则数量
+        total_rules = len(snat_rules) + len(dnat_rules)
+        if total_rules > 100:
+            checks.append(f"规则数量较多 ({total_rules} 条)")
+
+        # 检查是否有开放的规则
+        for rule in snat_rules + dnat_rules:
+            if rule.get('源IP') == '0.0.0.0/0':
+                checks.append(f"警告: 发现源IP为 0.0.0.0/0 的规则")
+            if rule.get('目标IP') == '0.0.0.0/0':
+                checks.append(f"警告: 发现目标IP为 0.0.0.0/0 的规则")
+
+    except Exception as e:
+        logger.error(f'检查规则状态失败: {e}')
+
+    return checks
