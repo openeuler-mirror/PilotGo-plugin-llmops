@@ -300,3 +300,28 @@ def analyze_error_log_directive(directive):
     except Exception as e:
         logger.error(f'解析error_log指令失败: {e}')
         return None
+
+def analyze_log_format_directive(directive):
+    """
+    解析log_format指令
+
+    参数:
+        directive: log_format指令内容
+
+    返回:
+        dict: 日志格式信息字典
+    """
+    try:
+        # 提取格式名称和定义
+        match = re.match(r'(\w+)\s+(.+)', directive)  # NOSONAR
+        if not match:
+            return {}
+
+        format_name = match.group(1)
+        format_definition = match.group(2).strip()
+
+        return {format_name: format_definition}
+
+    except Exception as e:
+        logger.error(f'解析log_format指令失败: {e}')
+        return {}
