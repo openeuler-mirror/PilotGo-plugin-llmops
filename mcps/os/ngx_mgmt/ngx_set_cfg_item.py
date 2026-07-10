@@ -527,3 +527,41 @@ def recover_config_files(config_files: List[str], backup_dir: str) -> Dict:
             "success": False,
             "error": f"恢复配置文件失败: {e}"
         }
+
+def certify_nginx_config() -> Dict:
+    """
+    验证Nginx配置语法
+    
+    Returns:
+        dict: 验证结果
+    """
+    try:
+        cmd_result = execute_command(['nginx', '-t'], timeout=30)
+        
+        if cmd_result["success"]:
+            output = cmd_result.get("output", "")
+            if "syntax is ok" in output.lower() and "test is successful" in output.lower():
+                return {
+                    "success": True,
+                    "message": "配置语法检查通过"
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "配置语法检查完成，但输出异常",
+                    "error": output
+                }
+        else:
+            return {
+                "success": False,
+                "message": "配置语法检查失败",
+                "error": cmd_result.get("error", "配置测试命令执行失败")
+            }
+        
+    except Exception as e:
+        logger.error(f"验证Nginx配置语法失败: {e}")
+        return {
+            "success": False,
+            "message": f"配置语法检查失败: {e}",
+            "error": str(e)
+        }
