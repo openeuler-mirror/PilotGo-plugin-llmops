@@ -127,3 +127,67 @@ def fetch_process_status(pids):
             'workers': 0,
             'uptime': "未知"
         }
+
+def fetch_connection_status():
+    """获取连接状态"""
+    try:
+        # 尝试从Nginx状态模块获取连接信息
+        status_url = fetch_status_module_url()
+        if status_url:
+            try:
+                with urllib.request.urlopen(status_url, timeout=5) as response:
+                    payload = response.read().decode('utf-8')
+                    # 解析Nginx状态页面
+                    active = re.search(r'Active connections: (\d+)', payload)  # NOSONAR
+                    accepts = re.search(r'(\d+)\s+accepts', payload)  # NOSONAR
+                    handled = re.search(r'(\d+)\s+handled', payload)  # NOSONAR
+                    requests = re.search(r'(\d+)\s+requests', payload)  # NOSONAR
+                    reading = re.search(r'Reading: (\d+)', payload)  # NOSONAR
+                    writing = re.search(r'Writing: (\d+)', payload)  # NOSONAR
+                    waiting = re.search(r'Waiting: (\d+)', payload)  # NOSONAR
+
+                    return {
+                        'active': int(active.group(1)) if active else 0,
+                        'accepts': int(accepts.group(1)) if accepts else 0,
+                        'handled': int(handled.group(1)) if handled else 0,
+                        'requests': int(requests.group(1)) if requests else 0,
+                        'reading': int(reading.group(1)) if reading else 0,
+                        'writing': int(writing.group(1)) if writing else 0,
+                        'waiting': int(waiting.group(1)) if waiting else 0
+                    }
+            except Exception as e:
+                logger.warning(f'从状态模块获取连接信息失败: {e}')
+
+        # 如果无法从状态模块获取，尝试从系统获取
+        proc_info = get_nginx_process_info()
+        nginx_pids = proc_info.get('pids', [])
+        active = 0
+
+        for pid in nginx_pids:
+            try:
+                proc = psutil.Process(pid)
+                connections = proc.connections()
+                active += len([c for c in connections if c.state == 'ESTABLISHED'])
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        return {
+            'active': active,
+            'accepts': 0,
+            'handled': 0,
+            'requests': 0,
+            'reading': 0,
+            'writing': 0,
+            'waiting': 0
+        }
+    except Exception as e:
+        logger.error(f'获取连接状态失败: {e}')
+        return {
+            'active': 0,
+            'accepts': 0,
+            'handled': 0,
+            'requests': 0,
+            'reading': 0,
+            'writing': 0,
+            'waiting': 0
+        }
