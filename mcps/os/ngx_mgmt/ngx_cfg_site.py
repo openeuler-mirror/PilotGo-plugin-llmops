@@ -268,3 +268,15 @@ def derive_listen_ports(body):
     except Exception as e:
         logger.error(f'提取监听端口失败: {e}')
         return []
+
+def derive_server_names(body):
+    """提取服务器名称"""
+    try:
+        server_name_matches = re.findall(r'server_name\s+([^;]+);', body)  # NOSONAR
+        server_names = []
+        for match in server_name_matches:
+            server_names.extend([name.strip() for name in match.split()])
+        return server_names
+    except Exception as e:
+        logger.error(f'提取服务器名称失败: {e}')
+        return []
