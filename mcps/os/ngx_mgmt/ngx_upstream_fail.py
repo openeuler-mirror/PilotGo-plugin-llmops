@@ -622,3 +622,52 @@ def examine_circuit_breaker_status(upstream_config: Dict[str, Any],
     except Exception as e:
         logger.error(f"分析熔断器状态失败: {e}")
         return 'unknown'
+
+def fetch_failure_analysis_recommendations(failure_metrics: Dict[str, Any]) -> List[str]:
+    """
+    生成失败分析建议
+    
+    参数:
+        failure_metrics: 失败指标
+        
+    返回:
+        list: 建议列表
+    """
+    recommendations = []
+    
+    try:
+        failure_rate = failure_metrics.get('failure_rate_percentage', 0)
+        circuit_status = failure_metrics.get('circuit_breaker_status', 'unknown')
+        avg_retry_count = failure_metrics.get('average_retry_count', 0)
+        
+        # 基于失败率的建议
+        if failure_rate > 10:
+            recommendations.append(f"失败率过高 ({failure_rate}%)，建议检查后端服务健康状态")
+        elif failure_rate > 5:
+            recommendations.append(f"失败率较高 ({failure_rate}%)，需要关注后端服务稳定性")
+        
+        # 基于熔断状态的建议
+        if circuit_status == 'open':
+            recommendations.append("熔断器已打开，建议检查所有后端服务器状态")
+        elif circuit_status == 'half-open':
+            recommendations.append("熔断器处于半开状态，后端服务正在恢复中")
+        
+        # 基于重试次数的建议
+        if avg_retry_count > 2:
+            recommendations.append(f"平均重试次数较高 ({avg_retry_count})，建议优化超时配置")
+        
+        # 基于服务器失败统计的建议
+        for server_stat in failure_metrics.get('server_failure_stats', []):
+            if server_stat['failure_count'] > 10:
+                recommendations.append(
+                    f"服务器 {server_stat['server_address']} 失败次数较多，建议检查该服务器状态"
+                )
+        
+        # 如果没有错误，添加正常提示
+        if failure_rate == 0:
+            recommendations.append("当前系统运行正常，无失败请求")
+        
+    except Exception as e:
+        logger.error(f"生成建议失败: {e}")
+    
+    return recommendations
