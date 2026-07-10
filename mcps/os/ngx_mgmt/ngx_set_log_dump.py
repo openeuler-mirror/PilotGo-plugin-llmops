@@ -140,3 +140,49 @@ def fetch_log_format_info(config_path: str) -> Dict[str, str]:
         logger.error(f"获取日志格式信息失败: {e}")
     
     return log_formats
+
+def fetch_log_files(log_type: str = 'access') -> List[Dict[str, Any]]:
+    """
+    获取Nginx日志文件列表
+    
+    参数:
+        log_type: 日志类型 ('access' 或 'error')
+        
+    返回:
+        list: 日志文件信息列表
+    """
+    log_files = []
+    
+    try:
+        common_log_dirs = ['/var/log/nginx', '/usr/local/nginx/logs', '/var/log']
+        
+        for log_dir in common_log_dirs:
+            if os.path.exists(log_dir):
+                # 查找日志文件
+                if log_type == 'access':
+                    patterns = ['access.log*', 'access_log*', 'nginx-access.log*']
+                else:  # error
+                    patterns = ['error.log*', 'error_log*', 'nginx-error.log*']
+                
+                for pattern in patterns:
+                    import glob
+                    files = glob.glob(os.path.join(log_dir, pattern))
+                    for file_path in files:
+                        if os.path.isfile(file_path):
+                            stat = os.stat(file_path)
+                            file_info = {
+                                'path': file_path,
+                                'type': log_type,
+                                'size': stat.st_size,
+                                'mtime': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+                                'mtime_timestamp': stat.st_mtime
+                            }
+                            log_files.append(file_info)
+        
+        # 按修改时间排序（最新的在前）
+        log_files.sort(key=lambda x: x['mtime_timestamp'], reverse=True)
+        
+    except Exception as e:
+        logger.error(f"获取日志文件列表失败: {e}")
+    
+    return log_files
