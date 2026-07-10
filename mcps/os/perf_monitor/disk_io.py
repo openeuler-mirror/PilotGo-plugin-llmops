@@ -274,3 +274,39 @@ def fetch_system_io_stats():
         logger.error(f'获取系统磁盘IO统计失败: {e}')
 
     return stats
+def fetch_disk_io_stats():
+    """
+    获取磁盘设备IO
+    """
+    stats = {}
+
+    try:
+        # 读取/proc/diskstats
+        with open('/proc/diskstats', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 14:
+                    dev_name = parts[2]
+                    # 只关注物理设备
+                    if not dev_name.startswith('loop') and not dev_name.startswith('ram'):
+                        reads_completed = int(parts[3])
+                        writes_completed = int(parts[7])
+                        read_sectors = int(parts[5])
+                        write_sectors = int(parts[9])
+
+                        # 计算速率（假设采样间隔为1秒）
+                        sector_size = 512
+                        read_speed = (read_sectors * sector_size) / 1024 / 1024  # MB/s
+                        write_speed = (write_sectors * sector_size) / 1024 / 1024  # MB/s
+
+                        stats[dev_name] = {
+                            'read_speed': f"{read_speed:.2f} MB/s",
+                            'write_speed': f"{write_speed:.2f} MB/s"
+                        }
+
+    except Exception as e:
+        logger.error(f'获取磁盘设备IO失败: {e}')
+
+    return stats
