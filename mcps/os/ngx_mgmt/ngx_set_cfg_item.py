@@ -494,3 +494,36 @@ def save_config_files(config_files: List[str]) -> Dict:
             "success": False,
             "error": f"备份配置文件失败: {e}"
         }
+
+def recover_config_files(config_files: List[str], backup_dir: str) -> Dict:
+    """
+    恢复配置文件
+    
+    Args:
+        config_files: 配置文件路径列表
+        backup_dir: 备份目录
+    
+    Returns:
+        dict: 恢复结果
+    """
+    try:
+        restored_files = []
+        
+        for config_file in config_files:
+            backup_file = os.path.join(backup_dir, os.path.basename(config_file))
+            if os.path.exists(backup_file):
+                shutil.copy2(backup_file, config_file)
+                restored_files.append(config_file)
+        
+        return {
+            "success": True,
+            "restored_files": restored_files,
+            "message": f"配置文件已从备份恢复: {backup_dir}"
+        }
+        
+    except Exception as e:
+        logger.error(f"恢复配置文件失败: {e}")
+        return {
+            "success": False,
+            "error": f"恢复配置文件失败: {e}"
+        }
