@@ -372,3 +372,41 @@ def examine_error_logs(upstream_name: str, hours: int = 24) -> Dict[str, Any]:
         error_analysis['error'] = f"分析失败: {e}"
     
     return error_analysis
+
+def analyze_log_timestamp(log_line: str) -> Optional[datetime]:
+    """
+    解析日志时间戳
+    
+    参数:
+        log_line: 日志行
+        
+    返回:
+        datetime: 日志时间，解析失败返回None
+    """
+    try:
+        # 常见的Nginx日志时间格式
+        timestamp_patterns = [
+            r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})',
+            r'(\w{3} \w{3} \d{2} \d{2}:\d{2}:\d{2} \d{4})',
+            r'(\d{2}/\w{3}/\d{4}:\d{2}:\d{2}:\d{2})'
+        ]
+        
+        for pattern in timestamp_patterns:
+            match = re.search(pattern, log_line)  # NOSONAR
+            if match:
+                timestamp_str = match.group(1)
+                try:
+                    return datetime.strptime(timestamp_str, '%Y/%m/%d %H:%M:%S')
+                except Exception:
+                    try:
+                        return datetime.strptime(timestamp_str, '%a %b %d %H:%M:%S %Y')
+                    except Exception:
+                        try:
+                            return datetime.strptime(timestamp_str, '%d/%b/%Y:%H:%M:%S')
+                        except Exception:
+                            continue
+        
+        return None
+        
+    except Exception as e:
+        return None
