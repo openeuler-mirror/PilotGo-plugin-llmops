@@ -147,3 +147,40 @@ def analyze_acl_user(user_line: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.warning(f"解析ACL用户信息失败: {e}")
         return None
+def fetch_acl_rules() -> Dict[str, Any]:
+    """
+    获取ACL规则列表
+
+    返回:
+        ACL规则列表信息字典
+    """
+    output = {
+        'rules': [],
+        'total_rules': 0,
+        'message': '获取ACL规则列表'
+    }
+
+    try:
+        users_result = fetch_acl_users()
+
+        for user in users_result['users']:
+            user_rules = {
+                'username': user['username'],
+                'flags': user['flags'],
+                'passwords': user['passwords'],  # NOSONAR
+                'categories': user['categories'],
+                'commands': user['commands'],
+                'keys': user['keys'],
+                'total_permissions': len(user['categories']) + len(user['commands']) + len(user['keys'])
+            }
+
+            output['rules'].append(user_rules)
+
+        output['total_rules'] = len(output['rules'])
+        output['message'] = f'获取到 {output["total_rules"]} 个用户的ACL规则'
+
+    except Exception as e:
+        output['message'] = f'获取ACL规则列表时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
