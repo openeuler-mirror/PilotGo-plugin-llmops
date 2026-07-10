@@ -191,3 +191,52 @@ def fetch_connection_status():
             'writing': 0,
             'waiting': 0
         }
+
+def fetch_request_stats():
+    """获取请求统计"""
+    try:
+        # 尝试从Nginx状态模块获取请求信息
+        status_url = fetch_status_module_url()
+        if status_url:
+            try:
+                with urllib.request.urlopen(status_url, timeout=5) as response:
+                    payload = response.read().decode('utf-8')
+                    # 解析请求统计
+                    requests = re.search(r'(\d+)\s+requests', payload)  # NOSONAR
+                    if requests:
+                        # 简单计算每秒请求数（基于总请求数和运行时间）
+                        proc_info = get_nginx_process_info()
+                        nginx_pids = proc_info.get('pids', [])
+
+                        uptime_seconds = 0
+                        for pid in nginx_pids:
+                            try:
+                                proc = psutil.Process(pid)
+                                cmdline = ' '.join(proc.cmdline()).lower()
+                                if 'master' in cmdline:
+                                    create_time = proc.create_time()
+                                    uptime_seconds = time.time() - create_time
+                                    break
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                continue
+
+                        if uptime_seconds > 0:
+                            req_per_sec = int(requests.group(1)) / uptime_seconds
+                            return {
+                                'total': int(requests.group(1)),
+                                'req_per_sec': f"{req_per_sec:.1f}"
+                            }
+            except Exception as e:
+                logger.warning(f'从状态模块获取请求统计失败: {e}')
+
+        # 如果无法从状态模块获取，返回默认值
+        return {
+            'total': 0,
+            'req_per_sec': "未知"
+        }
+    except Exception as e:
+        logger.error(f'获取请求统计失败: {e}')
+        return {
+            'total': 0,
+            'req_per_sec': "未知"
+        }
