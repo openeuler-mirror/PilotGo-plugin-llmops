@@ -480,3 +480,18 @@ def certify_certificate(cert_path):
         return output.returncode == 0
     except Exception:
         return False
+
+def certify_private_key(key_path):
+    """验证 SSL 私钥"""
+    try:
+        # 安全验证：验证 key_path 路径参数（允许绝对路径）
+        valid, error_msg = validate_path_param(key_path, allow_absolute=True)
+        if not valid:
+            logger.error(f"certify_private_key: key_path 路径验证失败：{error_msg}")
+            return False
+
+        output = subprocess.run(['openssl', 'rsa', '-in', key_path, '-check', '-noout'],
+                              capture_output=True, text=True)
+        return output.returncode == 0
+    except Exception:
+        return False
