@@ -515,3 +515,26 @@ def fetch_mobo_interface_info():
     except Exception as e:
         logger.error(f'获取主板接口信息失败: {e}')
         return None
+def fetch_mobo_pci_info():
+    """
+    获取主板PCI设备信息
+
+    返回:
+        主板PCI设备信息字符串
+    """
+    try:
+        if platform.system() == 'Linux':
+            try:
+                output = subprocess.run(['lspci', '-nn'], capture_output=True, text=True)
+                if output.returncode == 0:
+                    lines = output.stdout.split('\n')
+                    pci_info = [line.strip() for line in lines[:15] if line.strip()]
+                    return '\n'.join(pci_info)
+            except subprocess.SubprocessError:
+                pass
+
+        return None
+
+    except Exception as e:
+        logger.error(f'获取主板PCI设备信息失败: {e}')
+        return None
