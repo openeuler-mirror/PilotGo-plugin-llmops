@@ -323,3 +323,62 @@ def analyze_macos_baseboard(output, mobo_info):
         # 即使在异常情况下，对于macOS系统也应该设置vendor为Apple
         mobo_info['vendor'] = 'Apple'
         return mobo_info
+def analyze_windows_baseboard(output, mobo_info):
+    """
+    解析Windows主板输出
+
+    参数:
+        output: wmic输出
+        mobo_info: 主板信息字典
+
+    返回:
+        更新后的主板信息字典
+    """
+    try:
+        lines = output.strip().split('\n')[1:]  # 跳过标题行
+
+        if lines:
+            line = lines[0].strip()
+
+            # 尝试制表符分隔
+            if '\t' in line:
+                parts = line.split('\t')
+            else:
+                # 处理多空格分隔的格式
+                # 使用正则表达式按多个连续空格分割，但要保留完整的字段
+                # 先按4个或更多空格分割（字段间分隔符）
+                parts = re.split(r' {4,}', line)
+                # 如果分割结果不合理，尝试按3个空格分割
+                if len(parts) < 2:
+                    parts = re.split(r' {3,}', line)
+                # 如果还是不合理，尝试按2个空格分割
+                if len(parts) < 2:
+                    parts = re.split(r' {2,}', line)
+
+                # 清理各部分
+                parts = [part.strip() for part in parts if part.strip()]
+
+            # 确保有足够的部分
+            if len(parts) >= 4:
+                mobo_info['vendor'] = parts[0].strip()
+                mobo_info['model'] = parts[1].strip()
+                mobo_info['serial'] = parts[2].strip()
+                mobo_info['form_factor'] = parts[3].strip()
+            elif len(parts) >= 3:
+                # 如果只有3个部分
+                mobo_info['vendor'] = parts[0].strip()
+                mobo_info['model'] = parts[1].strip()
+                mobo_info['serial'] = parts[2].strip()
+                mobo_info['form_factor'] = 'Unknown'
+            elif len(parts) >= 2:
+                # 如果只有2个部分
+                mobo_info['vendor'] = parts[0].strip()
+                mobo_info['model'] = parts[1].strip()
+                mobo_info['serial'] = 'Unknown'
+                mobo_info['form_factor'] = 'Unknown'
+
+        return mobo_info
+
+    except Exception as e:
+        logger.error(f'解析Windows主板输出失败: {e}')
+        return mobo_info
