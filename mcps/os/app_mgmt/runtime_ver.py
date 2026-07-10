@@ -177,3 +177,14 @@ def fetch_postgresql_version():
         return '未检测到'
     except Exception:
         return '未检测到'
+def fetch_docker_version():
+    """
+    获取Docker版本
+    """
+    try:
+        output = subprocess.run(['docker', '--ver'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return output.stdout.strip().split()[-1].strip(',')
+        return '未检测到'
+    except Exception:
+        return '未检测到'
