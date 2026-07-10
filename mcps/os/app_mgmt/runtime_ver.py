@@ -131,3 +131,14 @@ def fetch_php_version():
         return '未检测到'
     except Exception:
         return '未检测到'
+def fetch_redis_version():
+    """
+    获取Redis版本
+    """
+    try:
+        output = subprocess.run(['redis-server', '--ver'], capture_output=True, text=True)
+        if output.returncode == 0:
+            return output.stdout.strip().split()[-1]
+        return '未检测到'
+    except Exception:
+        return '未检测到'
