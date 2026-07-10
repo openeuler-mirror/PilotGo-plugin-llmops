@@ -596,3 +596,28 @@ def set_nginx_connection_limits(worker_connections: int,
         output['message'] = f"操作失败: {e}"
     
     return output
+
+def resume_nginx() -> Tuple[bool, str]:
+    """
+    重启Nginx服务
+    
+    返回:
+        tuple: (是否成功, 错误信息)
+    """
+    try:
+        # 尝试使用systemctl重启
+        output = subprocess.run(['systemctl', 'restart', 'nginx'], capture_output=True, text=True)
+        
+        if output.returncode == 0:
+            return True, "Nginx服务已重启"
+        
+        # 如果systemctl失败，尝试直接重启nginx进程
+        # 停止nginx
+        subprocess.run(['nginx', '-s', 'stop'], capture_output=True)
+        
+        # 启动nginx
+        start_result = subprocess.run(['nginx'], capture_output=True, text=True)
+        return True, "Nginx服务已重启" if start_result.returncode == 0 else False, f"启动失败: {start_result.stderr}"
+    except Exception as e:
+        logger.error(f"重启Nginx失败: {e}")
+        return False, f"重启失败: {e}"
