@@ -35,8 +35,6 @@ def fetch_proc_fd(pid):
         return '\n'.join(out)
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
-        return f'Permission denied reading /proc/{pid}/fd'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
