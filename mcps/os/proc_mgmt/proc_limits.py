@@ -25,8 +25,6 @@ def fetch_proc_limits(pid):
         return f'=== Resource Limits for PID {pid} ===\n{content.strip()}'
     except ValueError:
         return f'Error: invalid PID: {pid}'
-    except PermissionError:
-        return f'Permission denied reading /proc/{pid}/limits'
     except PermissionError as e:
         logger.error(f'Permission denied: {e}')
         return f'Permission denied: {e}'
