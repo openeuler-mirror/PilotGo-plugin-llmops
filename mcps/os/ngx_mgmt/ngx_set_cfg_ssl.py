@@ -547,3 +547,21 @@ def recover_config_backup(config_file_path, site_name):
     except Exception as e:
         logger.error(f'恢复配置备份失败：{e}')
         return False
+
+def certify_nginx_config(config_file_path):
+    """验证Nginx配置语法"""
+    try:
+        output = {'success': False, 'error': ''}
+        cmd = ['nginx', '-t']
+        process = subprocess.run(cmd, capture_output=True, text=True)
+
+        if process.returncode == 0:
+            output['success'] = True
+        else:
+            output['error'] = process.stderr
+
+        return output
+    except Exception as e:
+        logger.error(f'验证Nginx配置失败: {e}')
+        output['error'] = str(e)
+        return output
