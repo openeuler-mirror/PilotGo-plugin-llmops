@@ -255,3 +255,13 @@ def derive_pressure_value(line: str, key: str) -> float:
     except Exception:
         pass
     return 0.0
+def analyze_mem_value(line: str) -> int:
+    """从meminfo行解析内存值"""
+    try:
+        parts = line.split()
+        for i, part in enumerate(parts):
+            if part.isdigit():
+                return int(part)
+    except Exception:
+        pass
+    return 0
