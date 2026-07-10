@@ -177,3 +177,35 @@ def derive_global_configs(body):
     except Exception as e:
         logger.error(f'提取全局配置失败: {e}')
         return []
+
+def derive_events_configs(body):
+    """提取events块配置"""
+    try:
+        events_configs = []
+
+        # 提取events块内容
+        events_match = re.search(r'events\s*\{([^}]*)\}', body, re.DOTALL)  # NOSONAR
+        if not events_match:
+            return events_configs
+
+        events_content = events_match.group(1)
+
+        # 常见的events配置项
+        patterns = {
+            'worker_connections': r'worker_connections\s+([^;]+);',
+            'use': r'use\s+([^;]+);',
+            'multi_accept': r'multi_accept\s+([^;]+);',
+            'accept_mutex': r'accept_mutex\s+([^;]+);',
+            'accept_mutex_delay': r'accept_mutex_delay\s+([^;]+);',
+            'debug_connection': r'debug_connection\s+([^;]+);'
+        }
+
+        for config_name, pattern in patterns.items():
+            match = re.search(pattern, events_content)  # NOSONAR
+            if match:
+                events_configs.append(f"{config_name}: {match.group(1).strip()}")
+
+        return events_configs
+    except Exception as e:
+        logger.error(f'提取events配置失败: {e}')
+        return []
