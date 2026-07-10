@@ -325,3 +325,57 @@ def analyze_log_format_directive(directive):
     except Exception as e:
         logger.error(f'解析log_format指令失败: {e}')
         return {}
+
+def analyze_included_log_config(config_file):
+    """
+    解析被包含的配置文件
+
+    参数:
+        config_file: 被包含的配置文件路径
+
+    返回:
+        dict: 包含的日志配置信息
+    """
+    try:
+        included_info = {
+            'access_logs': [],
+            'error_logs': [],
+            'log_formats': {}
+        }
+
+        if not os.path.exists(config_file):
+            return included_info
+
+        with open(config_file, 'r', encoding='utf-8') as f:
+            body = f.read()
+
+        # 解析访问日志
+        access_log_matches = re.findall(r'access_log\s+([^;]+);', body)  # NOSONAR
+        for match in access_log_matches:
+            access_log_info = analyze_access_log_directive(match.strip())
+            if access_log_info:
+                included_info['access_logs'].append(access_log_info)
+
+        # 解析错误日志
+        error_log_matches = re.findall(r'error_log\s+([^;]+);', body)  # NOSONAR
+        for match in error_log_matches:
+            error_log_info = analyze_error_log_directive(match.strip())
+            if error_log_info:
+                included_info['error_logs'].append(error_log_info)
+
+        # 解析日志格式
+        log_format_matches = re.findall(r'log_format\s+([^}]+)}', body)  # NOSONAR
+        for match in log_format_matches:
+            format_info = analyze_log_format_directive(match.strip())
+            if format_info:
+                included_info['log_formats'].update(format_info)
+
+        return included_info
+
+    except Exception as e:
+        logger.error(f'解析包含的配置文件失败: {e}')
+        return {
+            'access_logs': [],
+            'error_logs': [],
+            'log_formats': {}
+        }
