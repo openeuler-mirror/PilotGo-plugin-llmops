@@ -389,3 +389,47 @@ def verify_connection_preservation(pre_processes, post_processes):
             return "无活跃连接"
     except Exception as e:
         return f"检查失败: {e}"
+
+def fetch_restart_recommendations():
+    """获取重启建议"""
+    recommendations = {
+        "正常维护": "使用graceful类型，等待时间10-30秒",
+        "配置更新": "使用reload类型，快速重载配置",
+        "故障恢复": "使用restart类型，完全重启服务",
+        "紧急情况": "启用force_restart，强制重启"
+    }
+    return recommendations
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "set_nginx_process_restart",
+    "function": set_nginx_process_restart,
+    "description": "平滑重启Nginx进程，避免中断现有连接，支持多种重启方式和参数配置",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "restart_type": {
+                "type": "string",
+                "enum": ["graceful", "restart", "reload"],
+                "description": "重启类型：graceful(平滑重启)、restart(完全重启)、reload(重载配置)"
+            },
+            "wait_time": {
+                "type": "number",
+                "description": "等待新进程稳定时间（秒），默认10秒"
+            },
+            "max_wait_time": {
+                "type": "number",
+                "description": "最大等待时间（秒），默认60秒"
+            },
+            "check_interval": {
+                "type": "number",
+                "description": "检查间隔（秒），默认2秒"
+            },
+            "force_restart": {
+                "type": "boolean",
+                "description": "是否强制重启（当平滑重启失败时），默认false"
+            }
+        },
+        "required": []
+    }
+}
