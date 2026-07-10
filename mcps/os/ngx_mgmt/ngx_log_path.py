@@ -379,3 +379,48 @@ def analyze_included_log_config(config_file):
             'error_logs': [],
             'log_formats': {}
         }
+
+def fetch_logrotate_config():
+    """
+    获取日志轮转配置信息
+
+    返回:
+        list: 日志轮转配置信息列表
+    """
+    try:
+        logrotate_configs = []
+
+        # 检查常见的logrotate配置路径
+        logrotate_paths = [
+            '/etc/logrotate.d/nginx',
+            '/etc/logrotate.conf'
+        ]
+
+        for config_path in logrotate_paths:
+            if os.path.exists(config_path):
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        body = f.read()
+
+                    # 检查是否包含nginx相关配置
+                    if 'nginx' in body.lower() or config_path.endswith('nginx'):
+                        logrotate_configs.append(f"轮转配置: {config_path}")
+
+                        # 提取关键配置信息
+                        lines = body.split('\n')
+                        for line in lines:
+                            line = line.strip()
+                            if line and not line.startswith('#'):
+                                if any(keyword in line for keyword in ['daily', 'weekly', 'monthly', 'rotate', 'size']):
+                                    logrotate_configs.append(f"  {line}")
+                except Exception:
+                    logrotate_configs.append(f"无法读取轮转配置: {config_path}")
+
+        if not logrotate_configs:
+            logrotate_configs.append("未找到日志轮转配置")
+
+        return logrotate_configs
+
+    except Exception as e:
+        logger.error(f'获取日志轮转配置失败: {e}')
+        return [f'获取日志轮转配置失败: {e}']
