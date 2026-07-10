@@ -248,3 +248,67 @@ def analyze_connection_limits(config_content: str) -> Dict[str, Any]:
         logger.error(f"解析连接限制配置失败: {e}")
     
     return limits
+
+def fetch_system_connection_info() -> Dict[str, Any]:
+    """
+    获取系统连接信息
+    
+    返回:
+        dict: 系统连接信息
+    """
+    sys_info = {
+        'file_descriptor_limit': 0,
+        'current_open_files': 0,
+        'tcp_connections': 0,
+        'memory_available': 0,
+        'cpu_cores': 0,
+        'recommended_worker_connections': 0,
+        'recommended_file_limit': 0
+    }
+    
+    try:
+        import resource
+        
+        # 获取文件描述符限制
+        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        sys_info['file_descriptor_limit'] = soft_limit
+        
+        # 获取当前打开文件数
+        try:
+            output = subprocess.run(['lsof', '-u', str(os.getuid())], capture_output=True, text=True)
+            if output.returncode == 0:
+                sys_info['current_open_files'] = len(output.stdout.strip().split('\n')) - 1
+        except Exception:
+            pass
+        
+        # 获取TCP连接数
+        try:
+            output = subprocess.run(['ss', '-t', '-a'], capture_output=True, text=True)
+            if output.returncode == 0:
+                sys_info['tcp_connections'] = len(output.stdout.strip().split('\n')) - 1
+        except Exception:
+            pass
+        
+        # 获取内存信息
+        try:
+            mem_data = psutil.virtual_memory()
+            sys_info['memory_available'] = mem_data.available
+        except Exception:
+            pass
+        
+        # 获取CPU核心数
+        sys_info['cpu_cores'] = os.cpu_count() or 1
+        
+        # 计算推荐值
+        # 推荐worker_connections：文件描述符限制的70%除以CPU核心数
+        if sys_info['file_descriptor_limit'] > 0:
+            recommended = int((sys_info['file_descriptor_limit'] * 0.7) / sys_info['cpu_cores'])
+            sys_info['recommended_worker_connections'] = min(recommended, 65535)
+        
+        # 推荐文件描述符限制：worker_connections * CPU核心数 * 1.5
+        sys_info['recommended_file_limit'] = sys_info['recommended_worker_connections'] * sys_info['cpu_cores'] * 1.5
+        
+    except Exception as e:
+        logger.error(f"获取系统连接信息失败: {e}")
+    
+    return sys_info
