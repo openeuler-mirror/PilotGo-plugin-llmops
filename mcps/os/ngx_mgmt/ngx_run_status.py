@@ -240,3 +240,43 @@ def fetch_request_stats():
             'total': 0,
             'req_per_sec': "未知"
         }
+
+def fetch_cache_status():
+    """获取缓存状态"""
+    try:
+        # 尝试从Nginx状态模块获取缓存信息
+        status_url = fetch_status_module_url()
+        if status_url:
+            try:
+                with urllib.request.urlopen(status_url, timeout=5) as response:
+                    payload = response.read().decode('utf-8')
+                    # 解析缓存统计
+                    cache_hits = re.search(r'(\d+)\s+cache hits', payload)  # NOSONAR
+                    cache_misses = re.search(r'(\d+)\s+cache misses', payload)  # NOSONAR
+
+                    if cache_hits and cache_misses:
+                        hits = int(cache_hits.group(1))
+                        misses = int(cache_misses.group(1))
+                        total = hits + misses
+                        hit_rate = f"{(hits / total) * 100:.1f}%" if total > 0 else "0%"
+                        return {
+                            'hits': hits,
+                            'misses': misses,
+                            'hit_rate': hit_rate
+                        }
+            except Exception as e:
+                logger.warning(f'从状态模块获取缓存状态失败: {e}')
+
+        # 如果无法从状态模块获取，返回默认值
+        return {
+            'hits': 0,
+            'misses': 0,
+            'hit_rate': "未知"
+        }
+    except Exception as e:
+        logger.error(f'获取缓存状态失败: {e}')
+        return {
+            'hits': 0,
+            'misses': 0,
+            'hit_rate': "未知"
+        }
