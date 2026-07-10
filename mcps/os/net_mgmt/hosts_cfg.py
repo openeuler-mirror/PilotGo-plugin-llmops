@@ -156,3 +156,10 @@ def analyze_hosts_file(body):
         logger.error(f'解析hosts文件失败: {e}')
 
     return parsed
+def display_hosts_entry(output, entry):
+    """
+    显示hosts条目
+    """
+    output.append(f"  行 {entry.get('line_num')}:")
+    output.append(f"    IP地址: {entry.get('ip')}")
+    output.append(f"    主机名: {', '.join(entry.get('hostnames'))}")
