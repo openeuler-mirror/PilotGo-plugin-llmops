@@ -64,3 +64,34 @@ def fetch_nginx_config_main():
     except Exception as e:
         logger.error(f'获取Nginx主配置文件失败: {e}')
         return f'获取Nginx主配置文件失败: {e}'
+
+def render_nginx_config(body):
+    """格式化Nginx配置文件内容，添加适当的缩进和行号"""
+    try:
+        lines = body.split('\n')
+        formatted_lines = []
+        indent_level = 0
+        line_number = 1
+
+        for line in lines:
+            # 保留原始行，但添加行号
+            formatted_line = f"{line_number:4d}: {line}"
+
+            # 检查是否是包含大括号的行
+            if '{' in line and '}' in line:
+                # 同一行包含开闭括号，不改变缩进
+                pass
+            elif '{' in line:
+                # 包含开括号，增加缩进
+                indent_level += 1
+            elif '}' in line:
+                # 包含闭括号，减少缩进
+                indent_level = max(0, indent_level - 1)
+
+            formatted_lines.append(formatted_line)
+            line_number += 1
+
+        return '\n'.join(formatted_lines)
+    except Exception as e:
+        logger.error(f'格式化配置文件失败: {e}')
+        return body
