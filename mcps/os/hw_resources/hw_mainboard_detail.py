@@ -430,3 +430,25 @@ def analyze_macos_chipset(output):
     except Exception as e:
         logger.error(f'解析macOS芯片组信息失败: {e}')
         return 'Unknown'
+def analyze_windows_chipset(output):
+    """
+    解析Windows芯片组信息
+
+    参数:
+        output: wmic输出
+
+    返回:
+        芯片组信息字符串
+    """
+    try:
+        lines = output.split('\n')
+
+        for line in lines:
+            if 'Host bridge' in line or 'PCI bridge' in line:
+                return line.strip()
+
+        return 'Unknown'
+
+    except Exception as e:
+        logger.error(f'解析Windows芯片组信息失败: {e}')
+        return 'Unknown'
