@@ -255,3 +255,48 @@ def fetch_log_levels(settings: Dict[str, Any]) -> Dict[str, str]:
         logger.error(f"获取日志级别失败: {e}")
     
     return log_levels
+
+def fetch_custom_log_formats(settings: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    获取自定义日志格式
+    
+    参数:
+        settings: 解析后的配置信息
+        
+    返回:
+        list: 自定义日志格式列表
+    """
+    formats = []
+    
+    try:
+        # 解析HTTP块中的log_format指令
+        if 'log_format' in settings['http_config']:
+            log_format_value = settings['http_config']['log_format']
+            if isinstance(log_format_value, list):
+                for fmt in log_format_value:
+                    formats.append(analyze_log_format(fmt))
+            else:
+                formats.append(analyze_log_format(log_format_value))
+        
+        # 解析include文件中的log_format
+        for include_file in settings['include_files']:
+            if os.path.exists(include_file):
+                with open(include_file, 'r', encoding='utf-8') as f:
+                    body = f.read()
+                
+                format_pattern = r'log_format\s+([^{]+)\{([^}]+)\}'  # NOSONAR
+                format_matches = re.finditer(format_pattern, body, re.DOTALL)  # NOSONAR
+                
+                for match in format_matches:
+                    format_name = match.group(1).strip()
+                    format_content = match.group(2).strip()
+                    formats.append({
+                        'name': format_name,
+                        'format': format_content,
+                        'source_file': include_file
+                    })
+        
+    except Exception as e:
+        logger.error(f"获取自定义日志格式失败: {e}")
+    
+    return formats
