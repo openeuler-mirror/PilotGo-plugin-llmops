@@ -56,3 +56,38 @@ def fetch_auth_config() -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def fetch_acl_users() -> Dict[str, Any]:
+    """
+    获取ACL用户列表
+
+    返回:
+        ACL用户列表信息字典
+    """
+    output = {
+        'users': [],
+        'total_users': 0,
+        'default_user': 'default',
+        'message': '获取ACL用户列表'
+    }
+
+    try:
+        acl_output = execute_redis_command('ACL LIST')
+        if acl_output:
+            users = acl_output.split('\n')
+
+            for user_line in users:
+                if not user_line.strip():
+                    continue
+
+                user_info = analyze_acl_user(user_line)
+                if user_info:
+                    output['users'].append(user_info)
+
+            output['total_users'] = len(output['users'])
+            output['message'] = f'获取到 {output["total_users"]} 个ACL用户'
+
+    except Exception as e:
+        output['message'] = f'获取ACL用户列表时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
