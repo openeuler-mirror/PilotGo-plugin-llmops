@@ -168,3 +168,50 @@ def fetch_backup_list(config_dir: Optional[str] = None,
         logger.error(output['message'])
 
     return output
+def fetch_backup_summary(config_dir: Optional[str] = None,
+                      config_file: Optional[str] = None) -> Dict[str, Any]:
+    """
+    获取配置备份摘要信息
+
+    参数:
+        config_dir: 配置目录
+        config_file: 配置文件路径
+
+    返回:
+        备份摘要信息字典
+    """
+    output = {
+        'total_backups': 0,
+        'total_size': 0,
+        'oldest_backup': None,
+        'newest_backup': None,
+        'compressed_backups': 0,
+        'message': '获取配置备份摘要'
+    }
+
+    try:
+        backup_list = fetch_backup_list(config_dir, config_file)
+
+        if not backup_list['total_backups']:
+            output['message'] = '没有找到配置备份文件'
+            return output
+
+        backups = backup_list['backups']
+        output['total_backups'] = len(backups)
+
+        total_size = sum(b['size'] for b in backups)
+        output['total_size'] = total_size
+
+        if backups:
+            output['oldest_backup'] = backups[-1]
+            output['newest_backup'] = backups[0]
+
+        output['compressed_backups'] = sum(1 for b in backups if b['is_compressed'])
+
+        output['message'] = f'备份摘要: 总数 {output["total_backups"]}, 总大小 {total_size} 字节, 压缩 {output["compressed_backups"]}'
+
+    except Exception as e:
+        output['message'] = f'获取配置备份摘要时发生异常: {str(e)}'
+        logger.error(output['message'])
+
+    return output
