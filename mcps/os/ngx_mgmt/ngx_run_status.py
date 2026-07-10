@@ -280,3 +280,31 @@ def fetch_cache_status():
             'misses': 0,
             'hit_rate': "未知"
         }
+
+def fetch_resource_usage(pids):
+    """获取资源使用情况"""
+    try:
+        total_cpu = 0
+        total_memory = 0
+
+        for pid in pids:
+            try:
+                proc = psutil.Process(pid)
+                cpu_percent = proc.cpu_percent(interval=0.1)
+                memory_percent = proc.memory_percent()
+
+                total_cpu += cpu_percent
+                total_memory += memory_percent
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        return {
+            'cpu': f"{total_cpu:.1f}",
+            'memory': f"{total_memory:.1f}"
+        }
+    except Exception as e:
+        logger.error(f'获取资源使用情况失败: {e}')
+        return {
+            'cpu': "未知",
+            'memory': "未知"
+        }
