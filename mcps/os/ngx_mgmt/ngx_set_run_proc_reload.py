@@ -207,3 +207,36 @@ def force_reload(timeout=60):
     except Exception as e:
         logger.error(f"强制重载Nginx配置失败: {e}")
         return {"success": False, "message": f"强制重载失败: {e}", "error": str(e)}
+
+def probe_nginx_config():
+    """
+    测试Nginx配置语法
+
+    Returns:
+        dict: 测试结果
+    """
+    try:
+        output = {"success": False, "message": "", "error": ""}
+
+        # 使用nginx -t命令测试配置语法
+        cmd_result = execute_command(['nginx', '-t'], timeout=30)
+
+        if cmd_result["success"]:
+            output["success"] = True
+            output["message"] = "配置语法检查通过"
+
+            # 解析测试输出
+            output = cmd_result.get("output", "")
+            if "syntax is ok" in output.lower() and "test is successful" in output.lower():
+                output["message"] = "配置语法检查通过，测试成功"
+            else:
+                output["message"] = "配置语法检查完成，但输出异常"
+        else:
+            output["error"] = cmd_result.get("error", "配置测试命令执行失败")
+            output["message"] = f"配置语法检查失败: {output['error']}"
+
+        return output
+
+    except Exception as e:
+        logger.error(f"测试Nginx配置语法失败: {e}")
+        return {"success": False, "message": f"配置测试失败: {e}", "error": str(e)}
