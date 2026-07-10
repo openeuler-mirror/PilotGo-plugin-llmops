@@ -185,3 +185,123 @@ def fetch_current_error_log_config(cfg_filepath: str) -> Dict[str, Any]:
         logger.error(f"获取当前错误日志配置失败: {e}")
     
     return current_config
+
+def modify_error_log_level(cfg_filepath: str, log_level: str, scope: str = 'main', 
+                          server_index: int = 0) -> Tuple[bool, str]:
+    """
+    修改错误日志级别
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        log_level: 日志级别
+        scope: 作用域 (main/http/server)
+        server_index: server块索引（仅当scope为server时有效）
+        
+    返回:
+        tuple: (是否成功, 修改后的内容)
+    """
+    try:
+        if not os.path.exists(cfg_filepath):
+            return False, "配置文件不存在"
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        original_content = body
+        
+        # 验证日志级别
+        if log_level not in SUPPORTED_LOG_LEVELS:
+            return False, f"不支持的日志级别: {log_level}"
+        
+        if scope == 'main':
+            # 修改主配置块中的error_log
+            pattern = r'(error_log\s+[^;\n]+)(?:\s+(?:debug|info|notice|warn|error|crit|alert|emerg))?;'  # NOSONAR
+            replacement = rf'\1 {log_level};'
+            body = re.sub(pattern, replacement, body)  # NOSONAR
+        
+        elif scope == 'http':
+            # 修改http块中的error_log
+            http_pattern = r'(http\s*\{[^}]*?error_log\s+[^;\n]+)(?:\s+(?:debug|info|notice|warn|error|crit|alert|emerg))?;'  # NOSONAR
+            
+            def replace_http_level(match):
+                http_block = match.group(0)
+                new_block = re.sub(  # NOSONAR
+                    r'(error_log\s+[^;\n]+)(?:\s+(?:debug|info|notice|warn|error|crit|alert|emerg))?;',  # NOSONAR
+                    rf'\1 {log_level};',  # NOSONAR
+                    http_block  # NOSONAR
+                    )  # NOSONAR
+                return new_block
+            
+            body = re.sub(http_pattern, replace_http_level, body, flags=re.DOTALL)  # NOSONAR
+        
+        elif scope == 'server':
+            # 修改指定server块中的error_log
+            server_pattern = r'server\s*\{[^}]+\}'  # NOSONAR
+            server_matches = list(re.finditer(server_pattern, body, re.DOTALL))  # NOSONAR
+            
+            if server_index < len(server_matches):
+                server_match = server_matches[server_index]
+                server_block = server_match.group(0)
+                
+                new_server_block = re.sub(  # NOSONAR
+                    r'(error_log\s+[^;\n]+)(?:\s+(?:debug|info|notice|warn|error|crit|alert|emerg))?;',  # NOSONAR
+                    rf'\1 {log_level};',  # NOSONAR
+                    server_block  # NOSONAR
+                )
+                
+                body = body[:server_match.start()] + new_server_block + body[server_match.end():]
+            else:
+                return False, f"找不到索引为 {server_index} 的server块"
+        
+        # 检查是否实际进行了修改
+        if body == original_content:
+            # 如果没有找到现有的error_log指令，需要添加
+            if scope == 'main':
+                # 在主配置块末尾添加error_log指令
+                default_log_path = '/var/log/nginx/error.log'
+                error_log_line = f'error_log {default_log_path} {log_level};'
+                
+                # 在events块之前或文件末尾添加
+                events_pattern = r'events\s*\{'  # NOSONAR
+                events_match = re.search(events_pattern, body)  # NOSONAR
+                if events_match:
+                    insert_pos = events_match.start()
+                    body = body[:insert_pos] + error_log_line + '\n' + body[insert_pos:]
+                else:
+                    body += '\n' + error_log_line + '\n'
+            elif scope == 'http':
+                # 在http块内添加error_log指令
+                http_pattern = r'(http\s*\{)'  # NOSONAR
+                http_match = re.search(http_pattern, body)  # NOSONAR
+                if http_match:
+                    insert_pos = http_match.end()
+                    default_log_path = '/var/log/nginx/error.log'
+                    error_log_line = f'    error_log {default_log_path} {log_level};\n'
+                    body = body[:insert_pos] + error_log_line + body[insert_pos:]
+                else:
+                    return False, "找不到http块，无法添加error_log指令"
+            
+            elif scope == 'server':
+                # 在指定server块内添加error_log指令
+                server_pattern = r'server\s*\{[^}]+\}'  # NOSONAR
+                server_matches = list(re.finditer(server_pattern, body, re.DOTALL))  # NOSONAR
+                
+                if server_index < len(server_matches):
+                    server_match = server_matches[server_index]
+                    server_block = server_match.group(0)
+                    
+                    # 在server块内第一行后添加error_log指令
+                    first_brace = server_block.find('{') + 1
+                    default_log_path = '/var/log/nginx/error.log'
+                    error_log_line = f'    error_log {default_log_path} {log_level};\n'
+                    
+                    new_server_block = server_block[:first_brace] + error_log_line + server_block[first_brace:]
+                    body = body[:server_match.start()] + new_server_block + body[server_match.end():]
+                else:
+                    return False, f"找不到索引为 {server_index} 的server块"
+        
+        return True, body
+        
+    except Exception as e:
+        logger.error(f"修改错误日志级别失败: {e}")
+        return False, f"修改失败: {e}"
