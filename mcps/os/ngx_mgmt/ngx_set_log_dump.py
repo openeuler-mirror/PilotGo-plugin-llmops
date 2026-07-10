@@ -432,3 +432,225 @@ def dump_logs_to_json(logs: List[Dict[str, Any]], output_path: str) -> bool:
     except Exception as e:
         logger.error(f"导出JSON文件失败: {e}")
         return False
+
+def dump_nginx_logs(
+    output_format: str = 'txt',
+    output_path: Optional[str] = None,
+    log_type: str = 'access',
+    log_format: str = 'combined',
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    url_pattern: Optional[str] = None,
+    status_code: Optional[str] = None,
+    max_lines: int = 10000
+) -> Dict[str, Any]:
+    """
+    导出Nginx日志的主函数
+    
+    参数:
+        output_format: 输出格式 ('txt', 'csv', 'json')
+        output_path: 输出文件路径
+        log_type: 日志类型 ('access', 'error')
+        log_format: 日志格式 ('combined', 'main', 或自定义格式名称)
+        start_time: 开始时间 (格式: YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD)
+        end_time: 结束时间 (格式: YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD)
+        ip_address: IP地址过滤
+        url_pattern: URL模式过滤 (支持正则表达式)
+        status_code: 状态码过滤
+        max_lines: 最大导出行数
+        
+    返回:
+        dict: 导出结果信息
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'exported_count': 0,
+        'output_path': '',
+        'file_size': 0
+    }
+    
+    try:
+        # 检查Nginx安装
+        nginx_check = verify_nginx_installation()
+        if not nginx_check['installed']:
+            output['message'] = f"Nginx未安装: {nginx_check['suggestion']}"
+            return output
+        
+        # 验证输出格式
+        if output_format not in ['txt', 'csv', 'json']:
+            output['message'] = f"不支持的输出格式: {output_format}"
+            return output
+        
+        # 设置默认输出路径
+        if not output_path:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            default_filename = f"nginx_{log_type}_logs_{timestamp}.{output_format}"
+            output_path = os.path.join('/tmp', default_filename)  # NOSONAR
+        
+        # 确保输出目录存在
+        output_dir = os.path.dirname(output_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+        
+        # 获取日志文件
+        log_files = fetch_log_files(log_type)
+        if not log_files:
+            output['message'] = f"未找到{log_type}日志文件"
+            return output
+        
+        # 解析时间范围
+        start_dt, end_dt = analyze_time_range(start_time, end_time)
+        
+        # 读取和解析日志
+        all_logs = []
+        total_lines_read = 0
+        
+        for log_file in log_files:
+            if total_lines_read >= max_lines:
+                break
+            
+            lines = load_log_file(log_file['path'], max_lines - total_lines_read)
+            total_lines_read += len(lines)
+            
+            for line in lines:
+                parsed_log = analyze_log_line(line, log_format)
+                if parsed_log:
+                    all_logs.append(parsed_log)
+        
+        # 过滤日志
+        filtered_logs = filter_logs(
+            all_logs, 
+            ip_address, 
+            url_pattern, 
+            status_code, 
+            start_dt, 
+            end_dt
+        )
+        
+        if not filtered_logs:
+            output['message'] = "未找到匹配的日志记录"
+            return output
+        
+        # 导出日志
+        export_success = False
+        if output_format == 'txt':
+            export_success = dump_logs_to_txt(filtered_logs, output_path)
+        elif output_format == 'csv':
+            export_success = dump_logs_to_csv(filtered_logs, output_path)
+        elif output_format == 'json':
+            export_success = dump_logs_to_json(filtered_logs, output_path)
+        
+        if export_success:
+            file_size = os.path.getsize(output_path)
+            output.update({
+                'success': True,
+                'message': f"成功导出 {len(filtered_logs)} 条日志记录",
+                'exported_count': len(filtered_logs),
+                'output_path': output_path,
+                'file_size': file_size
+            })
+        else:
+            output['message'] = "导出文件失败"
+        
+    except Exception as e:
+        logger.error(f"导出Nginx日志失败: {e}")
+        output['message'] = f"导出失败: {e}"
+    
+    return output
+
+# MCP工具配置
+TOOL_CONFIG = {
+    "name": "dump_nginx_logs",
+    "function": dump_nginx_logs,
+    "description": "将指定过滤条件的Nginx日志导出为txt/csv/json格式，支持指定存储路径",
+    "version": "1.0.0",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "output_format": {
+                "type": "string",
+                "enum": ["txt", "csv", "json"],
+                "description": "输出格式",
+                "default": "txt"
+            },
+            "output_path": {
+                "type": "string",
+                "description": "输出文件路径，如果不指定则使用默认路径",
+                "default": ""
+            },
+            "log_type": {
+                "type": "string",
+                "enum": ["access", "error"],
+                "description": "日志类型",
+                "default": "access"
+            },
+            "log_format": {
+                "type": "string",
+                "description": "日志格式名称 (combined, main 或自定义格式)",
+                "default": "combined"
+            },
+            "start_time": {
+                "type": "string",
+                "description": "开始时间 (格式: YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD)",
+                "default": ""
+            },
+            "end_time": {
+                "type": "string",
+                "description": "结束时间 (格式: YYYY-MM-DD HH:MM:SS 或 YYYY-MM-DD)",
+                "default": ""
+            },
+            "ip_address": {
+                "type": "string",
+                "description": "IP地址过滤 (支持部分匹配)",
+                "default": ""
+            },
+            "url_pattern": {
+                "type": "string",
+                "description": "URL模式过滤 (支持正则表达式)",
+                "default": ""
+            },
+            "status_code": {
+                "type": "string",
+                "description": "状态码过滤 (如: 200, 404, 500)",
+                "default": ""
+            },
+            "max_lines": {
+                "type": "integer",
+                "description": "最大导出行数",
+                "default": 10000
+            }
+        },
+        "required": ["output_format"]
+    },
+    "examples": [
+        {
+            "name": "dump_nginx_logs",
+            "parameters": {
+                "output_format": "txt",
+                "log_type": "access",
+                "max_lines": 1000
+            }
+        },
+        {
+            "name": "dump_nginx_logs",
+            "parameters": {
+                "output_format": "csv",
+                "log_type": "error",
+                "start_time": "2024-01-01",
+                "end_time": "2024-01-31",
+                "max_lines": 5000
+            }
+        },
+        {
+            "name": "dump_nginx_logs",
+            "parameters": {
+                "output_format": "json",
+                "log_type": "access",
+                "ip_address": "192.168.1.100",  # NOSONAR
+                "max_lines": 2000
+            }
+        }
+    ]
+}
