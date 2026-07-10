@@ -221,3 +221,85 @@ def recover_config_file(cfg_filepath, backup_path):
     except Exception as e:
         logger.error(f'配置文件恢复失败: {e}')
         return False
+
+def modify_timeout_config(cfg_filepath, params):
+    """更新配置文件中的超时时间设置"""
+    try:
+        # 读取配置文件内容
+        with open(cfg_filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            body = f.read()
+
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, encoding='utf-8') as temp_file:
+            temp_path = temp_file.name
+
+            # 处理每一行
+            lines = body.split('\n')
+            updated_lines = []
+            params_updated = set()
+
+            for line in lines:
+                updated_line = line
+                for param_name, param_value in params.items():
+                    # 检查是否已经包含该配置
+                    pattern = rf'^\s*{param_name}\s+[^;]+;'
+                    if re.match(pattern, line.strip()):  # NOSONAR
+                        # 替换现有配置
+                        updated_line = f"{param_name} {param_value};"
+                        params_updated.add(param_name)
+                        break
+
+                updated_lines.append(updated_line)
+
+            # 添加未设置的配置到http块
+            if params_updated:
+                # 查找http块位置
+                http_block_start = -1
+                http_block_end = -1
+                brace_count = 0
+                in_http_block = False
+
+                for i, line in enumerate(lines):
+                    if 'http' in line and '{' in line:
+                        in_http_block = True
+                        http_block_start = i
+                        brace_count = 1
+                    elif in_http_block:
+                        if '{' in line:
+                            brace_count += 1
+                        if '}' in line:
+                            brace_count -= 1
+                            if brace_count == 0:
+                                http_block_end = i
+                                break
+
+                # 在http块内添加新配置
+                if http_block_start != -1 and http_block_end != -1:
+                    for param_name, param_value in params.items():
+                        if param_name not in params_updated:
+                            # 在http块内合适位置插入新配置
+                            insert_pos = http_block_start + 1
+                            # 查找已有超时配置的位置
+                            for i in range(http_block_start + 1, http_block_end):
+                                if any(timeout_param in lines[i] for timeout_param in [
+                                    'client_body_timeout', 'client_header_timeout',
+                                    'keepalive_timeout', 'send_timeout'
+                                ]):
+                                    insert_pos = i + 1
+                                    break
+
+                            # 插入新配置
+                            updated_lines.insert(insert_pos, f"    {param_name} {param_value};")
+                            params_updated.add(param_name)
+
+            # 写入临时文件
+            temp_file.write('\n'.join(updated_lines))
+
+        # 替换原始文件
+        shutil.move(temp_path, cfg_filepath)
+
+        return {'success': True, 'updated_params': list(params_updated)}
+
+    except Exception as e:
+        logger.error(f'更新超时配置失败: {e}')
+        return {'success': False, 'error': str(e)}
