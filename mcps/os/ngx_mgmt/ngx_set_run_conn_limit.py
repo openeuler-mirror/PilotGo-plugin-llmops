@@ -510,3 +510,89 @@ def reload_nginx_gracefully() -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"平滑重载Nginx失败: {e}")
         return False, f"重载失败: {e}"
+
+def set_nginx_connection_limits(worker_connections: int,
+                               single_ip_limit: Optional[int] = None,
+                               listen_backlog: Optional[int] = None,
+                               worker_rlimit_nofile: Optional[int] = None,
+                               reload_method: str = 'graceful') -> Dict[str, Any]:
+    """
+    设置Nginx连接限制的主函数
+    
+    参数:
+        worker_connections: 工作连接数
+        single_ip_limit: 单IP连接限制（可选）
+        listen_backlog: 监听队列长度（可选）
+        worker_rlimit_nofile: 文件描述符限制（可选）
+        reload_method: 重载方式 ('graceful'平滑重载 或 'restart'重启)
+        
+    返回:
+        dict: 操作结果
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'previous_settings': {},
+        'new_settings': {},
+        'system_info': {},
+        'reload_method': reload_method,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    try:
+        # 验证输入参数
+        is_valid, validation_msg = certify_connection_settings(
+            worker_connections, single_ip_limit, listen_backlog
+        )
+        if not is_valid:
+            output['message'] = f"无效的连接设置: {validation_msg}"
+            return output
+        
+        # 获取配置文件路径
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            output['message'] = '无法找到Nginx配置文件'
+            return output
+        
+        # 读取当前配置
+        config_content = load_nginx_config(cfg_filepath)
+        if not config_content:
+            output['message'] = '无法读取Nginx配置文件'
+            return output
+        
+        # 获取当前设置和系统信息
+        output['previous_settings'] = fetch_current_connection_settings(config_content)
+        output['system_info'] = fetch_system_connection_info()
+        
+        # 更新配置
+        update_success, update_msg = modify_connection_settings(
+            cfg_filepath, worker_connections, single_ip_limit, listen_backlog, worker_rlimit_nofile
+        )
+        
+        if not update_success:
+            output['message'] = update_msg
+            return output
+        
+        # 应用新配置
+        if reload_method == 'graceful':
+            reload_success, reload_msg = reload_nginx_gracefully()
+        else:
+            # 重启Nginx
+            reload_success, reload_msg = resume_nginx()
+        
+        if not reload_success:
+            output['message'] = f"配置更新成功，但{reload_msg}"
+            return output
+        
+        # 获取新设置
+        new_config_content = load_nginx_config(cfg_filepath)
+        output['new_settings'] = fetch_current_connection_settings(new_config_content)
+        
+        output['success'] = True
+        output['message'] = f"连接限制设置已成功更新，并已{reload_msg}"
+        
+    except Exception as e:
+        logger.error(f"设置Nginx连接限制失败: {e}")
+        output['message'] = f"操作失败: {e}"
+    
+    return output
