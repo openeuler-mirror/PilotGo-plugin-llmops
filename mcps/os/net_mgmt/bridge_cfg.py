@@ -308,3 +308,42 @@ def fetch_bridge_status(interface):
         logger.error(f'获取网桥状态失败: {e}')
 
     return state
+def fetch_bridge_stats(bridge_interfaces):
+    """
+    获取网桥统计
+    """
+    stats = {}
+
+    try:
+        # 统计网桥数量
+        stats['网桥接口数量'] = len(bridge_interfaces)
+
+        # 统计桥接网卡总数
+        total_ports = 0
+        for interface in bridge_interfaces:
+            ports = fetch_bridge_ports(interface)
+            total_ports += len(ports)
+        stats['桥接网卡总数'] = total_ports
+
+        # 统计STP启用的网桥
+        stp_enabled = 0
+        for interface in bridge_interfaces:
+            stp = fetch_bridge_stp(interface)
+            if stp.get('STP状态') == '启用':
+                stp_enabled += 1
+        stats['STP启用的网桥数量'] = stp_enabled
+        stats['STP禁用的网桥数量'] = len(bridge_interfaces) - stp_enabled
+
+        # 统计UP状态的网桥
+        up_count = 0
+        for interface in bridge_interfaces:
+            state = fetch_bridge_status(interface)
+            if state.get('状态') == 'UP':
+                up_count += 1
+        stats['UP状态的网桥数量'] = up_count
+        stats['DOWN状态的网桥数量'] = len(bridge_interfaces) - up_count
+
+    except Exception as e:
+        logger.error(f'获取网桥统计失败: {e}')
+
+    return stats
