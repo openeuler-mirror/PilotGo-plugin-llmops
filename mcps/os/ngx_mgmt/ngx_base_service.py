@@ -238,3 +238,59 @@ def fetch_systemd_service_info():
     except Exception as e:
         logger.error(f'获取systemd服务信息失败: {e}')
         return {}
+
+def fetch_sysvinit_service_info():
+    """
+    获取sysvinit服务信息
+
+    返回:
+        dict: sysvinit服务信息
+    """
+    try:
+        service_info = {}
+
+        # 检查服务脚本是否存在
+        service_script = '/etc/init.d/nginx'
+        if os.path.exists(service_script):
+            service_info['service_file'] = service_script
+
+            # 获取服务状态
+            status_result = subprocess.run([service_script, 'status'], capture_output=True, text=True)
+            if status_result.returncode == 0:
+                service_info['status'] = '运行中'
+            else:
+                service_info['status'] = '未运行'
+
+            # 检查chkconfig
+            chkconfig_result = subprocess.run(['chkconfig', '--list', 'nginx'], capture_output=True, text=True)
+            if chkconfig_result.returncode == 0:
+                service_info['enabled'] = True
+                # 检查是否在运行级别3和5启用
+                if '3:on' in chkconfig_result.stdout and '5:on' in chkconfig_result.stdout:
+                    service_info['enabled_boot'] = True
+
+        # 控制命令
+        service_info['control_commands'] = {
+            'start': '/etc/init.d/nginx start',
+            'stop': '/etc/init.d/nginx stop',
+            'restart': '/etc/init.d/nginx restart',
+            'reload': '/etc/init.d/nginx reload',
+            'status': '/etc/init.d/nginx status'
+        }
+
+        # 日志路径
+        service_info['log_paths'] = {
+            'system_log': '/var/log/messages',
+            'service_log': '/var/log/nginx/access.log',
+            'error_log': '/var/log/nginx/error.log'
+        }
+
+        # PID文件
+        service_info['pid_file'] = '/var/run/nginx.pid'
+        service_info['lock_file'] = '/var/lock/nginx.lock'
+
+        return service_info
+
+    except Exception as e:
+        logger.error(f'获取sysvinit服务信息失败: {e}')
+        return {}
