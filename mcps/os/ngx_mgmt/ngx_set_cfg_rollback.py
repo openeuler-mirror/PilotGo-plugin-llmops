@@ -197,3 +197,46 @@ def fetch_config_paths() -> Dict:
             'vhosts_dir': '获取失败',
             'conf_d_dir': '获取失败'
         }
+
+def locate_target_backup(backup_path: str, target_version: Optional[str] = None) -> Optional[Dict]:
+    """查找目标备份版本"""
+    try:
+        backup_files = []
+
+        # 如果是目录，查找所有备份文件
+        if os.path.isdir(backup_path):
+            for root, dirs, files in os.walk(backup_path):
+                for file in files:
+                    if file.endswith('.conf') or 'backup' in file.lower():
+                        full_path = os.path.join(root, file)
+                        backup_info = examine_backup_file(full_path)
+                        if backup_info:
+                            backup_files.append(backup_info)
+
+        # 如果是文件，直接分析
+        elif os.path.isfile(backup_path):
+            backup_info = examine_backup_file(backup_path)
+            if backup_info:
+                backup_files.append(backup_info)
+
+        # 按时间戳排序（最新的在前）
+        backup_files.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+
+        # 如果没有指定版本，使用最新版本
+        if not target_version and backup_files:
+            return backup_files[0]
+
+        # 查找指定版本
+        for backup in backup_files:
+            if target_version and (
+                target_version in backup.get('filename', '') or
+                target_version == backup.get('version', '') or
+                target_version == backup.get('timestamp_str', '')
+            ):
+                return backup
+
+        return None
+
+    except Exception as e:
+        logger.error(f'查找目标备份失败: {e}')
+        return None
