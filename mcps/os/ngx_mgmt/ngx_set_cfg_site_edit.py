@@ -309,3 +309,49 @@ def modify_server_block(server_block_lines, port, root_path, server_names,
     except Exception as e:
         logger.error(f'修改server块失败: {e}')
         return server_block_lines
+
+def add_missing_directives(server_block, port, root_path, server_names,
+                          proxy_target, enable_ssl, modified_directives):
+    """添加缺失的配置指令"""
+    try:
+        # 查找server块中第一个location或空白行之前的位置
+        insert_position = -1
+        for i, line in enumerate(server_block):
+            if re.search(r'location\s+', line.strip()) or line.strip() == '':  # NOSONAR
+                insert_position = i
+                break
+
+        if insert_position == -1:
+            insert_position = len(server_block) - 1  # 在最后一个大括号前插入
+
+        new_directives = []
+
+        # 添加缺失的监听端口
+        if port is not None and 'listen' not in modified_directives:
+            if enable_ssl:
+                new_directives.append(f'    listen {port} ssl http2;')
+                new_directives.append(f'    listen [::]:{port} ssl http2;')
+            else:
+                new_directives.append(f'    listen {port};')
+                new_directives.append(f'    listen [::]:{port};')
+
+        # 添加缺失的服务器名称
+        if server_names is not None and 'server_name' not in modified_directives:
+            names_str = ' '.join(server_names) if isinstance(server_names, list) else server_names
+            new_directives.append(f'    server_name {names_str};')
+
+        # 添加缺失的根路径
+        if root_path is not None and 'root' not in modified_directives:
+            new_directives.append(f'    root {root_path};')
+
+        # 在适当位置插入新指令
+        if new_directives:
+            server_block = (server_block[:insert_position] +
+                          new_directives +
+                          server_block[insert_position:])
+
+        return server_block
+
+    except Exception as e:
+        logger.error(f'添加缺失指令失败: {e}')
+        return server_block
