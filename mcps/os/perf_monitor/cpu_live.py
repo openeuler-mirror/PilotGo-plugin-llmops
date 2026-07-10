@@ -78,3 +78,14 @@ def fetch_perf_cpu_real(interval=None):
     except Exception as e:
         logger.error(f'获取CPU实时性能失败: {e}')
         return f'获取CPU实时性能失败: {e}'
+def fetch_cpu_count():
+    """
+    获取CPU核心数
+    """
+    try:
+        # 从/proc/cpuinfo获取
+        with open('/proc/cpuinfo', 'r') as f:
+            body = f.read()
+            return body.count('processor\t:')
+    except Exception:
+        return 0
