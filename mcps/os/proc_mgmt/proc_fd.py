@@ -22,7 +22,7 @@ def fetch_proc_fd(pid):
             return f'Error: process {pid} not found'
         out = [f'=== Open FDs for PID {pid} ===']
         count = 0
-        for entry in sorted(os.listdir(fd_dir), key=lambda x: int(x)):
+        for entry in sorted([x for x in os.listdir(fd_dir) if x.isdigit()], key=int):
             link = os.path.join(fd_dir, entry)
             try:
                 target = os.readlink(link)
