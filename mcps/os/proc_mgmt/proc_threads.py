@@ -4,7 +4,7 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('proc_threads')
 
-def fetch_proc_threads(pid, fmt=None):
+def fetch_proc_threads(pid, format=None):
     """List threads of a process from /proc/<pid>/task/.
 
     Args:
