@@ -215,3 +215,88 @@ def fetch_backup_summary(config_dir: Optional[str] = None,
         logger.error(output['message'])
 
     return output
+def redis_config_backup_list(action: str = 'list',
+                           config_dir: Optional[str] = None,
+                           config_file: Optional[str] = None) -> Dict[str, Any]:
+    """
+    采集所有配置备份文件列表（时间戳、版本备注、存储路径）
+
+    参数:
+        action: 操作类型，可选值：
+               - "list": 获取备份文件列表
+               - "summary": 获取备份摘要信息
+        config_dir: 配置目录
+        config_file: 配置文件路径
+
+    返回:
+        格式化的备份文件列表信息字典
+    """
+    output = {
+        'success': False,
+        'message': '',
+        'data': {},
+        'timestamp': datetime.now().isoformat()
+    }
+
+    try:
+        rd_cli = get_redis_cli_command()
+        if not rd_cli:
+            output['message'] = '未找到redis-cli命令'
+            return output
+
+        if action == 'list':
+            backup_list = fetch_backup_list(config_dir, config_file)
+            output['data'] = backup_list
+            output['success'] = True
+            output['message'] = backup_list['message']
+
+        elif action == 'summary':
+            backup_summary = fetch_backup_summary(config_dir, config_file)
+            output['data'] = backup_summary
+            output['success'] = True
+            output['message'] = backup_summary['message']
+
+        else:
+            output['message'] = f'不支持的操作类型: {action}'
+
+    except Exception as e:
+        output['message'] = f'采集配置备份文件列表时发生异常: {str(e)}'
+        logger.error(output['message'])
+
+    return output
+
+TOOL_CONFIG = {
+    'name': 'rd_cfg_backup_list',
+    'function': redis_config_backup_list,
+    'description': '采集所有配置备份文件列表（时间戳、版本备注、存储路径）',
+    'parameters': {
+        'action': {
+            'type': 'string',
+            'description': '操作类型',
+            'enum': ['list', 'summary'],
+            'default': 'list'
+        },
+        'config_dir': {
+            'type': 'string',
+            'description': '配置目录',
+            'required': False
+        },
+        'config_file': {
+            'type': 'string',
+            'description': '配置文件路径',
+            'required': False
+        }
+    },
+    'returns': {
+        'type': 'object',
+        'description': '备份文件列表信息字典'
+    }
+}
+
+if __name__ == '__main__':
+    action = sys.argv[1] if len(sys.argv) > 1 else 'list'
+    config_dir = sys.argv[2] if len(sys.argv) > 2 else None
+    config_file = sys.argv[3] if len(sys.argv) > 3 else None
+
+    output = redis_config_backup_list(action, config_dir, config_file)
+    print(json.dumps(output, indent=2, ensure_ascii=False))
