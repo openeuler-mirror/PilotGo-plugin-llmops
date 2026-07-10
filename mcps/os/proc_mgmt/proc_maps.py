@@ -34,6 +34,12 @@ def fetch_proc_maps(pid):
         return f'Error: invalid PID: {pid}'
     except PermissionError:
         return f'Permission denied reading /proc/{pid}/maps'
+    except PermissionError as e:
+        logger.error(f'Permission denied: {e}')
+        return f'Permission denied: {e}'
+    except FileNotFoundError as e:
+        logger.error(f'Resource not found: {e}')
+        return f'Resource not found: {e}'
     except Exception as e:
         logger.error(f'Failed: {e}')
         return f'Error: {e}'
