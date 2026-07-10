@@ -147,3 +147,51 @@ def set_config_item(config_type: str, item_name: str, item_value: str,
             "message": f"设置配置项失败: {e}",
             "error": str(e)
         }
+
+def fetch_config_file_paths(config_type: str, site_name: str = None) -> Dict:
+    """
+    获取配置文件路径
+    
+    Args:
+        config_type: 配置类型
+        site_name: 站点名称
+    
+    Returns:
+        dict: 配置文件路径信息
+    """
+    try:
+        # 获取主配置文件路径
+        cfg_state = get_nginx_config_info()
+        main_config_path = cfg_state.get('config_file', '/etc/nginx/nginx.conf')
+        
+        output = {
+            'main_config': main_config_path,
+            'config_files': []
+        }
+        
+        if config_type == "main":
+            output['config_files'] = [main_config_path]
+        
+        elif config_type == "site":
+            if not site_name:
+                # 如果没有指定站点，返回所有站点配置
+                output['config_files'] = fetch_all_site_configs(main_config_path)
+            else:
+                # 查找指定站点配置
+                site_config = locate_site_config(main_config_path, site_name)
+                if site_config:
+                    output['config_files'] = [site_config]
+                else:
+                    output['error'] = f"未找到站点 '{site_name}' 的配置文件"
+        
+        elif config_type == "module":
+            # 模块配置通常在主配置文件中
+            output['config_files'] = [main_config_path]
+        
+        return output
+        
+    except Exception as e:
+        logger.error(f'获取配置文件路径失败: {e}')
+        return {
+            'error': f'获取配置文件路径失败: {e}'
+        }
