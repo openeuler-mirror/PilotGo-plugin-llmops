@@ -217,3 +217,41 @@ def verify_all_packages_integrity(check_type=None):
     except Exception as e:
         logger.error(f'检查所有包完整性失败: {e}')
         return []
+def verify_package_tamper(package_name):
+    """
+    检查包是否被篡改
+
+    参数:
+        package_name: 包名
+
+    返回:
+        检查结果字典
+    """
+    try:
+        # 使用rpm -V检查包的完整性
+        output = subprocess.run(['rpm', '-V', package_name], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            return {
+                'status': True,
+                'reason': '无篡改'
+            }
+        else:
+            # 解析错误输出
+            output = output.stdout.strip()
+            if output:
+                return {
+                    'status': False,
+                    'reason': output[:200]  # 只取前200字符
+                }
+            else:
+                return {
+                    'status': False,
+                    'reason': '检查失败'
+                }
+
+    except Exception as e:
+        return {
+            'status': False,
+            'reason': str(e)
+        }
