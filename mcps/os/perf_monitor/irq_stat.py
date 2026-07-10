@@ -204,3 +204,50 @@ def load_softirq_stats():
         logger.error(f'读取软中断统计失败: {e}')
 
     return stats
+def fetch_high_frequency_irqs():
+    """
+    获取高频中断源
+    """
+    high_freq_irqs = []
+
+    try:
+        # 读取中断统计
+        with open('/proc/interrupts', 'r') as f:
+            lines = f.readlines()
+
+            for line in lines[1:]:  # 跳过表头
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    irq = parts[0].rstrip(':')
+                    # 计算所有CPU的中断次数总和
+                    total = 0
+                    for part in parts[1:]:
+                        if part.isdigit():
+                            total += int(part)
+                        else:
+                            break
+
+                    # 获取中断名称
+                    label = 'Unknown'
+                    for part in parts:
+                        if not part.isdigit() and part != irq:
+                            label = part
+                            break
+
+                    # 只保留中断次数大于1000的
+                    if total > 1000:
+                        high_freq_irqs.append({
+                            'irq': irq,
+                            'label': label,
+                            'count': total
+                        })
+
+        # 按中断次数排序
+        high_freq_irqs.sort(key=lambda x: x['count'], reverse=True)
+        # 只返回前10个
+        high_freq_irqs = high_freq_irqs[:10]
+
+    except Exception as e:
+        logger.error(f'获取高频中断源失败: {e}')
+
+    return high_freq_irqs
