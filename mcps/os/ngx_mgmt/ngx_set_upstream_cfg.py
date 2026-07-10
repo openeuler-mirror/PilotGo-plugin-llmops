@@ -84,3 +84,35 @@ def load_nginx_config(cfg_filepath: str) -> str:
     except Exception as e:
         logger.error(f"读取Nginx配置文件失败: {e}")
         return ""
+
+def locate_upstream_block(upstream_name: str, config_content: str) -> Tuple[Optional[str], int, int]:
+    """
+    查找上游服务配置块
+    
+    参数:
+        upstream_name: 上游服务名称
+        config_content: 配置文件内容
+        
+    返回:
+        tuple: (配置块内容, 起始位置, 结束位置)
+    """
+    try:
+        # 移除注释
+        body = re.sub(r'#.*$', '', config_content, flags=re.MULTILINE)  # NOSONAR
+        
+        # 匹配指定的upstream块
+        upstream_pattern = rf'upstream\s+{re.escape(upstream_name)}\s*{{([^}}]+)}}'  # NOSONAR
+        match = re.search(upstream_pattern, body, re.DOTALL)  # NOSONAR
+        
+        if not match:
+            return None, -1, -1
+        
+        upstream_content = match.group(0)
+        start_pos = match.start()
+        end_pos = match.end()
+        
+        return upstream_content, start_pos, end_pos
+        
+    except Exception as e:
+        logger.error(f"查找上游服务配置块失败: {e}")
+        return None, -1, -1
