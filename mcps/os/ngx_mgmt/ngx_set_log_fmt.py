@@ -544,3 +544,359 @@ def reload_nginx_config() -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"重载Nginx配置失败: {e}")
         return False, f"重载失败: {e}"
+
+def set_nginx_log_format(action: str, format_name: str = None, 
+                        format_content: str = None, template: str = None,
+                        custom_variables: List[str] = None, target_file: str = None,
+                        apply_to_access_log: bool = False, log_path: str = None,
+                        scope: str = 'http', reload_config: bool = True) -> str:
+    """
+    设置Nginx自定义日志格式
+    
+    参数:
+        action: 操作类型 (add/modify/remove/list)
+        format_name: 格式名称
+        format_content: 格式内容
+        template: 预定义模板名称
+        custom_variables: 自定义变量列表
+        target_file: 目标配置文件路径
+        apply_to_access_log: 是否应用到access_log
+        log_path: 日志文件路径
+        scope: 作用域
+        reload_config: 是否重载配置
+        
+    返回:
+        str: JSON格式的操作结果
+    """
+    try:
+        # 检查Nginx安装状态
+        if not verify_nginx_installation():
+            return json.dumps({
+                'status': 'error',
+                'message': 'Nginx未安装或未正确配置',
+                'suggestion': '请先安装并配置Nginx'
+            }, ensure_ascii=False, indent=2)
+        
+        # 获取Nginx配置路径
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            return json.dumps({
+                'status': 'error',
+                'message': '无法找到Nginx配置文件',
+                'suggestion': '请检查Nginx配置'
+            }, ensure_ascii=False, indent=2)
+        
+        # 备份配置文件
+        backup_path = save_config_file(cfg_filepath)
+        
+        # 根据操作类型处理
+        if action == 'list':
+            # 列出当前所有日志格式
+            current_formats = fetch_current_log_formats(cfg_filepath)
+            return json.dumps({
+                'status': 'success',
+                'message': '获取日志格式列表成功',
+                'data': current_formats,
+                'predefined_formats': PREDEFINED_FORMATS,
+                'predefined_variables': PREDEFINED_VARIABLES
+            }, ensure_ascii=False, indent=2)
+        
+        elif action == 'add':
+            # 添加新的日志格式
+            if not format_name:
+                return json.dumps({
+                    'status': 'error',
+                    'message': '格式名称不能为空',
+                    'suggestion': '请提供有效的格式名称'
+                }, ensure_ascii=False, indent=2)
+            
+            # 处理格式内容
+            if template and template in PREDEFINED_FORMATS:
+                format_content = PREDEFINED_FORMATS[template]
+            elif custom_variables:
+                # 根据自定义变量构建格式内容
+                variables_str = ' '.join([f'${var}' for var in custom_variables])
+                format_content = variables_str
+            elif not format_content:
+                return json.dumps({
+                    'status': 'error',
+                    'message': '格式内容不能为空',
+                    'suggestion': '请提供格式内容、模板名称或自定义变量列表'
+                }, ensure_ascii=False, indent=2)
+            
+            # 验证格式
+            is_valid, err_text = certify_log_format(format_name, format_content)
+            if not is_valid:
+                return json.dumps({
+                    'status': 'error',
+                    'message': f'格式验证失败: {err_text}',
+                    'suggestion': '请检查格式名称和内容是否符合规范'
+                }, ensure_ascii=False, indent=2)
+            
+            # 添加到配置文件
+            success, output = add_log_format_to_config(cfg_filepath, format_name, 
+                                                      format_content, target_file)
+            if not success:
+                return json.dumps({
+                    'status': 'error',
+                    'message': output,
+                    'suggestion': '请检查格式名称是否已存在'
+                }, ensure_ascii=False, indent=2)
+            
+            # 应用到access_log
+            if apply_to_access_log:
+                success, output = apply_log_format_to_access_log(cfg_filepath, 
+                                                                format_name, log_path, scope)
+                if not success:
+                    return json.dumps({
+                        'status': 'error',
+                        'message': f'添加格式成功，但应用到access_log失败: {output}',
+                        'suggestion': '请手动配置access_log指令'
+                    }, ensure_ascii=False, indent=2)
+            
+            # 检查语法
+            syntax_ok, syntax_msg = verify_nginx_syntax(output)
+            if not syntax_ok:
+                return json.dumps({
+                    'status': 'error',
+                    'message': f'语法检查失败: {syntax_msg}',
+                    'suggestion': '请检查格式内容是否正确',
+                    'backup_path': backup_path
+                }, ensure_ascii=False, indent=2)
+            
+            # 写入配置文件
+            with open(cfg_filepath, 'w', encoding='utf-8') as f:
+                f.write(output)
+            
+            # 重载配置
+            if reload_config:
+                reload_success, reload_msg = reload_nginx_config()
+                if not reload_success:
+                    return json.dumps({
+                        'status': 'warning',
+                        'message': f'配置已保存但重载失败: {reload_msg}',
+                        'suggestion': '请手动重载Nginx配置',
+                        'backup_path': backup_path
+                    }, ensure_ascii=False, indent=2)
+            
+            return json.dumps({
+                'status': 'success',
+                'message': f'日志格式 "{format_name}" 添加成功',
+                'backup_path': backup_path,
+                'reload_status': 'success' if reload_config and reload_success else 'skipped'
+            }, ensure_ascii=False, indent=2)
+        
+        elif action == 'modify':
+            # 修改现有日志格式
+            if not format_name:
+                return json.dumps({
+                    'status': 'error',
+                    'message': '格式名称不能为空',
+                    'suggestion': '请提供要修改的格式名称'
+                }, ensure_ascii=False, indent=2)
+            
+            if not format_content:
+                return json.dumps({
+                    'status': 'error',
+                    'message': '新的格式内容不能为空',
+                    'suggestion': '请提供修改后的格式内容'
+                }, ensure_ascii=False, indent=2)
+            
+            # 验证格式
+            is_valid, err_text = certify_log_format(format_name, format_content)
+            if not is_valid:
+                return json.dumps({
+                    'status': 'error',
+                    'message': f'格式验证失败: {err_text}',
+                    'suggestion': '请检查格式内容是否符合规范'
+                }, ensure_ascii=False, indent=2)
+            
+            # 修改配置文件
+            success, output = modify_existing_log_format(cfg_filepath, format_name, format_content)
+            if not success:
+                return json.dumps({
+                    'status': 'error',
+                    'message': output,
+                    'suggestion': '请检查格式名称是否存在'
+                }, ensure_ascii=False, indent=2)
+            
+            # 检查语法
+            syntax_ok, syntax_msg = verify_nginx_syntax(output)
+            if not syntax_ok:
+                return json.dumps({
+                    'status': 'error',
+                    'message': f'语法检查失败: {syntax_msg}',
+                    'suggestion': '请检查格式内容是否正确',
+                    'backup_path': backup_path
+                }, ensure_ascii=False, indent=2)
+            
+            # 写入配置文件
+            with open(cfg_filepath, 'w', encoding='utf-8') as f:
+                f.write(output)
+            
+            # 重载配置
+            if reload_config:
+                reload_success, reload_msg = reload_nginx_config()
+                if not reload_success:
+                    return json.dumps({
+                        'status': 'warning',
+                        'message': f'配置已保存但重载失败: {reload_msg}',
+                        'suggestion': '请手动重载Nginx配置',
+                        'backup_path': backup_path
+                    }, ensure_ascii=False, indent=2)
+            
+            return json.dumps({
+                'status': 'success',
+                'message': f'日志格式 "{format_name}" 修改成功',
+                'backup_path': backup_path,
+                'reload_status': 'success' if reload_config and reload_success else 'skipped'
+            }, ensure_ascii=False, indent=2)
+        
+        elif action == 'remove':
+            # 删除日志格式
+            if not format_name:
+                return json.dumps({
+                    'status': 'error',
+                    'message': '格式名称不能为空',
+                    'suggestion': '请提供要删除的格式名称'
+                }, ensure_ascii=False, indent=2)
+            
+            # 删除配置文件中的格式
+            success, output = remove_log_format(cfg_filepath, format_name)
+            if not success:
+                return json.dumps({
+                    'status': 'error',
+                    'message': output,
+                    'suggestion': '请检查格式名称是否存在'
+                }, ensure_ascii=False, indent=2)
+            
+            # 检查语法
+            syntax_ok, syntax_msg = verify_nginx_syntax(output)
+            if not syntax_ok:
+                return json.dumps({
+                    'status': 'error',
+                    'message': f'语法检查失败: {syntax_msg}',
+                    'suggestion': '删除操作可能影响了其他配置',
+                    'backup_path': backup_path
+                }, ensure_ascii=False, indent=2)
+            
+            # 写入配置文件
+            with open(cfg_filepath, 'w', encoding='utf-8') as f:
+                f.write(output)
+            
+            # 重载配置
+            if reload_config:
+                reload_success, reload_msg = reload_nginx_config()
+                if not reload_success:
+                    return json.dumps({
+                        'status': 'warning',
+                        'message': f'配置已保存但重载失败: {reload_msg}',
+                        'suggestion': '请手动重载Nginx配置',
+                        'backup_path': backup_path
+                    }, ensure_ascii=False, indent=2)
+            
+            return json.dumps({
+                'status': 'success',
+                'message': f'日志格式 "{format_name}" 删除成功',
+                'backup_path': backup_path,
+                'reload_status': 'success' if reload_config and reload_success else 'skipped'
+            }, ensure_ascii=False, indent=2)
+        
+        else:
+            return json.dumps({
+                'status': 'error',
+                'message': f'不支持的操作类型: {action}',
+                'suggestion': '支持的操作类型: add/modify/remove/list'
+            }, ensure_ascii=False, indent=2)
+            
+    except Exception as e:
+        logger.error(f"设置Nginx日志格式失败: {e}")
+        return json.dumps({
+            'status': 'error',
+            'message': f'操作失败: {e}',
+            'suggestion': '请检查参数是否正确'
+        }, ensure_ascii=False, indent=2)
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "set_nginx_log_format",
+    "function": set_nginx_log_format,
+    "description": "设置Nginx自定义日志格式，支持添加IP、UA、响应时间等字段",
+    "version": "1.0.0",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["add", "modify", "remove", "list"],
+                "description": "操作类型：添加(add)、修改(modify)、删除(remove)、列表(list)"
+            },
+            "format_name": {
+                "type": "string",
+                "description": "日志格式名称"
+            },
+            "format_content": {
+                "type": "string",
+                "description": "日志格式内容（使用$variable格式）"
+            },
+            "template": {
+                "type": "string",
+                "enum": ["main", "combined", "extended", "detailed", "security", "performance"],
+                "description": "预定义模板名称"
+            },
+            "custom_variables": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "自定义变量列表（如['remote_addr', 'request_time']）"
+            },
+            "target_file": {
+                "type": "string",
+                "description": "目标配置文件路径（默认为主配置文件）"
+            },
+            "apply_to_access_log": {
+                "type": "boolean",
+                "description": "是否自动应用到access_log"
+            },
+            "log_path": {
+                "type": "string",
+                "description": "日志文件路径（当apply_to_access_log为true时生效）"
+            },
+            "scope": {
+                "type": "string",
+                "enum": ["http", "server"],
+                "description": "作用域：http块或server块"
+            },
+            "reload_config": {
+                "type": "boolean",
+                "description": "是否重载Nginx配置"
+            }
+        },
+        "required": ["action"]
+    },
+    "examples": [
+        {
+            "description": "添加一个包含IP和响应时间的自定义日志格式",
+            "parameters": {
+                "action": "add",
+                "format_name": "custom_format",
+                "format_content": "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent $request_time",
+                "apply_to_access_log": True
+            }
+        },
+        {
+            "description": "使用预定义模板添加日志格式",
+            "parameters": {
+                "action": "add",
+                "format_name": "extended_log",
+                "template": "extended",
+                "apply_to_access_log": True
+            }
+        },
+        {
+            "description": "列出当前所有日志格式",
+            "parameters": {
+                "action": "list"
+            }
+        }
+    ]
+}
