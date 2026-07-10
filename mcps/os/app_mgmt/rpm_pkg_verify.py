@@ -255,3 +255,34 @@ def verify_package_tamper(package_name):
             'status': False,
             'reason': str(e)
         }
+def verify_package_missing(package_name):
+    """
+    检查包文件是否缺失
+
+    参数:
+        package_name: 包名
+
+    返回:
+        检查结果字典
+    """
+    try:
+        # 获取包中的所有文件
+        files = fetch_package_files(package_name)
+        missing_files = []
+
+        # 检查每个文件是否存在
+        for file in files:
+            if not os.path.exists(file):
+                missing_files.append(file)
+
+        return {
+            'status': len(missing_files) == 0,
+            'missing_files': missing_files
+        }
+
+    except Exception as e:
+        return {
+            'status': False,
+            'missing_files': [],
+            'reason': str(e)
+        }
