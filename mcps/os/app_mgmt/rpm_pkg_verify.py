@@ -286,3 +286,34 @@ def verify_package_missing(package_name):
             'missing_files': [],
             'reason': str(e)
         }
+def verify_package_config(package_name):
+    """
+    检查包配置文件是否变更
+
+    参数:
+        package_name: 包名
+
+    返回:
+        检查结果字典
+    """
+    try:
+        # 获取包中的配置文件
+        config_files = fetch_package_config_files(package_name)
+        changed_files = []
+
+        # 检查每个配置文件是否变更
+        for file in config_files:
+            if os.path.exists(file) and os.path.exists(f"{file}.rpmnew"):
+                changed_files.append(file)
+
+        return {
+            'status': len(changed_files) == 0,
+            'changed_files': changed_files
+        }
+
+    except Exception as e:
+        return {
+            'status': False,
+            'changed_files': [],
+            'reason': str(e)
+        }
