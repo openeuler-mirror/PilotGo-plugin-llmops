@@ -225,3 +225,65 @@ def analyze_ssl_config(body: str) -> List[Dict[str, Union[str, int, bool]]]:
     except Exception as e:
         logger.error(f'解析SSL配置失败: {e}')
         return []
+
+def fetch_ssl_config_files(main_config_path: str) -> List[str]:
+    """
+    获取所有包含SSL配置的文件路径
+
+    参数:
+        main_config_path: 主配置文件路径
+
+    返回:
+        list: 包含SSL配置的文件路径列表
+    """
+    ssl_config_files = []
+
+    try:
+        # 读取主配置文件
+        body = Path(main_config_path).read_text()
+
+        # 检查主配置文件是否包含SSL配置
+        if re.search(r'ssl\s+', body):  # NOSONAR
+            ssl_config_files.append(main_config_path)
+
+        # 查找include指令
+        include_patterns = re.findall(r'include\s+([^\s;]+)', body)  # NOSONAR
+
+        for pattern in include_patterns:
+            # 处理通配符
+            if '*' in pattern:
+                # 获取目录路径
+                dir_path = os.path.dirname(pattern)
+                if not os.path.isabs(dir_path):
+                    # 相对路径，基于主配置文件所在目录
+                    dir_path = os.path.join(os.path.dirname(main_config_path), dir_path)
+
+                # 获取文件名模式
+                file_pattern = os.path.basename(pattern)
+
+                # 查找匹配的文件
+                if os.path.exists(dir_path):
+                    for file in os.listdir(dir_path):
+                        if re.match(file_pattern.replace('*', '.*'), file):  # NOSONAR
+                            full_path = os.path.join(dir_path, file)
+                            if os.path.isfile(full_path):
+                                # 检查文件是否包含SSL配置
+                                file_content = Path(full_path).read_text()
+                                if re.search(r'ssl\s+', file_content):  # NOSONAR
+                                    ssl_config_files.append(full_path)
+            else:
+                # 具体文件路径
+                if not os.path.isabs(pattern):
+                    pattern = os.path.join(os.path.dirname(main_config_path), pattern)
+
+                if os.path.isfile(pattern):
+                    # 检查文件是否包含SSL配置
+                    file_content = Path(pattern).read_text()
+                    if re.search(r'ssl\s+', file_content):  # NOSONAR
+                        ssl_config_files.append(pattern)
+
+        return ssl_config_files
+
+    except Exception as e:
+        logger.error(f'获取SSL配置文件列表失败: {e}')
+        return []
