@@ -229,3 +229,67 @@ def fetch_cpu_info():
         logger.error(f'获取CPU信息失败: {e}')
 
     return proc_data
+def fetch_memory_info():
+    """
+    获取内存信息
+    """
+    memory_info = {}
+
+    try:
+        if os.path.exists('/proc/meminfo'):
+            with open('/proc/meminfo', 'r') as f:
+                meminfo_lines = f.readlines()
+
+            mem_data = {}
+            for line in meminfo_lines:
+                parts = line.split(':')
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    val = parts[1].strip().split()[0]
+                    mem_data[key] = int(val)
+
+            if 'MemTotal' in mem_data:
+                memory_info['总内存'] = render_memory_size(mem_data['MemTotal'])
+            if 'MemFree' in mem_data:
+                memory_info['空闲内存'] = render_memory_size(mem_data['MemFree'])
+            if 'MemAvailable' in mem_data:
+                memory_info['可用内存'] = render_memory_size(mem_data['MemAvailable'])
+            if 'Buffers' in mem_data:
+                memory_info['缓冲区'] = render_memory_size(mem_data['Buffers'])
+            if 'Cached' in mem_data:
+                memory_info['缓存'] = render_memory_size(mem_data['Cached'])
+            if 'SwapTotal' in mem_data:
+                memory_info['总交换空间'] = render_memory_size(mem_data['SwapTotal'])
+            if 'SwapFree' in mem_data:
+                memory_info['空闲交换空间'] = render_memory_size(mem_data['SwapFree'])
+
+            if 'MemTotal' in mem_data and 'MemAvailable' in mem_data:
+                used_percent = ((mem_data['MemTotal'] - mem_data['MemAvailable']) / mem_data['MemTotal']) * 100
+                memory_info['内存使用率'] = f"{used_percent:.2f}%"
+
+            if 'SwapTotal' in mem_data and 'SwapFree' in mem_data:
+                if mem_data['SwapTotal'] > 0:
+                    swap_used_percent = ((mem_data['SwapTotal'] - mem_data['SwapFree']) / mem_data['SwapTotal']) * 100
+                    memory_info['交换空间使用率'] = f"{swap_used_percent:.2f}%"
+
+        output = subprocess.run(['free', '-h'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            memory_info['内存概览'] = output.stdout.strip()
+
+        output = subprocess.run(['vmstat', '-s'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            vmstat_lines = output.stdout.split('\n')
+            for line in vmstat_lines:
+                if 'total memory' in line.lower():
+                    memory_info['总内存(KB)'] = line.split()[0]
+                elif 'used memory' in line.lower():
+                    memory_info['已用内存(KB)'] = line.split()[0]
+                elif 'free memory' in line.lower():
+                    memory_info['空闲内存(KB)'] = line.split()[0]
+
+    except Exception as e:
+        logger.error(f'获取内存信息失败: {e}')
+
+    return memory_info
