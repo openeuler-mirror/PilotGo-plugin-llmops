@@ -114,3 +114,34 @@ def analyze_nginx_config(cfg_filepath: str) -> Dict[str, Any]:
         logger.error(f"解析Nginx配置文件失败: {e}")
     
     return settings
+
+def analyze_config_block(body: str) -> Dict[str, Any]:
+    """
+    解析配置块内容
+    
+    参数:
+        body: 配置块内容
+        
+    返回:
+        dict: 解析后的配置项
+    """
+    settings = {}
+    
+    # 解析键值对
+    pattern = r'(\w+)\s+([^;]+);'  # NOSONAR
+    matches = re.findall(pattern, body)  # NOSONAR
+    
+    for key, val in matches:
+        key = key.strip()
+        val = val.strip()
+        
+        # 处理数组值
+        if key in settings:
+            if isinstance(settings[key], list):
+                settings[key].append(val)
+            else:
+                settings[key] = [settings[key], val]
+        else:
+            settings[key] = val
+    
+    return settings
