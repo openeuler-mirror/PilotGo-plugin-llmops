@@ -273,3 +273,38 @@ def fetch_bridge_stp(interface):
         logger.error(f'获取网桥STP状态失败: {e}')
 
     return bridge_stp
+def fetch_bridge_status(interface):
+    """
+    获取网桥状态
+    """
+    state = {}
+
+    try:
+        # 安全校验：验证接口名称参数
+        is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+        if not is_valid:
+            logger.error(f'接口名称不合法：{error_msg}')
+            return state
+
+        # 使用ip命令获取状态
+        output = subprocess.run(['ip', 'link', 'show', interface], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lines = output.stdout.strip().split('\n')
+            for line in lines:
+                if interface in line:
+                    # 提取状态
+                    if 'UP' in line:
+                        state['状态'] = 'UP'
+                    else:
+                        state['状态'] = 'DOWN'
+                    # 提取是否运行
+                    if 'LOWER_UP' in line:
+                        state['运行状态'] = '运行中'
+                    else:
+                        state['运行状态'] = '未运行'
+
+    except Exception as e:
+        logger.error(f'获取网桥状态失败: {e}')
+
+    return state
