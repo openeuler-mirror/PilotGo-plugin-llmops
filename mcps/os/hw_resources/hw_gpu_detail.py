@@ -581,3 +581,49 @@ def analyze_macos_video(output):
     except Exception as e:
         logger.error(f'解析macOS显卡输出失败: {e}')
         return []
+def analyze_macos_monitor(output):
+    """
+    解析macOS显示器信息
+
+    参数:
+        output: system_profiler命令输出
+
+    返回:
+        显示器信息列表
+    """
+    try:
+        monitors = []
+        current_monitor = {}
+
+        lines = output.split('\n')
+        for line in lines:
+            if line.strip() and ':' in line:
+                parts = line.split(':', 1)
+                key = parts[0].strip()
+                val = parts[1].strip()
+
+                if 'Display' in key and 'Resolution' not in key:
+                    if current_monitor:
+                        monitors.append(current_monitor)
+                    current_monitor = {
+                        'label': key,
+                        'resolution': 'Unknown',
+                        'refresh_rate': 'Unknown',
+                        'connection': 'Unknown'
+                    }
+                elif current_monitor:
+                    if 'Resolution' in key:
+                        current_monitor['resolution'] = val
+                    elif 'Refresh Rate' in key:
+                        current_monitor['refresh_rate'] = val
+                    elif 'Connection Type' in key:
+                        current_monitor['connection'] = val
+
+        if current_monitor:
+            monitors.append(current_monitor)
+
+        return monitors
+
+    except Exception as e:
+        logger.error(f'解析macOS显示器输出失败: {e}')
+        return []
