@@ -181,3 +181,41 @@ def build_logrotate_config(log_files: List[str], rotation_type: str,
         config_lines.append('')
     
     return '\n'.join(config_lines)
+
+def setup_logrotate_config(config_content: str, config_name: str = 'nginx') -> bool:
+    """
+    安装logrotate配置文件
+    
+    参数:
+        config_content: 配置内容
+        config_name: 配置文件名
+        
+    返回:
+        bool: 是否安装成功
+    """
+    try:
+        logrotate_dir = '/etc/logrotate.d'
+        if not os.path.exists(logrotate_dir):
+            os.makedirs(logrotate_dir, exist_ok=True)
+        
+        cfg_filepath = os.path.join(logrotate_dir, config_name)
+        
+        # 备份现有配置
+        if os.path.exists(cfg_filepath):
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = f"{cfg_filepath}.backup.{timestamp}"
+            shutil.copy2(cfg_filepath, backup_path)
+            logger.info(f"现有logrotate配置已备份到: {backup_path}")
+        
+        # 写入新配置
+        with open(cfg_filepath, 'w', encoding='utf-8') as f:
+            f.write(config_content)
+        
+        # 设置权限
+        os.chmod(cfg_filepath, 0o644)  # NOSONAR
+        logger.info(f"logrotate配置已安装到: {cfg_filepath}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"安装logrotate配置失败: {e}")
+        return False
