@@ -561,3 +561,74 @@ def fetch_mobo_sata_info():
     except Exception as e:
         logger.error(f'获取主板SATA设备信息失败: {e}')
         return None
+def fetch_fallback_mobo_info(mobo_info):
+    """
+    获取备用主板信息（当特权命令不可用时）
+
+    参数:
+        mobo_info: 原始主板信息字典
+
+    返回:
+        更新后的主板信息字典
+    """
+    try:
+        # 从/sys/class/dmi/id/获取主板信息
+        dmi_path = '/sys/class/dmi/id/'
+        if os.path.exists(dmi_path):
+            try:
+                # 主板厂商
+                vendor_path = dmi_path + 'board_vendor'
+                if os.path.exists(vendor_path):
+                    with open(vendor_path, 'r') as f:
+                        vendor = f.read().strip()
+                        if vendor:
+                            mobo_info['vendor'] = vendor
+
+                # 主板型号
+                product_path = dmi_path + 'board_name'
+                if os.path.exists(product_path):
+                    with open(product_path, 'r') as f:
+                        product = f.read().strip()
+                        if product:
+                            mobo_info['model'] = product
+
+                # 主板序列号
+                serial_path = dmi_path + 'board_serial'
+                if os.path.exists(serial_path):
+                    with open(serial_path, 'r') as f:
+                        serial = f.read().strip()
+                        if serial:
+                            mobo_info['serial'] = serial
+
+            except (PermissionError, IOError):
+                # 权限不足时使用默认值
+                pass
+
+        # 默认值
+        if mobo_info['vendor'] == 'Unknown':
+            mobo_info['vendor'] = 'Generic Motherboard'
+        if mobo_info['model'] == 'Unknown':
+            mobo_info['model'] = 'Unknown Model'
+
+        return mobo_info
+    except Exception as e:
+        logger.warning(f'获取备用主板信息失败: {e}')
+        return mobo_info
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_hw_mobo_info",
+    "function": fetch_hw_mobo_info,
+    "description": "采集主板信息，包括型号、厂商、芯片组、主板序列号和支持的内存最大容量",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "mobo_type": {
+                "type": "string",
+                "description": "信息类型，可选值：model（主板型号）、vendor（主板厂商）、chipset（芯片组）、serial（主板序列号）、max_memory（支持的内存最大容量）、form_factor（主板规格），不指定则获取所有信息",
+                "enum": ["model", "vendor", "chipset", "serial", "max_memory", "form_factor"]
+            }
+        },
+        "required": []
+    }
+}
