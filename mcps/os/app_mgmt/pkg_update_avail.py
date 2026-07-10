@@ -270,3 +270,66 @@ def fetch_dnf_updates(check_security):
         logger.error(f'获取DNF更新失败: {e}')
 
     return updates
+def fetch_zypper_updates(check_security):
+    """
+    获取ZYPPER包管理器的可更新软件
+    """
+    updates = []
+
+    try:
+        # 获取可更新包
+        cmd = ['zypper', 'list-updates', '--quiet']
+        output = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+
+        # 解析输出
+        lines = output.stdout.strip().split('\n')
+        for line in lines:
+            if line and not line.startswith('Loading repository data...') and not line.startswith('Reading installed packages...') and not line.startswith('S | Name'):
+                parts = line.split()
+                if len(parts) >= 4:
+                    package_name = parts[1]
+                    current_version = parts[2]
+                    available_version = parts[3]
+
+                    # 检查是否是安全更新
+                    is_security = False
+                    if check_security and len(parts) > 4:
+                        if 'security' in ' '.join(parts[4:]).lower():
+                            is_security = True
+
+                    updates.append({
+                        'name': package_name,
+                        'current_version': current_version,
+                        'available_version': available_version,
+                        'is_security': is_security
+                    })
+    except Exception as e:
+        logger.error(f'获取ZYPPER更新失败: {e}')
+
+    return updates
+
+# 工具配置
+TOOL_CONFIG = {
+    "name": "fetch_app_update_available",
+    "function": fetch_app_update_available,
+    "description": "采集可更新软件（系统可更新的包/版本差异/更新大小/安全更新标识）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "package_manager": {
+                "type": "string",
+                "description": "包管理器类型，如未指定则自动检测"
+            },
+            "check_security": {
+                "type": "boolean",
+                "description": "是否检查安全更新",
+                "default": True
+            }
+        },
+        "required": []
+    }
+}
