@@ -460,3 +460,25 @@ def analyze_windows_swap_info(output):
     except Exception as e:
         logger.error(f'解析Windows交换分区信息失败: {e}')
         return {}
+def render_swap_info(swap_info):
+    """
+    格式化交换分区信息
+
+    参数:
+        swap_info: 交换分区信息字典
+
+    返回:
+        格式化的交换分区信息字符串
+    """
+    try:
+        output = []
+        for device, info in swap_info.items():
+            output.append(f"  设备: {device}")
+            output.append(f"    类型: {info.get('type', 'Unknown')}")
+            output.append(f"    大小: {info.get('size', 'Unknown')}")
+            output.append(f"    已用: {info.get('used', 'Unknown')}")
+            output.append(f"    优先级: {info.get('priority', 'Unknown')}")
+        return '\n'.join(output)
+    except Exception as e:
+        logger.error(f'格式化交换分区信息失败: {e}')
+        return "格式化交换分区信息失败"
