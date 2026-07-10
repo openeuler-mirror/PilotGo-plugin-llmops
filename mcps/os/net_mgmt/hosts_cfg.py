@@ -191,3 +191,28 @@ def fetch_hosts_stats(parsed_hosts):
         logger.error(f'获取hosts文件统计失败: {e}')
 
     return stats
+def verify_hosts_permissions():
+    """
+    检查hosts文件权限
+    """
+    permissions = {}
+
+    try:
+        if os.path.exists('/etc/hosts'):
+            # 获取文件权限
+            mode = os.stat('/etc/hosts').st_mode
+            permissions['文件权限'] = oct(mode)[-4:]
+
+            # 获取文件所有者
+            uid = os.stat('/etc/hosts').st_uid
+            gid = os.stat('/etc/hosts').st_gid
+            permissions['所有者UID'] = uid
+            permissions['所有者GID'] = gid
+
+            # 检查文件可写性
+            permissions['是否可写'] = '是' if os.access('/etc/hosts', os.W_OK) else '否'
+
+    except Exception as e:
+        logger.error(f'检查hosts文件权限失败: {e}')
+
+    return permissions
