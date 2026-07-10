@@ -488,3 +488,37 @@ def apply_log_format_to_access_log(cfg_filepath: str, format_name: str,
     except Exception as e:
         logger.error(f"应用日志格式到access_log失败: {e}")
         return False, f"应用失败: {e}"
+
+def verify_nginx_syntax(config_content: str) -> Tuple[bool, str]:
+    """
+    检查 Nginx 配置语法
+    
+    参数:
+        config_content: 配置内容
+        
+    返回:
+        tuple: (语法是否正确，错误信息)
+    """
+    try:
+        # 创建临时文件（使用固定路径，不涉及外部输入）
+        temp_file = '/tmp/nginx_temp.conf'  # NOSONAR
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            f.write(config_content)
+        
+        # 检查语法（subprocess 调用点）
+        output = subprocess.run(['nginx', '-t', '-c', temp_file], 
+                              capture_output=True, text=True)
+        
+        # 清理临时文件
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        
+        if output.returncode == 0:
+            return True, "语法检查通过"
+        else:
+            err_text = output.stderr if output.stderr else output.stdout
+            return False, err_text
+            
+    except Exception as e:
+        logger.error(f"检查Nginx语法失败: {e}")
+        return False, f"语法检查失败: {e}"
