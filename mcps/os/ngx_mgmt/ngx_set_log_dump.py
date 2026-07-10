@@ -413,3 +413,22 @@ def dump_logs_to_csv(logs: List[Dict[str, Any]], output_path: str) -> bool:
     except Exception as e:
         logger.error(f"导出CSV文件失败: {e}")
         return False
+
+def dump_logs_to_json(logs: List[Dict[str, Any]], output_path: str) -> bool:
+    """
+    导出日志到JSON文件
+    
+    参数:
+        logs: 日志记录列表
+        output_path: 输出文件路径
+        
+    返回:
+        bool: 是否导出成功
+    """
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"导出JSON文件失败: {e}")
+        return False
