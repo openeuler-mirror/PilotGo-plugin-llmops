@@ -112,3 +112,78 @@ def fetch_disk_devices():
         logger.error(f'获取磁盘设备列表失败: {e}')
 
     return devices
+def fetch_disk_stats(devices, interval):
+    """
+    获取磁盘性能数据
+    """
+    stats = {}
+
+    try:
+        # 第一次读取
+        first_stats = {}
+        for dev in devices:
+            first_stats[dev] = load_disk_stats(dev)
+
+        # 等待指定间隔
+        time.sleep(interval)
+
+        # 第二次读取
+        second_stats = {}
+        for dev in devices:
+            second_stats[dev] = load_disk_stats(dev)
+
+        # 计算性能数据
+        for dev in devices:
+            if dev in first_stats and dev in second_stats:
+                stat1 = first_stats[dev]
+                stat2 = second_stats[dev]
+
+                # 计算差值
+                reads_completed = stat2['reads_completed'] - stat1['reads_completed']
+                writes_completed = stat2['writes_completed'] - stat1['writes_completed']
+                read_sectors = stat2['read_sectors'] - stat1['read_sectors']
+                write_sectors = stat2['write_sectors'] - stat1['write_sectors']
+                read_time = stat2['read_time'] - stat1['read_time']
+                write_time = stat2['write_time'] - stat1['write_time']
+                io_time = stat2['io_time'] - stat1['io_time']
+
+                # 计算性能指标
+                # 假设每个扇区512字节
+                sector_size = 512
+
+                # IOPS
+                read_iops = reads_completed / interval
+                write_iops = writes_completed / interval
+                total_iops = read_iops + write_iops
+
+                # 读写速率
+                read_speed = (read_sectors * sector_size) / interval / 1024 / 1024  # MB/s
+                write_speed = (write_sectors * sector_size) / interval / 1024 / 1024  # MB/s
+                total_speed = read_speed + write_speed
+
+                # 平均响应时间（毫秒）
+                avg_read_time = (read_time / reads_completed) if reads_completed > 0 else 0
+                avg_write_time = (write_time / writes_completed) if writes_completed > 0 else 0
+
+                # 忙占比
+                busy_percent = (io_time / (interval * 1000)) * 100  # 1000毫秒/秒
+                if busy_percent > 100:
+                    busy_percent = 100
+
+                # 存储性能数据
+                stats[dev] = {
+                    '读IOPS': f"{read_iops:.2f}",
+                    '写IOPS': f"{write_iops:.2f}",
+                    '总IOPS': f"{total_iops:.2f}",
+                    '读速率': f"{read_speed:.2f} MB/s",
+                    '写速率': f"{write_speed:.2f} MB/s",
+                    '总速率': f"{total_speed:.2f} MB/s",
+                    '平均读响应时间': f"{avg_read_time:.2f} ms",
+                    '平均写响应时间': f"{avg_write_time:.2f} ms",
+                    '忙占比': f"{busy_percent:.2f}%"
+                }
+
+    except Exception as e:
+        logger.error(f'获取磁盘性能数据失败: {e}')
+
+    return stats
