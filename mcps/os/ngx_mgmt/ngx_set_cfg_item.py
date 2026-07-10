@@ -195,3 +195,75 @@ def fetch_config_file_paths(config_type: str, site_name: str = None) -> Dict:
         return {
             'error': f'获取配置文件路径失败: {e}'
         }
+
+def fetch_all_site_configs(main_config_path: str) -> List[str]:
+    """
+    获取所有站点配置文件路径
+    
+    Args:
+        main_config_path: 主配置文件路径
+    
+    Returns:
+        list: 站点配置文件路径列表
+    """
+    site_configs = []
+    
+    try:
+        # 读取主配置文件
+        with open(main_config_path, 'r', encoding='utf-8', errors='ignore') as f:
+            body = f.read()
+        
+        # 查找include指令
+        include_patterns = re.findall(r'include\s+([^\s;]+)', body)  # NOSONAR
+        
+        for pattern in include_patterns:
+            # 处理通配符
+            if '*' in pattern:
+                # 获取目录路径
+                dir_path = os.path.dirname(pattern)
+                if not os.path.isabs(dir_path):
+                    # 相对路径，基于主配置文件所在目录
+                    dir_path = os.path.join(os.path.dirname(main_config_path), dir_path)
+                
+                # 获取文件名模式
+                file_pattern = os.path.basename(pattern)
+                
+                # 查找匹配的文件
+                if os.path.exists(dir_path):
+                    for file in os.listdir(dir_path):
+                        if re.match(file_pattern.replace('*', '.*'), file):  # NOSONAR
+                            full_path = os.path.join(dir_path, file)
+                            if os.path.isfile(full_path):
+                                site_configs.append(full_path)
+            else:
+                # 具体文件路径
+                if not os.path.isabs(pattern):
+                    pattern = os.path.join(os.path.dirname(main_config_path), pattern)
+                
+                if os.path.isfile(pattern):
+                    site_configs.append(pattern)
+        
+        # 如果没有找到站点配置，尝试常见路径
+        if not site_configs:
+            common_paths = [
+                '/etc/nginx/sites-enabled/*',
+                '/etc/nginx/conf.d/*.conf',
+                '/usr/local/nginx/conf/vhosts/*.conf'
+            ]
+            
+            for path_pattern in common_paths:
+                dir_path = os.path.dirname(path_pattern)
+                file_pattern = os.path.basename(path_pattern)
+                
+                if os.path.exists(dir_path):
+                    for file in os.listdir(dir_path):
+                        if re.match(file_pattern.replace('*', '.*'), file):  # NOSONAR
+                            full_path = os.path.join(dir_path, file)
+                            if os.path.isfile(full_path):
+                                site_configs.append(full_path)
+        
+        return site_configs
+        
+    except Exception as e:
+        logger.error(f'获取站点配置文件列表失败: {e}')
+        return []
