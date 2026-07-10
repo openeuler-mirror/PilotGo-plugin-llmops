@@ -408,3 +408,196 @@ def _test_rotation_config() -> bool:
     except Exception as e:
         logger.error(f"测试日志切割配置失败：{e}")
         return False
+
+def set_nginx_log_rotation(rotation_type: str, rotation_value: str, 
+                          retention_days: int = 30, compress: bool = True,
+                          use_logrotate: bool = True, notification_script: str = "",
+                          custom_script_path: str = "") -> str:
+    """
+    设置Nginx日志切割规则
+    
+    参数:
+        rotation_type: 切割类型 (size/time)
+        rotation_value: 切割值 (如: 100M, daily, weekly)
+        retention_days: 保留天数，默认30天
+        compress: 是否压缩，默认是
+        use_logrotate: 是否使用logrotate，默认是
+        notification_script: 切割后执行的脚本命令
+        custom_script_path: 自定义脚本路径
+        
+    返回:
+        str: JSON格式的操作结果
+    """
+    try:
+        # 检查Nginx安装状态
+        if not verify_nginx_installation():
+            return json.dumps({
+                'status': 'error',
+                'message': 'Nginx未安装或未正确配置',
+                'suggestion': '请先安装并配置Nginx'
+            }, ensure_ascii=False, indent=2)
+        
+        # 获取Nginx配置路径
+        cfg_filepath = fetch_nginx_config_path()
+        if not cfg_filepath:
+            return json.dumps({
+                'status': 'error',
+                'message': '无法找到Nginx配置文件',
+                'suggestion': '请检查Nginx配置'
+            }, ensure_ascii=False, indent=2)
+        
+        # 备份配置文件
+        backup_path = save_config_file(cfg_filepath)
+        
+        # 解析配置文件获取日志文件路径
+        settings = analyze_nginx_config(cfg_filepath)
+        log_files = settings['log_files']
+        
+        if not log_files:
+            return json.dumps({
+                'status': 'error',
+                'message': '未找到Nginx日志文件配置',
+                'suggestion': '请检查Nginx配置文件中的error_log和access_log指令'
+            }, ensure_ascii=False, indent=2)
+        
+        result_info = {
+            'status': 'success',
+            'config_file': cfg_filepath,
+            'backup_file': backup_path,
+            'log_files': log_files,
+            'rotation_type': rotation_type,
+            'rotation_value': rotation_value,
+            'retention_days': retention_days,
+            'compress': compress,
+            'timestamp': datetime.now().isoformat(),
+            'details': {}
+        }
+        
+        if use_logrotate:
+            # 使用logrotate方式
+            config_content = build_logrotate_config(
+                log_files, rotation_type, rotation_value, 
+                retention_days, compress, notification_script
+            )
+            
+            if setup_logrotate_config(config_content):
+                result_info['method'] = 'logrotate'
+                result_info['details']['logrotate_config'] = '/etc/logrotate.d/nginx'
+                
+                # 测试配置
+                if _test_rotation_config():
+                    result_info['details']['test_result'] = 'passed'
+                else:
+                    result_info['details']['test_result'] = 'failed'
+                    result_info['status'] = 'warning'
+                    result_info['message'] = 'logrotate 配置安装成功但语法测试失败'
+            else:
+                result_info['status'] = 'error'
+                result_info['message'] = 'logrotate 配置安装失败'
+
+        else:
+            # 使用自定义脚本方式
+            script_content = build_custom_rotation_script(
+                log_files, rotation_type, rotation_value,
+                retention_days, compress, notification_script
+            )
+            
+            script_name = custom_script_path if custom_script_path else 'nginx-log-rotate'
+            script_path = setup_custom_script(script_content, script_name)
+            
+            # 设置定时任务
+            if setup_cron_job(script_path, rotation_type, rotation_value):
+                result_info['method'] = 'custom_script'
+                result_info['details']['script_path'] = script_path
+                result_info['details']['cron_file'] = '/etc/cron.d/nginx-log-rotate'
+            else:
+                result_info['status'] = 'warning'
+                result_info['message'] = '自定义脚本安装成功但定时任务设置失败'
+        
+        return json.dumps(result_info, ensure_ascii=False, indent=2)
+        
+    except Exception as e:
+        logger.error(f"设置Nginx日志切割规则失败: {e}")
+        return json.dumps({
+            'status': 'error',
+            'message': f'设置日志切割规则失败: {e}',
+            'timestamp': datetime.now().isoformat()
+        }, ensure_ascii=False, indent=2)
+
+# 工具配置
+TOOL_CONFIG = {
+    'name': 'set_nginx_log_rotation',
+    'description': '设置Nginx日志切割规则，支持按大小/时间切割、设置保留天数、是否压缩、切割后通知',
+    'category': 'Nginx',
+    'function': set_nginx_log_rotation,
+    'parameters': {
+        'rotation_type': {
+            'type': 'string',
+            'description': '切割类型: size(按大小) 或 time(按时间)',
+            'required': True,
+            'enum': ['size', 'time']
+        },
+        'rotation_value': {
+            'type': 'string',
+            'description': '切割值: 按大小如100M, 1G; 按时间如daily, weekly, monthly',
+            'required': True
+        },
+        'retention_days': {
+            'type': 'integer',
+            'description': '保留天数，默认30天',
+            'required': False,
+            'default': 30
+        },
+        'compress': {
+            'type': 'boolean',
+            'description': '是否压缩切割后的日志文件',
+            'required': False,
+            'default': True
+        },
+        'use_logrotate': {
+            'type': 'boolean',
+            'description': '是否使用logrotate工具',
+            'required': False,
+            'default': True
+        },
+        'notification_script': {
+            'type': 'string',
+            'description': '切割后执行的脚本命令',
+            'required': False,
+            'default': ''
+        },
+        'custom_script_path': {
+            'type': 'string',
+            'description': '自定义脚本路径',
+            'required': False,
+            'default': ''
+        }
+    },
+    'examples': [
+        {
+            'description': '按大小切割，每100M切割一次，保留30天，压缩',
+            'parameters': {
+                'rotation_type': 'size',
+                'rotation_value': '100M'
+            }
+        },
+        {
+            'description': '按时间切割，每天切割一次，保留90天，不压缩',
+            'parameters': {
+                'rotation_type': 'time',
+                'rotation_value': 'daily',
+                'retention_days': 90,
+                'compress': False
+            }
+        },
+        {
+            'description': '使用自定义脚本切割，切割后发送通知',
+            'parameters': {
+                'rotation_type': 'time',
+                'rotation_value': 'weekly',
+                'use_logrotate': False,
+                'notification_script': 'echo "日志已切割" | mail -s "Nginx日志切割通知" admin@example.com'
+            }
+        }
+    ]
+}
