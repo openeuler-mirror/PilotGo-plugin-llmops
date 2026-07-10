@@ -234,3 +234,49 @@ def fetch_redis_compile_info(pid):
         logger.error(f'获取Redis编译参数失败: {e}')
 
     return build_info
+def fetch_redis_kernel_info(pid):
+    """
+    获取Redis内核适配信息
+    """
+    kern_info = {}
+
+    try:
+        output = subprocess.run(['redis-cli', 'INFO', 'server'], capture_output=True, text=True, timeout=5)
+
+        if output.returncode == 0:
+            info_lines = output.stdout.split('\n')
+            for line in info_lines:
+                if line.startswith('os:'):
+                    kern_info['操作系统'] = line.split(':')[1]
+                elif line.startswith('arch_bits:'):
+                    kern_info['架构位数'] = line.split(':')[1]
+                elif line.startswith('multiplexing_api:'):
+                    kern_info['多路复用API'] = line.split(':')[1]
+
+        if os.path.exists(f'/proc/{pid}'):
+            output = subprocess.run(['cat', f'/proc/{pid}/status'], capture_output=True, text=True)
+
+            if output.returncode == 0:
+                status_lines = output.stdout.split('\n')
+                for line in status_lines:
+                    if line.startswith('Uid:'):
+                        kern_info['用户ID'] = line.split()[1]
+                    elif line.startswith('Gid:'):
+                        kern_info['组ID'] = line.split()[1]
+                    elif line.startswith('Threads:'):
+                        kern_info['线程数'] = line.split()[1]
+
+        output = subprocess.run(['uname', '-r'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            kern_info['内核版本'] = output.stdout.strip()
+
+        output = subprocess.run(['uname', '-m'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            kern_info['系统架构'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取Redis内核适配信息失败: {e}')
+
+    return kern_info
