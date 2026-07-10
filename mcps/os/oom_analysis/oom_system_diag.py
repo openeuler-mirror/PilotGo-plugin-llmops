@@ -177,3 +177,16 @@ def derive_timestamp(body: str, position: int) -> str:
     except Exception:
         pass
     return 'unknown'
+def derive_syslog_timestamp(body: str, position: int) -> str:
+    """从syslog内容中提取时间戳"""
+    try:
+        lines_before = body[:position].split('\n')
+        if lines_before:
+            last_line = lines_before[-1]
+            # 匹配syslog格式: "Jun  1 12:34:56"
+            match = re.match(r'(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})', last_line)
+            if match:
+                return match.group(1)
+    except Exception:
+        pass
+    return 'unknown'
