@@ -119,3 +119,27 @@ def fetch_iptables_rules():
         logger.error(f'获取iptables规则失败: {e}')
 
     return rules
+def fetch_ufw_rules():
+    """
+    获取ufw规则
+    """
+    rules = []
+
+    try:
+        # 检查ufw是否可用
+        output = subprocess.run(['which', 'ufw'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            # 获取ufw状态
+            status_result = subprocess.run(['ufw', 'state', 'verbose'], capture_output=True, text=True)
+
+            if status_result.returncode == 0:
+                lines = status_result.stdout.strip().split('\n')
+                for line in lines:
+                    if line:
+                        rules.append(f"{line.strip()}")
+
+    except Exception as e:
+        logger.error(f'获取ufw规则失败: {e}')
+
+    return rules
