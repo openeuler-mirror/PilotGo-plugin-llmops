@@ -382,3 +382,54 @@ def save_current_config(config_paths: Dict) -> Dict:
             'backup_files': [],
             'timestamp': datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         }
+
+def perform_rollback(target_backup: Dict, config_paths: Dict) -> List[Dict]:
+    """执行回滚操作"""
+    rollback_results = []
+
+    try:
+        backup_file = target_backup['path']
+        original_path = target_backup['original_path']
+
+        # 确保目标目录存在
+        target_dir = os.path.dirname(original_path)
+        Path(target_dir).mkdir(parents=True, exist_ok=True)
+
+        # 备份当前文件（如果存在）
+        if os.path.exists(original_path):
+            backup_current = f"{original_path}.rollback_backup"
+            shutil.copy2(original_path, backup_current)
+
+        # 执行回滚（复制备份文件到目标位置）
+        shutil.copy2(backup_file, original_path)
+
+        # 验证文件是否成功复制
+        if os.path.exists(original_path):
+            file_stat = os.stat(original_path)
+            rollback_results.append({
+                'success': True,
+                'backup_file': backup_file,
+                'target_file': original_path,
+                'size': file_stat.st_size,
+                'rollback_time': datetime.datetime.now().isoformat()
+            })
+            logger.info(f'成功回滚: {backup_file} -> {original_path}')
+        else:
+            rollback_results.append({
+                'success': False,
+                'backup_file': backup_file,
+                'target_file': original_path,
+                'error': '回滚后目标文件不存在'
+            })
+            logger.error(f'回滚失败: 目标文件不存在 {original_path}')
+
+    except Exception as e:
+        rollback_results.append({
+            'success': False,
+            'backup_file': target_backup['path'],
+            'target_file': target_backup['original_path'],
+            'error': str(e)
+        })
+        logger.error(f'执行回滚失败: {e}')
+
+    return rollback_results
