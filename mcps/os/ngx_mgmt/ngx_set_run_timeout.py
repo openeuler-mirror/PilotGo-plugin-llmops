@@ -303,3 +303,11 @@ def modify_timeout_config(cfg_filepath, params):
     except Exception as e:
         logger.error(f'更新超时配置失败: {e}')
         return {'success': False, 'error': str(e)}
+
+def certify_nginx_config():
+    """验证Nginx配置文件语法"""
+    try:
+        output = subprocess.run(['nginx', '-t'], capture_output=True, text=True)
+        return {'valid': True} if output.returncode == 0 else {'valid': False, 'error': output.stderr}
+    except Exception as e:
+        return {'valid': False, 'error': str(e)}
