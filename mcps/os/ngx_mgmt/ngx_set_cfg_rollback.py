@@ -459,3 +459,42 @@ def certify_nginx_syntax() -> Dict:
             'success': False,
             'error': f'语法校验过程出错: {e}'
         }
+
+def reload_nginx_config() -> Dict:
+    """重载Nginx配置"""
+    try:
+        # 尝试使用systemctl重载（如果可用）
+        output = subprocess.run(['systemctl', 'reload', 'nginx'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            return {
+                'success': True,
+                'method': 'systemctl',
+                'message': '使用systemctl重载成功',
+                'output': output.stdout.strip()
+            }
+
+        # 如果systemctl失败，尝试使用nginx -s reload
+        output = subprocess.run(['nginx', '-s', 'reload'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            return {
+                'success': True,
+                'method': 'nginx -s reload',
+                'message': '使用nginx -s reload重载成功',
+                'output': output.stdout.strip()
+            }
+
+        # 如果都失败，返回错误
+        return {
+            'success': False,
+            'error': '重载配置失败',
+            'output': output.stderr.strip() if output.stderr else output.stdout.strip()
+        }
+
+    except Exception as e:
+        logger.error(f'重载配置失败: {e}')
+        return {
+            'success': False,
+            'error': f'重载过程出错: {e}'
+        }
