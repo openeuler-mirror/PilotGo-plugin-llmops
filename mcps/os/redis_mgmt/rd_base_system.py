@@ -153,3 +153,79 @@ def fetch_os_info():
         logger.error(f'获取操作系统信息失败: {e}')
 
     return os_info
+def fetch_cpu_info():
+    """
+    获取CPU信息
+    """
+    proc_data = {}
+
+    try:
+        if os.path.exists('/proc/cpuinfo'):
+            with open('/proc/cpuinfo', 'r') as f:
+                cpuinfo_lines = f.readlines()
+
+            cpu_count = 0
+            physical_cpus = set()
+            cpu_cores = {}
+
+            for line in cpuinfo_lines:
+                if line.startswith('processor'):
+                    cpu_count += 1
+                elif line.startswith('physical id'):
+                    physical_id = line.split(':')[1].strip()
+                    physical_cpus.add(physical_id)
+                elif line.startswith('cpu cores'):
+                    cores = line.split(':')[1].strip()
+                    cpu_cores['核心数'] = cores
+                elif line.startswith('model name'):
+                    proc_data['CPU型号'] = line.split(':')[1].strip()
+                elif line.startswith('cpu MHz'):
+                    proc_data['CPU频率'] = f"{line.split(':')[1].strip()} MHz"
+                elif line.startswith('cache size'):
+                    proc_data['缓存大小'] = line.split(':')[1].strip()
+                elif line.startswith('vendor_id'):
+                    proc_data['厂商ID'] = line.split(':')[1].strip()
+
+            proc_data['逻辑CPU数'] = cpu_count
+            proc_data['物理CPU数'] = len(physical_cpus)
+
+            if physical_cpus and cpu_count > 0:
+                proc_data['每物理CPU核心数'] = cpu_count // len(physical_cpus)
+
+        output = subprocess.run(['lscpu'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            lscpu_lines = output.stdout.split('\n')
+            for line in lscpu_lines:
+                if 'CPU(s):' in line and 'On-line CPU(s)' not in line:
+                    proc_data['CPU总数'] = line.split(':')[1].strip()
+                elif 'Thread(s) per core:' in line:
+                    proc_data['每核心线程数'] = line.split(':')[1].strip()
+                elif 'Core(s) per socket:' in line:
+                    proc_data['每插槽核心数'] = line.split(':')[1].strip()
+                elif 'Socket(s):' in line:
+                    proc_data['CPU插槽数'] = line.split(':')[1].strip()
+                elif 'CPU MHz:' in line:
+                    proc_data['当前CPU频率'] = line.split(':')[1].strip()
+                elif 'CPU max MHz:' in line:
+                    proc_data['最大CPU频率'] = line.split(':')[1].strip()
+                elif 'CPU min MHz:' in line:
+                    proc_data['最小CPU频率'] = line.split(':')[1].strip()
+
+        if os.path.exists('/proc/loadavg'):
+            with open('/proc/loadavg', 'r') as f:
+                loadavg = f.read().strip().split()
+                if loadavg:
+                    proc_data['1分钟负载'] = loadavg[0]
+                    proc_data['5分钟负载'] = loadavg[1]
+                    proc_data['15分钟负载'] = loadavg[2]
+
+        output = subprocess.run(['nproc'], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            proc_data['可用CPU数'] = output.stdout.strip()
+
+    except Exception as e:
+        logger.error(f'获取CPU信息失败: {e}')
+
+    return proc_data
