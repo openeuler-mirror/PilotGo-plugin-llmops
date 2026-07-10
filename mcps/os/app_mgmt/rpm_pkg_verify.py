@@ -335,3 +335,24 @@ def fetch_all_installed_packages():
 
     except Exception:
         return []
+def fetch_package_files(package_name):
+    """
+    获取包中的所有文件
+
+    参数:
+        package_name: 包名
+
+    返回:
+        文件列表
+    """
+    try:
+        output = subprocess.run(['rpm', '-ql', package_name], capture_output=True, text=True)
+
+        if output.returncode == 0:
+            files = output.stdout.strip().split('\n')
+            return [file for file in files if file.strip()]
+
+        return []
+
+    except Exception:
+        return []
