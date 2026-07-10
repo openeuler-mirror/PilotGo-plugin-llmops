@@ -104,3 +104,39 @@ def fetch_file_config(cfg_filepath: str) -> Dict[str, Any]:
         logger.error(output['message'])
 
     return output
+def fetch_runtime_config() -> Dict[str, Any]:
+    """
+    获取运行时配置项
+
+    返回:
+        运行时配置项信息字典
+    """
+    output = {
+        'config': {},
+        'total_items': 0,
+        'message': '获取运行时配置项'
+    }
+
+    try:
+        cfg_out = execute_redis_command('CONFIG GET *')
+        if cfg_out:
+            lines = cfg_out.split('\n')
+
+            for i in range(0, len(lines), 2):
+                if i + 1 < len(lines):
+                    key = lines[i]
+                    val = lines[i + 1]
+                    output['config'][key] = {
+                        'val': val,
+                        'source': 'runtime',
+                        'is_dynamic': True
+                    }
+
+            output['total_items'] = len(output['config'])
+            output['message'] = f'运行时配置中找到 {output["total_items"]} 个配置项'
+
+    except Exception as e:
+        output['message'] = f'获取运行时配置项时发生异常: {e}'
+        logger.error(output['message'])
+
+    return output
