@@ -332,3 +332,28 @@ def filter_logs(logs: List[Dict[str, Any]],
         filtered_logs.append(log)
     
     return filtered_logs
+
+def load_log_file(file_path: str, max_lines: int = 10000) -> List[str]:
+    """
+    读取日志文件内容
+    
+    参数:
+        file_path: 日志文件路径
+        max_lines: 最大读取行数
+        
+    返回:
+        list: 日志行列表
+    """
+    lines = []
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            for i, line in enumerate(f):
+                if i >= max_lines:
+                    break
+                if line.strip():
+                    lines.append(line)
+    except Exception as e:
+        logger.error(f"读取日志文件失败: {file_path}, 错误: {e}")
+    
+    return lines
