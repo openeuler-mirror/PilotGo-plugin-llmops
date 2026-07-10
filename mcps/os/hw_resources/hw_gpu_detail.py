@@ -676,3 +676,56 @@ def analyze_windows_video(output):
     except Exception as e:
         logger.error(f'解析Windows显卡输出失败: {e}')
         return []
+def analyze_windows_monitor(output):
+    """
+    解析Windows显示器信息
+
+    参数:
+        output: wmic命令输出
+
+    返回:
+        显示器信息列表
+    """
+    try:
+        monitors = []
+        lines = output.strip().split('\n')[1:]
+
+        for line in lines:
+            if line.strip():
+                parts = line.split()
+                if len(parts) >= 3:
+                    label = ' '.join(parts[:-2])
+                    width = parts[-2]
+                    height = parts[-1]
+
+                    monitor = {
+                        'label': label,
+                        'resolution': f"{width}x{height}",
+                        'refresh_rate': 'Unknown',
+                        'connection': 'Unknown'
+                    }
+                    monitors.append(monitor)
+
+        return monitors
+
+    except Exception as e:
+        logger.error(f'解析Windows显示器输出失败: {e}')
+        return []
+
+# 工具配置
+TOOL_CONFIG = {
+    "label": "fetch_hw_video_info",
+    "function": fetch_hw_video_info,
+    "description": "采集显卡/视频卡信息（显卡型号/厂商/显存大小/驱动版本/显示输出接口）",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "video_type": {
+                "type": "string",
+                "description": "信息类型，可选值：model（显卡型号）、vendor（厂商）、memory（显存大小）、driver（驱动版本）、interface（显示输出接口），不指定则获取所有信息",
+                "enum": ["model", "vendor", "memory", "driver", "interface"]
+            }
+        },
+        "required": []
+    }
+}
