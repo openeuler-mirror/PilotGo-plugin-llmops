@@ -410,3 +410,61 @@ def analyze_log_timestamp(log_line: str) -> Optional[datetime]:
         
     except Exception as e:
         return None
+
+def examine_error_line(log_line: str, upstream_name: str) -> Optional[Dict[str, Any]]:
+    """
+    分析单行错误日志
+    
+    参数:
+        log_line: 日志行
+        upstream_name: upstream名称
+        
+    返回:
+        dict: 错误信息，如果不是相关错误返回None
+    """
+    try:
+        # 检查是否包含upstream名称
+        if upstream_name not in log_line:
+            return None
+        
+        error_info = {
+            'timestamp': datetime.now().isoformat(),
+            'error_type': 'unknown',
+            'server_address': 'unknown',
+            'error_message': log_line.strip(),
+            'retry_attempt': 0
+        }
+        
+        # 解析时间戳
+        log_time = analyze_log_timestamp(log_line)
+        if log_time:
+            error_info['timestamp'] = log_time.isoformat()
+        
+        # 分析错误类型
+        if 'connect() failed' in log_line or 'Connection refused' in log_line:
+            error_info['error_type'] = 'connection_refused'
+        elif 'Connection timed out' in log_line or 'upstream timed out' in log_line:
+            error_info['error_type'] = 'connection_timeout'
+        elif 'upstream server temporarily disabled' in log_line:
+            error_info['error_type'] = 'server_disabled'
+        elif 'no live upstreams' in log_line:
+            error_info['error_type'] = 'no_live_upstreams'
+        elif 'bad gateway' in log_line or '502' in log_line:
+            error_info['error_type'] = 'http_502'
+        elif 'service unavailable' in log_line or '503' in log_line:
+            error_info['error_type'] = 'http_503'
+        
+        # 解析服务器地址
+        server_match = re.search(r'to ([\d\.]+:\d+)', log_line)  # NOSONAR
+        if server_match:
+            error_info['server_address'] = server_match.group(1)
+        
+        # 解析重试次数
+        retry_match = re.search(r'while connecting to upstream, client:.*, server:.*, request:.*, upstream:.*, (\d+)', log_line)  # NOSONAR
+        if retry_match:
+            error_info['retry_attempt'] = int(retry_match.group(1))
+        
+        return error_info
+        
+    except Exception as e:
+        return None
