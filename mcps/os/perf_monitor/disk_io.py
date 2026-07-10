@@ -310,3 +310,13 @@ def fetch_disk_io_stats():
         logger.error(f'获取磁盘设备IO失败: {e}')
 
     return stats
+def render_bytes_speed(bytes_per_sec):
+    """
+    格式化字节速率
+    """
+    if bytes_per_sec >= 1024 * 1024:
+        return f"{(bytes_per_sec / (1024 * 1024)):.2f} MB/s"
+    elif bytes_per_sec >= 1024:
+        return f"{(bytes_per_sec / 1024):.2f} KB/s"
+    else:
+        return f"{bytes_per_sec:.2f} B/s"
