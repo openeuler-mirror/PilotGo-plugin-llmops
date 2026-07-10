@@ -22,6 +22,11 @@ def fetch_proc_search(pattern, exact=None):
         else:
             cmd = ['pgrep', '-a', pattern]
         result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 1:
+            # pgrep returns 1 when no match found
+            return f'No processes matching "{pattern}" found'
+        if result.returncode > 1:
+            return f'Error running pgrep: {result.stderr.strip() or "unknown error"}'
         lines = result.stdout.strip().split('\n')
         out = [f'=== Process Search: "{pattern}" ===']
         if not lines or lines == ['']:
@@ -35,6 +40,11 @@ def fetch_proc_search(pattern, exact=None):
                     out.append(f'{parts[0]:>7}  {parts[1] if len(parts)>1 else ""}'[:80])
             out.append(f'\nFound: {len(lines)} process(es)')
         return '\n'.join(out)
+    except FileNotFoundError:
+        return 'Error: pgrep command not found (install procps package)'
+    except subprocess.SubprocessError as e:
+        logger.error(f'pgrep failed: {e}')
+        return f'Error running pgrep: {e}'
     except Exception as e:
         logger.error(f'Failed: {e}')
         return f'Error: {e}'
