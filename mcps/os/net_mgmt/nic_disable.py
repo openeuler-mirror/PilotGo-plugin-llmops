@@ -201,3 +201,48 @@ def fetch_down_interface_info(interface):
         logger.error(f'获取禁用网卡信息失败: {e}')
 
     return details
+def locate_interface_config_files(interface):
+    """
+    查找接口的配置文件
+    """
+    # 安全校验：验证 interface 参数
+    is_valid, error_msg = validate_identifier_param(interface, allow_slash=False)
+    if not is_valid:
+        logger.error(f'网络接口名称不合法：{error_msg}')
+        return []
+
+    config_files = []
+
+    # 检查RedHat/CentOS风格的配置文件
+    ifcfg_dir = '/etc/sysconfig/network-scripts'
+    if os.path.exists(ifcfg_dir):
+        ifcfg_file = os.path.join(ifcfg_dir, f'ifcfg-{interface}')
+        if os.path.exists(ifcfg_file):
+            config_files.append(ifcfg_file)
+
+    # 检查Debian/Ubuntu风格的配置文件
+    interfaces_file = '/etc/network/interfaces'
+    if os.path.exists(interfaces_file):
+        try:
+            with open(interfaces_file, 'r') as f:
+                body = f.read()
+                if f'iface {interface}' in body:
+                    config_files.append(interfaces_file)
+        except Exception:
+            pass
+
+    # 检查netplan配置文件
+    netplan_dir = '/etc/netplan'
+    if os.path.exists(netplan_dir):
+        for file in os.listdir(netplan_dir):
+            if file.endswith('.yaml') or file.endswith('.yml'):
+                netplan_file = os.path.join(netplan_dir, file)
+                try:
+                    with open(netplan_file, 'r') as f:
+                        body = f.read()
+                        if interface in body:
+                            config_files.append(netplan_file)
+                except Exception:
+                    pass
+
+    return config_files
