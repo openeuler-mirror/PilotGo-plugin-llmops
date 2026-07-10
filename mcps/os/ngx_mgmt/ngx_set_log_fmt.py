@@ -220,3 +220,40 @@ def fetch_current_log_formats(cfg_filepath: str) -> Dict[str, Any]:
         logger.error(f"获取当前日志格式配置失败: {e}")
     
     return current_formats
+
+def certify_log_format(format_name: str, format_content: str) -> Tuple[bool, str]:
+    """
+    验证日志格式
+    
+    参数:
+        format_name: 格式名称
+        format_content: 格式内容
+        
+    返回:
+        tuple: (是否有效, 错误信息)
+    """
+    try:
+        # 验证格式名称
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', format_name):  # NOSONAR
+            return False, "格式名称只能包含字母、数字和下划线，且不能以数字开头"
+        
+        # 验证格式内容
+        if not format_content.strip():
+            return False, "格式内容不能为空"
+        
+        # 检查变量格式
+        variables = re.findall(r'\$(\w+)', format_content)  # NOSONAR
+        for var in variables:
+            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', var):  # NOSONAR
+                return False, f"变量格式不正确: ${var}"
+        
+        # 检查引号匹配
+        quote_count = format_content.count('"')
+        if quote_count % 2 != 0:
+            return False, "引号不匹配"
+        
+        return True, "格式验证通过"
+        
+    except Exception as e:
+        logger.error(f"验证日志格式失败: {e}")
+        return False, f"验证失败: {e}"
