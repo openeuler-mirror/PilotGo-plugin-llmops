@@ -14,6 +14,12 @@ def fetch_proc_cgroup(pid):
         Formatted cgroup information string
     """
     try:
+
+    if pid is not None:
+        try:
+            pid = int(pid)
+            if pid <= 0: return f'Invalid PID: {pid}'
+        except (ValueError,TypeError): return f'PID must be integer'
         pid = str(int(pid))
         path = f'/proc/{pid}/cgroup'
         if not os.path.exists(path):
