@@ -265,3 +265,34 @@ def fetch_module_details():
             'statuses': [],
             'parameters': []
         }
+def analyze_lsmod_output(output):
+    """
+    解析lsmod命令输出
+
+    参数:
+        output: lsmod命令输出
+
+    返回:
+        模块列表
+    """
+    try:
+        modules = []
+        lines = output.split('\n')[1:]
+
+        for line in lines:
+            if line.strip():
+                parts = line.split()
+                if len(parts) >= 3:
+                    module = {
+                        'label': parts[0],
+                        'size': parts[1],
+                        'used': parts[2],
+                        'dependencies': parts[3] if len(parts) > 3 else ''
+                    }
+                    modules.append(module)
+
+        return modules
+
+    except Exception as e:
+        logger.error(f'解析lsmod输出失败: {e}')
+        return []
