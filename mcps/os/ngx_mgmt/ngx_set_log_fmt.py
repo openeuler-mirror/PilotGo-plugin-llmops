@@ -416,3 +416,75 @@ def remove_log_format(cfg_filepath: str, format_name: str) -> Tuple[bool, str]:
     except Exception as e:
         logger.error(f"删除日志格式失败: {e}")
         return False, f"删除失败: {e}"
+
+def apply_log_format_to_access_log(cfg_filepath: str, format_name: str, 
+                                  log_path: str = None, scope: str = 'http') -> Tuple[bool, str]:
+    """
+    将日志格式应用到 access_log
+    
+    参数:
+        cfg_filepath: 配置文件路径
+        format_name: 格式名称
+        log_path: 日志文件路径
+        scope: 作用域 (http/server)
+        
+    返回:
+        tuple: (是否成功，修改后的内容)
+    """
+    try:
+        # 安全验证：验证 cfg_filepath 路径参数（允许绝对路径）
+        valid, err_text = validate_path_param(cfg_filepath, allow_absolute=True)
+        if not valid:
+            logger.error(f"apply_log_format_to_access_log: cfg_filepath 路径验证失败：{err_text}")
+            return False, f"配置文件路径不安全：{err_text}"
+        
+        # 安全验证：验证 format_name 标识符参数
+        valid, err_text = validate_identifier_param(format_name)
+        if not valid:
+            logger.error(f"apply_log_format_to_access_log: format_name 验证失败：{err_text}")
+            return False, f"格式名称不安全：{err_text}"
+        
+        # 安全验证：验证 log_path 路径参数（如果提供，允许绝对路径）
+        if log_path is not None:
+            valid, err_text = validate_path_param(log_path, allow_absolute=True)
+            if not valid:
+                logger.error(f"apply_log_format_to_access_log: log_path 路径验证失败：{err_text}")
+                return False, f"日志文件路径不安全：{err_text}"
+        
+        # 验证 scope 参数
+        if scope not in ['http', 'server']:
+            return False, f"无效的作用域：{scope}。有效值：http, server"
+        
+        with open(cfg_filepath, 'r', encoding='utf-8') as f:
+            body = f.read()
+        
+        log_path = f'/var/log/nginx/access_{format_name}.log' if log_path is None else log_path
+        access_log_line = f'access_log {log_path} {format_name};'
+        
+        if scope == 'http':
+            # 在http块中添加access_log
+            http_pattern = r'(http\s*\{)'  # NOSONAR
+            http_match = re.search(http_pattern, body)  # NOSONAR
+            
+            if http_match:
+                insert_pos = http_match.end()
+                new_content = body[:insert_pos] + f'\n    {access_log_line}' + body[insert_pos:]
+            else:
+                return False, "找不到http块"
+        
+        elif scope == 'server':
+            # 在第一个server块中添加access_log
+            server_pattern = r'(server\s*\{)'  # NOSONAR
+            server_match = re.search(server_pattern, body)  # NOSONAR
+            
+            if server_match:
+                insert_pos = server_match.end()
+                new_content = body[:insert_pos] + f'\n    {access_log_line}' + body[insert_pos:]
+            else:
+                return False, "找不到server块"
+        
+        return True, new_content
+        
+    except Exception as e:
+        logger.error(f"应用日志格式到access_log失败: {e}")
+        return False, f"应用失败: {e}"
