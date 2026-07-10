@@ -216,3 +216,30 @@ def verify_hosts_permissions():
         logger.error(f'检查hosts文件权限失败: {e}')
 
     return permissions
+def verify_hosts_format():
+    """
+    检查hosts文件格式
+    """
+    checks = []
+
+    try:
+        with open('/etc/hosts', 'r') as f:
+            lines = f.readlines()
+
+            for line_num, line in enumerate(lines, 1):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+
+                parts = line.split()
+                if len(parts) < 2:
+                    checks.append(f"行 {line_num}: 格式错误，缺少主机名")
+                else:
+                    ip = parts[0]
+                    if not is_valid_ip(ip):
+                        checks.append(f"行 {line_num}: 无效的IP地址格式: {ip}")
+
+    except Exception as e:
+        logger.error(f'检查hosts文件格式失败: {e}')
+
+    return checks
