@@ -162,3 +162,32 @@ def fetch_icmp_type_stats():
         logger.error(f'获取ICMP类型统计失败: {e}')
 
     return type_stats
+def fetch_icmp_config():
+    """
+    获取ICMP配置
+    """
+    settings = {}
+
+    try:
+        # 检查ICMP重定向
+        redirect_path = '/proc/sys/net/ipv4/conf/default/accept_redirects'
+        if os.path.exists(redirect_path):
+            with open(redirect_path, 'r') as f:
+                settings['ICMP重定向'] = '启用' if f.read().strip() == '1' else '禁用'
+
+        # 检查ICMP Echo请求
+        echo_path = '/proc/sys/net/ipv4/icmp_echo_ignore_all'
+        if os.path.exists(echo_path):
+            with open(echo_path, 'r') as f:
+                settings['ICMP Echo请求'] = '禁用' if f.read().strip() == '1' else '启用'
+
+        # 检查ICMP错误消息速率限制
+        ratelimit_path = '/proc/sys/net/ipv4/icmp_ratelimit'
+        if os.path.exists(ratelimit_path):
+            with open(ratelimit_path, 'r') as f:
+                settings['ICMP错误消息速率限制'] = f.read().strip() + ' 毫秒'
+
+    except Exception as e:
+        logger.error(f'获取ICMP配置失败: {e}')
+
+    return settings
