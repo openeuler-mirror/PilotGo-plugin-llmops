@@ -165,3 +165,76 @@ def spot_init_system():
 
     except Exception:
         return 'unknown'
+
+def fetch_systemd_service_info():
+    """
+    获取systemd服务信息
+
+    返回:
+        dict: systemd服务信息
+    """
+    try:
+        service_info = {}
+
+        # 获取服务状态
+        status_result = subprocess.run(['systemctl', 'status', 'nginx'], capture_output=True, text=True)
+        if status_result.returncode == 0:
+            output = status_result.stdout
+            service_info['status'] = '运行中'
+
+            # 解析详细信息
+            for line in output.split('\n'):
+                if 'Active:' in line:
+                    status_match = re.search(r'Active:\s*(\w+)', line)  # NOSONAR
+                    if status_match:
+                        service_info['status'] = status_match.group(1)
+                elif 'Description:' in line:
+                    service_info['description'] = line.split(':', 1)[1].strip()
+                elif 'Main PID:' in line:
+                    pid_match = re.search(r'Main PID:\s*(\d+)', line)  # NOSONAR
+                    if pid_match:
+                        service_info['pid'] = pid_match.group(1)
+                elif 'Started' in line:
+                    service_info['start_time'] = line.strip()
+        else:
+            service_info['status'] = '未运行'
+
+        # 检查启用状态
+        enable_result = subprocess.run(['systemctl', 'is-enabled', 'nginx'], capture_output=True, text=True)
+        if enable_result.returncode == 0:
+            service_info['enabled'] = True
+            service_info['enabled_boot'] = True
+
+        # 获取服务文件路径
+        show_result = subprocess.run(['systemctl', 'show', 'nginx', '--property=FragmentPath'], capture_output=True, text=True)
+        if show_result.returncode == 0:
+            path_match = re.search(r'FragmentPath=(.+)', show_result.stdout.strip())  # NOSONAR
+            if path_match:
+                service_info['service_file'] = path_match.group(1)
+                service_info['service_config_dir'] = os.path.dirname(path_match.group(1))
+
+        # 控制命令
+        service_info['control_commands'] = {
+            'start': 'systemctl start nginx',
+            'stop': 'systemctl stop nginx',
+            'restart': 'systemctl restart nginx',
+            'reload': 'systemctl reload nginx',
+            'status': 'systemctl status nginx'
+        }
+
+        # 日志路径
+        service_info['log_paths'] = {
+            'system_log': 'journalctl -u nginx',
+            'service_log': '/var/log/nginx/access.log',
+            'error_log': '/var/log/nginx/error.log'
+        }
+
+        # PID文件
+        service_info['pid_file'] = '/run/nginx.pid'
+        service_info['lock_file'] = '/run/nginx.lock'
+
+        return service_info
+
+    except Exception as e:
+        logger.error(f'获取systemd服务信息失败: {e}')
+        return {}
