@@ -16,6 +16,27 @@ var DB *gorm.DB
 // InitDB 初始化数据库连接
 func InitDB() error {
 	cfg := config.GetConfig()
+
+	// 先连接到 MySQL server（不指定 database），自动创建数据库
+	serverDsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=utf8mb4&parseTime=True&loc=Local",
+		cfg.DB.User,
+		cfg.DB.Password,
+		cfg.DB.Host,
+		cfg.DB.Port,
+	)
+	serverDB, err := gorm.Open(mysql.Open(serverDsn), &gorm.Config{})
+	if err != nil {
+		return fmt.Errorf("failed to connect mysql server: %v", err)
+	}
+	createSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci", cfg.DB.Database)
+	if err := serverDB.Exec(createSQL).Error; err != nil {
+		return fmt.Errorf("failed to create database: %v", err)
+	}
+	sqlDB, err := serverDB.DB()
+	if err == nil {
+		_ = sqlDB.Close()
+	}
+
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.DB.User,
 		cfg.DB.Password,
@@ -37,7 +58,6 @@ func InitDB() error {
 	)
 
 	// 连接数据库
-	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: newLogger,
 	})
@@ -46,7 +66,7 @@ func InitDB() error {
 	}
 
 	// 获取底层的sql.DB对象来配置连接池
-	sqlDB, err := DB.DB()
+	sqlDB, err = DB.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get underlying sql.DB: %v", err)
 	}

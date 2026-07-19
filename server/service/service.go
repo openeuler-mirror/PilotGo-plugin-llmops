@@ -1,15 +1,15 @@
 package service
 
 import (
-    "context"
+	"context"
 
-    "gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
-    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/audit"
-    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/knowledge"
-    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/operation"
-    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/project"
-    "gitee.com/openeuler/PilotGo-plugin-llmops/server/service/topology"
-    "github.com/sourcegraph/conc"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/audit"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/knowledge"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/operation"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/project"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service/topology"
+	"github.com/sourcegraph/conc"
 )
 
 type Service interface {
@@ -38,11 +38,11 @@ func registerService(s Service) {
 }
 
 func registerServices() {
-    registerService(project.GetProjectService())
-    registerService(knowledge.GetKnowledgeService())
-    registerService(audit.GetAuditService())
-    registerService(topology.GetTopologyService())
-    registerService(operation.GetOperationService())
+	registerService(project.GetProjectService())
+	registerService(knowledge.GetKnowledgeService())
+	registerService(audit.GetAuditService())
+	registerService(topology.GetTopologyService())
+	registerService(operation.GetOperationService())
 }
 
 func StartServices() error {
@@ -55,7 +55,7 @@ func StartServices() error {
 		wg.Go(func() {
 			logger.Infof("service starting: %s", s.Name())
 			if err := s.Run(ctx); err != nil {
-				logger.Errorf("Failed to start service: %v", err)
+				logger.Errorf("Failed to start service: %s, error: %v", s.Name(), err)
 			}
 		})
 	}

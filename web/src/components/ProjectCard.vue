@@ -66,10 +66,10 @@ const handleDelete = async () => {
 
     <!-- 操作按钮 -->
     <div class="pt-3 mt-2 flex">
-      <el-button type="primary" size="middle" class="w-full" plain @click="handleViewDetails">
+      <el-button type="primary" size="default" class="w-full" plain @click="handleViewDetails">
         查看详情
       </el-button>
-      <el-button type="danger" size="middle" class="w-16" plain @click="handleDelete">
+      <el-button type="danger" size="default" class="w-16" plain @click="handleDelete">
         删除
       </el-button>
     </div>
