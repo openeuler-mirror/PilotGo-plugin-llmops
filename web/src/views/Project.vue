@@ -90,7 +90,7 @@ const handleMenuClick = (index: string) => {
 
 // 返回项目列表
 const goBack = () => {
-  router.push('/')
+  router.push('/overview')
 }
 
 const loadProject = async () => {

@@ -39,14 +39,6 @@ const route = useRoute()
 const activeMenu = computed(() => route.path)
 const isCollapse = ref(false)
 
-// 路由级面包屑导航
-const breadcrumbs = computed(() => {
-  const items: { text: string; to?: string }[] = [{ text: '总览', to: '/' }]
-  if (route.path.startsWith('/project/')) {
-    items.push({ text: '项目详情' })
-  }
-  return items
-})
 </script>
 
 <template>
@@ -54,15 +46,6 @@ const breadcrumbs = computed(() => {
     <!-- 顶部标题栏 -->
     <el-header class="bg-white border-b border-gray-200 flex items-center shrink-0">
       <span class="text-lg font-semibold text-gray-800">PilotGo LLMOps</span>
-      <el-breadcrumb separator="/" class="ml-6">
-        <el-breadcrumb-item
-          v-for="(item, idx) in breadcrumbs"
-          :key="idx"
-          :to="idx < breadcrumbs.length - 1 && item.to ? { path: item.to } : undefined"
-        >
-          {{ item.text }}
-        </el-breadcrumb-item>
-      </el-breadcrumb>
     </el-header>
 
     <el-container class="overflow-hidden">
@@ -70,10 +53,10 @@ const breadcrumbs = computed(() => {
       <el-aside :width="isCollapse ? '64px' : '200px'" class="bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
         <!-- router 模式：菜单项 index 即路由路径，点击经 vue-router 跳转 -->
         <el-menu :default-active="activeMenu" router :collapse="isCollapse" :collapse-transition="false" class="flex-1 border-r-0">
-          <el-menu-item index="/">
+          <el-menu-item index="/overview">
             <el-icon><Odometer /></el-icon>
             <template #title>
-              <span>Overview</span>
+              <span>总览</span>
             </template>
           </el-menu-item>
           <el-menu-item index="/cluster">
