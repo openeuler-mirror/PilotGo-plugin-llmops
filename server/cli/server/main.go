@@ -6,11 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/config"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/db"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/http"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/logger"
-	"gitee.com/openeuler/PilotGo-plugin-llmops/server/service"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/pkg/logger"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/server/config"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/server/db"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/server/http"
+	"gitee.com/openeuler/PilotGo-plugin-llmops/server/server/service"
 )
 
 func main() {

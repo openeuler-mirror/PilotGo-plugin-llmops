@@ -1,0 +1,17 @@
+# PilotGo Client 配置模板
+
+# 服务端 WebSocket 地址
+server:
+  addr: "ws://localhost:8080/ws"
+
+# 客户端身份配置
+client:
+  # 客户端唯一标识，留空时默认使用主机名
+  id: ""
+  # 连接服务端所需的鉴权令牌
+  token: "your-client-token"
+
+# 日志配置
+log:
+  # 日志级别：debug / info / warn / error
+  level: "info"
