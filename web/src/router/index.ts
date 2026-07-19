@@ -12,6 +12,10 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      redirect: '/overview'
+    },
+    {
+      path: '/overview',
       name: 'Overview',
       component: Overview
     },
