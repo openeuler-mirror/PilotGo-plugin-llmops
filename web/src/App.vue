@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
-import { Odometer } from '@element-plus/icons-vue'
+import { Odometer, Fold, Expand } from '@element-plus/icons-vue'
 
 interface Notification {
   id: number
@@ -37,6 +37,7 @@ const closeNotification = (id: number) => {
 // 侧边栏导航：根据当前路由高亮对应菜单项
 const route = useRoute()
 const activeMenu = computed(() => route.path)
+const isCollapse = ref(false)
 
 // 路由级面包屑导航
 const breadcrumbs = computed(() => {
@@ -66,14 +67,23 @@ const breadcrumbs = computed(() => {
 
     <el-container class="overflow-hidden">
       <!-- 左侧侧边栏导航 -->
-      <el-aside width="200px" class="bg-white border-r border-gray-200">
+      <el-aside :width="isCollapse ? '64px' : '200px'" class="bg-white border-r border-gray-200 flex flex-col transition-all duration-300">
         <!-- router 模式：菜单项 index 即路由路径，点击经 vue-router 跳转 -->
-        <el-menu :default-active="activeMenu" router class="h-full border-r-0">
+        <el-menu :default-active="activeMenu" router :collapse="isCollapse" :collapse-transition="false" class="flex-1 border-r-0">
           <el-menu-item index="/">
             <el-icon><Odometer /></el-icon>
-            <span>Overview</span>
+            <template #title>
+              <span>Overview</span>
+            </template>
           </el-menu-item>
         </el-menu>
+        <!-- 侧边栏折叠/展开按钮 -->
+        <div class="h-10 flex items-center justify-center border-t border-gray-200 cursor-pointer hover:bg-gray-50" @click="isCollapse = !isCollapse">
+          <el-icon>
+            <Fold v-if="!isCollapse" />
+            <Expand v-else />
+          </el-icon>
+        </div>
       </el-aside>
 
       <!-- 右侧主区域：通知栏 + 路由页面 + footer -->
